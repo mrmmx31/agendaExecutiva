@@ -1,0 +1,521 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AGENDA CIENTÍFICA — SISTEMA DE PLANEJAMENTO PESSOAL
+   Visual: Padrão científico/acadêmico — laboratório, pesquisa, precisão
+   Paleta: Azul escuro + Ciano + Âmbar + Teal
+   ═══════════════════════════════════════════════════════════════════════════ */
+.root {
+    -fx-font-family: "Inter", "Segoe UI", "DejaVu Sans", sans-serif;
+    -fx-font-size: 13px;
+}
+.app-root { -fx-background-color: #edf1f8; }
+/* ── Cabeçalho ───────────────────────────────────────────────────────────── */
+.header-bar {
+    -fx-background-color: linear-gradient(to right, #03183e 0%, #072d5e 100%);
+    -fx-border-color: #00b4d8;
+    -fx-border-width: 0 0 2 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,180,216,0.25), 14, 0.4, 0, 4);
+}
+.page-title {
+    -fx-text-fill: #f0f8ff;
+    -fx-font-size: 21px;
+    -fx-font-weight: 700;
+}
+.page-subtitle {
+    -fx-text-fill: #7ec8e3;
+    -fx-font-size: 11.5px;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+/* ── Abas ────────────────────────────────────────────────────────────────── */
+.main-tabs { -fx-tab-min-height: 36px; -fx-tab-max-height: 36px; }
+.main-tabs .tab-header-area .tab-header-background { -fx-background-color: #d6e4f5; }
+.main-tabs .tab {
+    -fx-background-color: #cddaed;
+    -fx-padding: 6 14 6 14;
+    -fx-font-weight: 600;
+    -fx-font-size: 12px;
+    -fx-text-base-color: #1e3a5f;
+}
+.main-tabs .tab:selected {
+    -fx-background-color: #ffffff;
+    -fx-text-base-color: #03183e;
+    -fx-border-color: transparent transparent #1565c0 transparent;
+    -fx-border-width: 0 0 3 0;
+}
+/* ── Cards de seção ──────────────────────────────────────────────────────── */
+.section-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #b8cfe8;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(3,24,62,0.07), 10, 0.2, 0, 3);
+}
+.section-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #03183e;
+    -fx-padding: 0 0 6 0;
+    -fx-border-color: transparent transparent #d6e4f5 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+/* ── KPI Cards (instrumentação científica) ───────────────────────────────── */
+.kpi-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #b8cfe8;
+    -fx-border-width: 0 0 0 4;
+    -fx-effect: dropshadow(gaussian, rgba(3,24,62,0.08), 8, 0.2, 0, 2);
+    -fx-padding: 12 16 12 16;
+}
+.kpi-title {
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #5a7a9e;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+.kpi-value {
+    -fx-font-size: 30px;
+    -fx-font-weight: 800;
+    -fx-font-family: "JetBrains Mono", "Consolas", "Courier New", monospace;
+    -fx-text-fill: #0d1b2a;
+}
+.kpi-blue   { -fx-border-color: #1565c0; } .kpi-blue   .kpi-value { -fx-text-fill: #1565c0; }
+.kpi-red    { -fx-border-color: #b71c1c; } .kpi-red    .kpi-value { -fx-text-fill: #b71c1c; }
+.kpi-orange { -fx-border-color: #e65100; } .kpi-orange .kpi-value { -fx-text-fill: #e65100; }
+.kpi-purple { -fx-border-color: #6a1b9a; } .kpi-purple .kpi-value { -fx-text-fill: #6a1b9a; }
+.kpi-cyan   { -fx-border-color: #006d8f; } .kpi-cyan   .kpi-value { -fx-text-fill: #006d8f; }
+.kpi-green  { -fx-border-color: #1b5e20; } .kpi-green  .kpi-value { -fx-text-fill: #1b5e20; }
+.kpi-indigo { -fx-border-color: #283593; } .kpi-indigo .kpi-value { -fx-text-fill: #283593; }
+/* ── Botões ──────────────────────────────────────────────────────────────── */
+.primary-button {
+    -fx-background-color: #1565c0;
+    -fx-background-radius: 6;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: 700;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+    -fx-padding: 7 16 7 16;
+    -fx-effect: dropshadow(gaussian, rgba(21,101,192,0.3), 6, 0.3, 0, 2);
+}
+.primary-button:hover { -fx-background-color: #0d47a1; }
+.secondary-button {
+    -fx-background-color: #eef4fc;
+    -fx-background-radius: 6;
+    -fx-border-color: #5c85c0;
+    -fx-border-radius: 6;
+    -fx-text-fill: #1565c0;
+    -fx-font-weight: 600;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+    -fx-padding: 6 14 6 14;
+}
+.secondary-button:hover { -fx-background-color: #dce8f8; }
+
+.danger-button {
+    -fx-background-color: #fdf0f0;
+    -fx-background-radius: 6;
+    -fx-border-color: #c62828;
+    -fx-border-radius: 6;
+    -fx-text-fill: #b71c1c;
+    -fx-font-weight: 700;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+    -fx-padding: 6 14 6 14;
+}
+.danger-button:hover { -fx-background-color: #fde8e8; }
+
+/* Botão compacto de ação — para ↑ ↓ ✕ em linhas de formulário */
+.icon-button {
+    -fx-background-color: #eef4fc;
+    -fx-background-radius: 5;
+    -fx-border-color: #5c85c0;
+    -fx-border-radius: 5;
+    -fx-text-fill: #1565c0;
+    -fx-font-weight: 700;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+    -fx-padding: 3 6 3 6;
+    -fx-min-width: 30px;
+    -fx-pref-width: 30px;
+}
+.icon-button:hover { -fx-background-color: #dce8f8; }
+.icon-button.danger {
+    -fx-background-color: #fdf0f0;
+    -fx-border-color: #c62828;
+    -fx-text-fill: #b71c1c;
+}
+.icon-button.danger:hover { -fx-background-color: #fde8e8; }
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-border-color: #5c85c0;
+    -fx-border-radius: 4;
+    -fx-text-fill: #1565c0;
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
+    -fx-cursor: hand;
+    -fx-padding: 1 10 1 10;
+}
+.nav-button:hover { -fx-background-color: #dce8f8; }
+/* ── Campos de formulário ────────────────────────────────────────────────── */
+.input-control {
+    -fx-background-color: #f5f8fd;
+    -fx-background-radius: 5;
+    -fx-border-color: #9ab4d2;
+    -fx-border-radius: 5;
+    -fx-border-width: 1;
+    -fx-font-size: 12.5px;
+}
+.input-control:focused {
+    -fx-border-color: #1565c0;
+    -fx-background-color: #ffffff;
+    -fx-effect: dropshadow(gaussian, rgba(21,101,192,0.12), 6, 0.3, 0, 0);
+}
+/* ── Lista limpa ─────────────────────────────────────────────────────────── */
+.clean-list {
+    -fx-background-color: #f7fbff;
+    -fx-border-color: #b8cfe8;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+}
+.clean-list .list-cell {
+    -fx-padding: 6 12 6 12;
+    -fx-font-size: 11.5px;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-text-fill: #1a2d45;
+    -fx-border-color: transparent transparent #e5eef8 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.clean-list .list-cell:selected { -fx-background-color: #d6eaf8; -fx-text-fill: #03183e; }
+.clean-list .list-cell:odd      { -fx-background-color: #f0f5fc; }
+/* ── Toggle de visualização ──────────────────────────────────────────────── */
+.view-toggle-bar {
+    -fx-background-color: #d6e4f5;
+    -fx-background-radius: 7;
+    -fx-padding: 3;
+}
+.view-toggle-btn {
+    -fx-background-color: transparent;
+    -fx-background-radius: 5;
+    -fx-text-fill: #1e3a5f;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+    -fx-padding: 4 12 4 12;
+    -fx-cursor: hand;
+}
+.view-toggle-btn:selected {
+    -fx-background-color: #1565c0;
+    -fx-text-fill: #ffffff;
+    -fx-effect: dropshadow(gaussian, rgba(21,101,192,0.3), 6, 0.3, 0, 2);
+}
+/* ── Navegação ───────────────────────────────────────────────────────────── */
+.nav-period-label {
+    -fx-font-size: 13.5px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #03183e;
+    -fx-padding: 0 8 0 8;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+.agenda-top-bar {
+    -fx-padding: 6 0 6 0;
+    -fx-border-color: transparent transparent #d6e4f5 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+/* ── Colunas de semana ───────────────────────────────────────────────────── */
+.day-column {
+    -fx-background-color: #f5f8fd;
+    -fx-background-radius: 6;
+    -fx-border-color: #b8cfe8;
+    -fx-border-radius: 6;
+    -fx-border-width: 1;
+}
+.day-column-today { -fx-background-color: #edf5ff; -fx-border-color: #1565c0; -fx-border-width: 2; }
+.day-column-header {
+    -fx-font-size: 11.5px; -fx-font-weight: 700; -fx-text-fill: #1e3a5f;
+    -fx-background-color: #e2ecf8; -fx-background-radius: 4;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace; -fx-padding: 4;
+}
+.day-column-header-today {
+    -fx-font-size: 11.5px; -fx-font-weight: 700; -fx-text-fill: #ffffff;
+    -fx-background-color: #1565c0; -fx-background-radius: 4;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace; -fx-padding: 4;
+}
+/* ── Grid anual ──────────────────────────────────────────────────────────── */
+.year-grid { -fx-padding: 8; }
+.year-month-card {
+    -fx-background-color: #ffffff; -fx-background-radius: 6;
+    -fx-border-color: #b8cfe8; -fx-border-radius: 6;
+    -fx-border-width: 0 0 0 3; -fx-padding: 10 14 10 14;
+    -fx-cursor: hand; -fx-pref-width: 160;
+    -fx-effect: dropshadow(gaussian, rgba(3,24,62,0.06), 6, 0.15, 0, 1);
+}
+.year-month-card:hover {
+    -fx-background-color: #edf5ff; -fx-border-color: #1565c0;
+    -fx-effect: dropshadow(gaussian, rgba(21,101,192,0.15), 8, 0.3, 0, 2);
+}
+.year-month-name  { -fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #03183e; }
+.year-month-count { -fx-font-size: 28px; -fx-font-weight: 800; -fx-font-family: "JetBrains Mono", "Consolas", monospace; -fx-text-fill: #1565c0; }
+.year-month-open  { -fx-font-size: 11px; -fx-text-fill: #5a7a9e; -fx-font-family: "JetBrains Mono", "Consolas", monospace; }
+/* ── Barra de status ─────────────────────────────────────────────────────── */
+.status-bar {
+    -fx-background-color: #03183e;
+    -fx-border-color: #1a3a5c;
+    -fx-border-width: 1 0 0 0;
+}
+.status-label {
+    -fx-text-fill: #7ec8e3;
+    -fx-font-size: 11.5px;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+/* ── Grid de formulário ──────────────────────────────────────────────────── */
+.form-grid { -fx-padding: 4 0 4 0; }
+.form-grid .label { -fx-font-weight: 600; -fx-text-fill: #1e3a5f; -fx-font-size: 12px; }
+.dashboard-cards { -fx-padding: 4; }
+/* ── Recorrência de tarefas ──────────────────────────────────────────────── */
+.recurrence-day-check {
+    -fx-font-size: 11px; -fx-padding: 3 5 3 5; -fx-background-radius: 4;
+    -fx-cursor: hand; -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+.recurrence-day-check:selected { -fx-text-fill: #1565c0; -fx-font-weight: 700; }
+.form-label { -fx-font-size: 12px; -fx-text-fill: #1e3a5f; -fx-font-weight: 600; }
+/* ── Configurações — painéis de categoria ────────────────────────────────── */
+.config-section {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 8;
+    -fx-border-color: #b8cfe8;
+    -fx-border-radius: 8;
+    -fx-border-width: 0 0 0 5;
+    -fx-effect: dropshadow(gaussian, rgba(3,24,62,0.07), 10, 0.2, 0, 3);
+}
+.config-task      { -fx-border-color: #1565c0; }
+.config-checklist { -fx-border-color: #006d5b; }
+.config-study     { -fx-border-color: #e65100; }
+.config-idea      { -fx-border-color: #6a1b9a; }
+/* ── Estado vazio ────────────────────────────────────────────────────────── */
+.empty-state-label {
+    -fx-font-size: 13px; -fx-text-fill: #7a9bbf;
+    -fx-font-style: italic;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+/* ── ScrollPane sem borda visível ────────────────────────────────────────── */
+.edge-to-edge { -fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 0; }
+.edge-to-edge .viewport { -fx-background-color: transparent; }
+
+/* ── Diálogo de confirmação ──────────────────────────────────────────────── */
+.confirm-dialog {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #b8cfe8;
+    -fx-border-width: 1;
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+}
+.confirm-dialog .header-panel {
+    -fx-background-color: #03183e;
+}
+.confirm-dialog .header-panel .label {
+    -fx-text-fill: #f0f8ff;
+    -fx-font-weight: 700;
+    -fx-font-size: 13px;
+}
+.confirm-dialog .content.label {
+    -fx-text-fill: #1e3a5f;
+    -fx-font-size: 12.5px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ABA DE ESTUDOS E ATIVIDADES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Células da lista de planos ──────────────────────────────────────────── */
+.study-plan-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #0d1b2a;
+}
+.study-plan-detail {
+    -fx-font-size: 10.5px;
+    -fx-text-fill: #5a7a9e;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+
+/* ── Badges de tipo e status ─────────────────────────────────────────────── */
+.study-badge {
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 10;
+    -fx-font-size: 10px;
+    -fx-font-weight: 700;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+.badge-type                { -fx-background-color: #dce8f8; -fx-text-fill: #1565c0; }
+.badge-status-planejado    { -fx-background-color: #e8eaf6; -fx-text-fill: #283593; }
+.badge-status-em_andamento { -fx-background-color: #fff3e0; -fx-text-fill: #e65100; }
+.badge-status-concluido    { -fx-background-color: #e8f5e9; -fx-text-fill: #1b5e20; }
+.badge-status-pausado      { -fx-background-color: #fce4ec; -fx-text-fill: #880e4f; }
+.badge-status-abandonado   { -fx-background-color: #f5f5f5; -fx-text-fill: #757575; }
+
+/* ── Barra de progresso nos cards de plano ───────────────────────────────── */
+.study-progress-bar {
+    -fx-pref-height: 9px;
+    -fx-min-height:  9px;
+}
+.study-progress-bar .bar {
+    -fx-background-color: linear-gradient(to right, #1565c0, #0d47a1);
+    -fx-background-radius: 4;
+    -fx-background-insets: 0;
+}
+.study-progress-bar .track {
+    -fx-background-color: #e2ecf8;
+    -fx-background-radius: 4;
+    -fx-background-insets: 0;
+}
+.study-progress-bar.progress-complete .bar { -fx-background-color: linear-gradient(to right, #1b5e20, #2e7d32); }
+.study-progress-bar.progress-high     .bar { -fx-background-color: linear-gradient(to right, #33691e, #558b2f); }
+.study-progress-bar.progress-low      .bar { -fx-background-color: linear-gradient(to right, #b71c1c, #c62828); }
+
+.study-progress-label {
+    -fx-font-size: 11.5px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #1565c0;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+
+/* ── Labels de prazo ─────────────────────────────────────────────────────── */
+.deadline-ok {
+    -fx-text-fill: #1b5e20;
+    -fx-font-size: 10.5px;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+.deadline-warn {
+    -fx-text-fill: #e65100;
+    -fx-font-size: 10.5px;
+    -fx-font-weight: 700;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+.deadline-overdue {
+    -fx-text-fill: #b71c1c;
+    -fx-font-size: 10.5px;
+    -fx-font-weight: 700;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+
+/* ── Label de datas ──────────────────────────────────────────────────────── */
+.study-dates-label {
+    -fx-font-size: 11.5px;
+    -fx-text-fill: #5a7a9e;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DIÁRIO CIENTÍFICO (StudyDiaryWindow)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.diary-header-bar {
+    -fx-background-color: linear-gradient(to right, #03183e 0%, #072d5e 100%);
+    -fx-border-color: transparent transparent #00b4d8 transparent;
+    -fx-border-width: 0 0 2 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,180,216,0.22), 14, 0.35, 0, 4);
+}
+.diary-header-bar .page-title  { -fx-text-fill: #f0f8ff; }
+.diary-header-bar .label       { -fx-text-fill: #a8d4e6; }
+.diary-stats-label {
+    -fx-text-fill: #7ec8e3;
+    -fx-font-size: 11px;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KPI COMPACTO — para uso dentro das abas (menor que o do dashboard)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.kpi-mini {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 7;
+    -fx-border-color: #b8cfe8;
+    -fx-border-radius: 7;
+    -fx-border-width: 0 0 0 4;
+    -fx-effect: dropshadow(gaussian, rgba(3,24,62,0.07), 6, 0.15, 0, 2);
+    -fx-padding: 8 12 8 12;
+    -fx-min-width: 130;
+}
+.kpi-mini .kpi-title { -fx-font-size: 10px; }
+.kpi-mini .kpi-value { -fx-font-size: 22px; }
+
+/* ── Filtros de toggle (status / período) ───────────────────────────────── */
+.filter-box {
+    -fx-background-color: #f0f5fc;
+    -fx-background-radius: 7;
+    -fx-border-color: #cad8ee;
+    -fx-border-radius: 7;
+    -fx-padding: 8 10 8 10;
+}
+.filter-toggle {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 14;
+    -fx-border-color: #a8c0de;
+    -fx-border-radius: 14;
+    -fx-text-fill: #2c4a72;
+    -fx-font-size: 11.5px;
+    -fx-padding: 3 11 3 11;
+    -fx-cursor: hand;
+}
+.filter-toggle:hover {
+    -fx-background-color: #dce8f8;
+    -fx-border-color: #5c85c0;
+}
+.filter-toggle:selected {
+    -fx-background-color: #1565c0;
+    -fx-border-color: #1565c0;
+    -fx-text-fill: white;
+    -fx-font-weight: 700;
+}
+/* período: verde-teal para distinguir visualmente do grupo de status */
+.filter-toggle.period-toggle:selected {
+    -fx-background-color: #00695c;
+    -fx-border-color: #00695c;
+}
+
+/* ── Monitor de Frequência — Calendário ─────────────────────────────────── */
+.calendar-week-header {
+    -fx-font-weight: 700;
+    -fx-font-size: 11px;
+    -fx-text-fill: #2c4a72;
+    -fx-padding: 2 0 2 0;
+}
+.calendar-day {
+    -fx-background-color: #f0f5fc;
+    -fx-background-radius: 6;
+    -fx-border-color: #c8d9ee;
+    -fx-border-radius: 6;
+    -fx-cursor: default;
+}
+.calendar-day-num  { -fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #4a6382; }
+.calendar-day-sym  { -fx-font-size: 14px; -fx-font-weight: 700; }
+.calendar-today    { -fx-border-color: #1565c0 !important; -fx-border-width: 2; }
+
+/* Status de frequência */
+.attend-present     { -fx-background-color: #e8f5e9; }
+.attend-present .calendar-day-sym  { -fx-text-fill: #2e7d32; }
+.attend-partial     { -fx-background-color: #fff9c4; }
+.attend-partial .calendar-day-sym  { -fx-text-fill: #f57f17; }
+.attend-absent      { -fx-background-color: #ffebee; }
+.attend-absent .calendar-day-sym   { -fx-text-fill: #c62828; }
+.attend-compensated { -fx-background-color: #e3f2fd; }
+.attend-compensated .calendar-day-sym { -fx-text-fill: #1565c0; }
+.attend-future      { -fx-background-color: #f3e5f5; }
+.attend-future .calendar-day-sym   { -fx-text-fill: #6a1b9a; }
+.attend-none        { -fx-background-color: #f5f5f5; }
+.attend-none .calendar-day-sym     { -fx-text-fill: #bdbdbd; }
+
+/* Legenda */
+.calendar-legend { -fx-font-size: 11px; -fx-padding: 1 6 1 6;
+                   -fx-background-radius: 10; -fx-border-radius: 10; }
+
+/* Card de compensação */
+.comp-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 7;
+    -fx-border-color: #c8d9ee;
+    -fx-border-radius: 7;
+    -fx-effect: dropshadow(gaussian, rgba(3,24,62,0.06), 4, 0.1, 0, 1);
+}
+
+/* KPI color variants */
+.kpi-red { -fx-border-color: #e53935; }
+.kpi-red-value { -fx-text-fill: #c62828; }

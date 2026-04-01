@@ -706,5 +706,15 @@ public class DatabaseService {
             return text;
         }
     }
-}
 
+    // Utilitário: busca Task por id (para uso no controller)
+    public com.pessoal.agenda.model.Task findTaskById(Long id) {
+        // TODO: Ajuste para o construtor real de Task
+        return null;
+    }
+
+    // Utilitário: retorna instância de TaskSessionRepository
+    public com.pessoal.agenda.repository.TaskSessionRepository getTaskSessionRepository() {
+        return new com.pessoal.agenda.repository.TaskSessionRepository(new com.pessoal.agenda.infra.Database());
+    }
+}

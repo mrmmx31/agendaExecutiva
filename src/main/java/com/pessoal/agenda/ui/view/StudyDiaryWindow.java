@@ -60,6 +60,7 @@ public class StudyDiaryWindow {
 
     private StudyPlan currentPlan;
     private Long      editingEntryId = null;
+    private Stage     stage;
 
     // Header
     private ProgressBar headerProgressBar;
@@ -134,6 +135,7 @@ public class StudyDiaryWindow {
         }
 
         Stage stage = new Stage();
+        this.stage = stage;
         stage.setTitle("Diário Científico — " + currentPlan.title());
         stage.setMinWidth(1060); stage.setMinHeight(720);
         stage.initModality(Modality.NONE);
@@ -159,6 +161,7 @@ public class StudyDiaryWindow {
             if (refreshCallback != null) refreshCallback.run();
             // clear shared active session indicator when diary closes
             try { if (sharedCtx != null) sharedCtx.activeStudySessionLabel.setText(""); } catch (Exception ex) { /* ignore */ }
+            this.stage = null;
         });
 
         openWindows.put(currentPlan.id(), stage);
@@ -575,6 +578,15 @@ public class StudyDiaryWindow {
         long s = timerSeconds.get();
         long hh = s / 3600; long mm = (s % 3600) / 60; long ss = s % 60;
         timerLabel.setText(String.format("%02d:%02d:%02d", hh, mm, ss));
+        // update shared context indicator when diary is minimized or not focused
+        try {
+            if (sharedCtx != null && timerRunning && stage != null) {
+                boolean show = false;
+                try { show = stage.isIconified() || !stage.isFocused(); } catch (Exception ex) { show = stage.isIconified(); }
+                if (show) sharedCtx.activeStudySessionLabel.setText("Sessão: " + timerLabel.getText());
+                else sharedCtx.activeStudySessionLabel.setText("");
+            }
+        } catch (Throwable ignored) { }
     }
 
     private void playTone(int freq, int ms) {
@@ -584,31 +596,18 @@ public class StudyDiaryWindow {
     private void playSignal(String name) {
         if (soundExecutor == null) return;
         soundExecutor.submit(() -> {
+            boolean played = false;
+            // helper to report status messages to user
+            java.util.function.Consumer<String> report = msg -> {
+                try { if (sharedCtx != null) sharedCtx.setStatus(msg); } catch (Throwable ignored) {}
+            };
+
+            // Attempt 1: play packaged WAV resource
             try {
-                // try resource /sounds/{name}.wav
                 String res = "/sounds/" + name + ".wav";
                 java.net.URL url = StudyDiaryWindow.class.getResource(res);
                 if (url != null) {
                     try (AudioInputStream ais = AudioSystem.getAudioInputStream(url)) {
-                        Clip clip = AudioSystem.getClip();
-                        clip.open(ais);
-                        final Object lock = new Object();
-                        clip.addLineListener(new LineListener() {
-                            @Override public void update(LineEvent event) {
-                                if (event.getType() == LineEvent.Type.STOP) {
-                                    clip.close();
-                                    synchronized(lock) { lock.notifyAll(); }
-                                }
-                            }
-                        });
-                        clip.start();
-                        synchronized(lock) { lock.wait(1500); }
-                    }
-                    return;
-                }
-                // try embedded example tones generated at runtime (no external WAV needed)
-                try (AudioInputStream ais = EmbeddedSounds.getAudioInputStream(name)) {
-                    if (ais != null) {
                         Clip clip = AudioSystem.getClip();
                         clip.open(ais);
                         final Object lock = new Object();
@@ -619,38 +618,93 @@ public class StudyDiaryWindow {
                         });
                         clip.start();
                         synchronized(lock) { lock.wait(1500); }
-                        return;
+                        played = true;
                     }
-                } catch (Throwable ignored) { }
-            } catch (Throwable ignored) { }
-            // If no resource found, synthesize a short tone as fallback
-            try {
-                float sampleRate = 44100f;
-                int ms = 450;
-                double freq = switch (name) {
-                    case "start" -> 880.0;
-                    case "pause" -> 660.0;
-                    case "stop"  -> 440.0;
-                    default -> 660.0;
-                };
-                int samples = (int) ((ms * sampleRate) / 1000);
-                byte[] data = new byte[samples * 2]; // 16-bit
-                for (int i = 0; i < samples; i++) {
-                    double t = i / sampleRate;
-                    short val = (short) (Math.sin(2 * Math.PI * freq * t) * 32767 * 0.6);
-                    data[2*i] = (byte) (val & 0xff);
-                    data[2*i+1] = (byte) ((val >> 8) & 0xff);
-                }
-                AudioFormat af = new AudioFormat(sampleRate, 16, 1, true, false);
-                try (AudioInputStream ais = new AudioInputStream(new java.io.ByteArrayInputStream(data), af, samples)) {
-                    Clip clip = AudioSystem.getClip();
-                    clip.open(ais);
-                    clip.start();
-                    Thread.sleep(ms);
-                    clip.stop(); clip.close();
                 }
             } catch (Throwable ex) {
-                try { Toolkit.getDefaultToolkit().beep(); } catch (Throwable ignored) { }
+                System.err.println("[StudyDiaryWindow] failed playing resource WAV: " + ex.getMessage());
+            }
+
+            if (!played) {
+                // Attempt 2: embedded generated tone
+                try (AudioInputStream ais = EmbeddedSounds.getAudioInputStream(name)) {
+                    if (ais != null) {
+                        try {
+                            Clip clip = AudioSystem.getClip();
+                            clip.open(ais);
+                            final Object lock = new Object();
+                            clip.addLineListener(event -> {
+                                if (event.getType() == LineEvent.Type.STOP) {
+                                    clip.close(); synchronized(lock) { lock.notifyAll(); }
+                                }
+                            });
+                            clip.start();
+                            synchronized(lock) { lock.wait(1500); }
+                            played = true;
+                        } catch (Throwable ex) {
+                            System.err.println("[StudyDiaryWindow] failed playing embedded tone: " + ex.getMessage());
+                        }
+                    }
+                } catch (Throwable ex) {
+                    System.err.println("[StudyDiaryWindow] error obtaining embedded audio: " + ex.getMessage());
+                }
+            }
+
+            if (!played) {
+                // Attempt 3: invoke system audio player (aplay, paplay, play) by writing resource to temp file
+                try {
+                    java.net.URL url = StudyDiaryWindow.class.getResource("/sounds/" + name + ".wav");
+                    java.io.File tmp = java.io.File.createTempFile("agenda-sound-", ".wav");
+                    tmp.deleteOnExit();
+                    boolean wrote = false;
+                    if (url != null) {
+                        try (java.io.InputStream is = url.openStream(); java.io.FileOutputStream fos = new java.io.FileOutputStream(tmp)) {
+                            byte[] buf = new byte[4096]; int r; while ((r = is.read(buf)) > 0) fos.write(buf, 0, r);
+                            wrote = true;
+                        } catch (Throwable ex) { System.err.println("[StudyDiaryWindow] failed writing resource to temp file: " + ex.getMessage()); }
+                    }
+                    if (!wrote) {
+                        // try embedded tone
+                        try (AudioInputStream eis = EmbeddedSounds.getAudioInputStream(name); java.io.FileOutputStream fos = new java.io.FileOutputStream(tmp)) {
+                            if (eis != null) {
+                                byte[] buf = new byte[4096]; int r; while ((r = eis.read(buf)) > 0) fos.write(buf, 0, r);
+                                wrote = true;
+                            }
+                        } catch (Throwable ex) { System.err.println("[StudyDiaryWindow] failed writing embedded to temp file: " + ex.getMessage()); }
+                    }
+                    if (wrote) {
+                        String[] candidates = new String[]{"aplay", "paplay", "play"};
+                        String player = null;
+                        for (String c : candidates) {
+                            try { if (java.lang.Runtime.getRuntime().exec(new String[]{"which", c}).waitFor() == 0) { player = c; break; } } catch (Throwable ignore) {}
+                        }
+                        if (player != null) {
+                            try {
+                                Process p = new ProcessBuilder(player, tmp.getAbsolutePath()).start();
+                                if (!p.waitFor(1500, java.util.concurrent.TimeUnit.MILLISECONDS)) p.destroy();
+                                played = true;
+                            } catch (Throwable ex) { System.err.println("[StudyDiaryWindow] native player failed: " + ex.getMessage()); }
+                        }
+                    }
+                } catch (Throwable ex) {
+                    System.err.println("[StudyDiaryWindow] native player fallback error: " + ex.getMessage());
+                }
+
+                // final fallback: system beep
+                if (!played) {
+                    try {
+                        Toolkit.getDefaultToolkit().beep();
+                        played = true;
+                    } catch (Throwable ex) {
+                        System.err.println("[StudyDiaryWindow] final fallback beep failed: " + ex.getMessage());
+                    }
+                }
+            }
+
+            if (!played) {
+                report.accept("Áudio: não foi possível reproduzir nenhum sinal (verifique drivers/ALSA/PulseAudio)");
+            } else {
+                report.accept("Áudio: sinal reproduzido");
             }
         });
     }

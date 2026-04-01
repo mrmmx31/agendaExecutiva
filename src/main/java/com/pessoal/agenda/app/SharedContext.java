@@ -5,6 +5,7 @@ import com.pessoal.agenda.model.CategoryDomain;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.Label;
+import javafx.application.Platform;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -70,7 +71,20 @@ public class SharedContext {
     // ── Ações públicas ─────────────────────────────────────────────────────
 
     /** Exibe uma mensagem na barra de status da aplicação. */
-    public void setStatus(String msg) { statusSetter.accept(msg); }
+    public void setStatus(String msg) {
+        try {
+            if (Platform.isFxApplicationThread()) {
+                statusSetter.accept(msg);
+            } else {
+                Platform.runLater(() -> {
+                    try { statusSetter.accept(msg); } catch (Throwable ignored) {}
+                });
+            }
+        } catch (Throwable ex) {
+            // If Platform is not available for any reason, fallback to direct call
+            try { statusSetter.accept(msg); } catch (Throwable ignored) {}
+        }
+    }
 
     /** Aciona atualização dos indicadores do dashboard. */
     public void triggerDashboardRefresh() {

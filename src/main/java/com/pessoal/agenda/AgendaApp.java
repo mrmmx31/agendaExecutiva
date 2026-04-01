@@ -2,7 +2,9 @@ package com.pessoal.agenda;
 
 import com.pessoal.agenda.app.SharedContext;
 import com.pessoal.agenda.ui.controller.*;
+import com.pessoal.agenda.ui.view.WindowManager;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -96,6 +98,10 @@ public class AgendaApp extends Application {
 
         stage.setTitle("Agenda Científica Pessoal — Planejamento Integrado");
         stage.setScene(scene);
+        stage.setOnCloseRequest(e -> {
+            WindowManager.closeAll();
+            Platform.exit();
+        });
         stage.show();
 
         // Carga inicial de todos os dados
@@ -163,4 +169,3 @@ public class AgendaApp extends Application {
         return bar;
     }
 }
-

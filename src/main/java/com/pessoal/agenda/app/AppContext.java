@@ -33,6 +33,7 @@ public class AppContext {
     private final ProtocolRepository protocolRepository;
     private final StudyScheduleRepository studyScheduleRepository;
     private final StudyCompensationRepository studyCompensationRepository;
+    private final com.pessoal.agenda.repository.TaskSessionRepository taskSessionRepository;
 
     private final TaskService taskService;
     private final AlertService alertService;
@@ -57,6 +58,7 @@ public class AppContext {
         this.protocolRepository = new ProtocolRepository(database);
         this.studyScheduleRepository = new StudyScheduleRepository(database);
         this.studyCompensationRepository = new StudyCompensationRepository(database);
+        this.taskSessionRepository = new com.pessoal.agenda.repository.TaskSessionRepository(database);
 
         this.taskService = new TaskService(taskRepository);
         this.alertService = new AlertService(database, taskRepository, financeRepository);
@@ -141,6 +143,10 @@ public class AppContext {
 
     public StudyCompensationRepository studyCompensationRepository() {
         return studyCompensationRepository;
+    }
+
+    public com.pessoal.agenda.repository.TaskSessionRepository taskSessionRepository() {
+        return taskSessionRepository;
     }
 
     public StudyAttendanceService studyAttendanceService() {

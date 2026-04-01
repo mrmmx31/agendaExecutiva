@@ -15,8 +15,11 @@
     -fx-border-width: 0 0 2 0;
     -fx-effect: dropshadow(gaussian, rgba(0,180,216,0.25), 14, 0.4, 0, 4);
 }
-.page-title {
+.header-bar .page-title {
     -fx-text-fill: #f0f8ff;
+}
+.page-title {
+    -fx-text-fill: #222;
     -fx-font-size: 21px;
     -fx-font-weight: 700;
 }

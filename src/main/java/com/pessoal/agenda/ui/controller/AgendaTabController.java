@@ -89,6 +89,22 @@ public class AgendaTabController {
         Tab tab = new Tab("Agenda e Prioridades");
         tab.setClosable(false);
 
+        // Listener para atualizar a lista principal quando o timer mudar de estado
+        com.pessoal.agenda.service.TaskTimerService.get().addStateListener(this::refreshMainListView);
+
+        // Adiciona CSS do timer inline
+        var cssUrl = getClass().getResource("/com/pessoal/agenda/timer-inline.css");
+        if (cssUrl != null) {
+            // Aplica ao Scene se já existir, senão aplica ao contentArea depois
+            if (tab.getContent() instanceof Region r && r.getScene() != null) {
+                r.getScene().getStylesheets().add(cssUrl.toExternalForm());
+            } else {
+                // fallback: aplica ao contentArea quando disponível
+                contentArea = new VBox();
+                contentArea.getStylesheets().add(cssUrl.toExternalForm());
+            }
+        }
+
         // filtro de categoria
         ComboBox<String> catFilterCombo = new ComboBox<>();
         catFilterCombo.getStyleClass().add("input-control");
@@ -335,6 +351,33 @@ public class AgendaTabController {
         VBox actionsSection = new VBox(6, editBtn, doneBtn, deleteBtn);
         actionsSection.getStyleClass().add("section-card"); actionsSection.setPadding(new Insets(10));
 
+        // history button: shows sessions for selected task or for current period
+        Button historyBtn = new Button("Histórico de sessões");
+        historyBtn.getStyleClass().add("secondary-button"); historyBtn.setMaxWidth(Double.MAX_VALUE);
+        historyBtn.setOnAction(e -> {
+            // if there's a selected task in the current main list, show sessions for that task
+            DatabaseService.RowItem sel = currentMainListView != null
+                    ? currentMainListView.getSelectionModel().getSelectedItem() : null;
+                if (sel != null) {
+                new com.pessoal.agenda.ui.view.SessionHistoryWindow(
+                        AppContextHolder.get().taskSessionRepository(), sel.id()).show();
+                return;
+            }
+
+            // otherwise open sessions for the current period according to currentView
+            java.time.LocalDate from, to;
+            switch (currentView) {
+                case DIA -> { from = currentDate; to = currentDate; }
+                case SEMANA -> { from = currentDate.with(java.time.DayOfWeek.MONDAY); to = from.plusDays(6); }
+                case MES -> { java.time.YearMonth ym = java.time.YearMonth.from(currentDate); from = ym.atDay(1); to = ym.atEndOfMonth(); }
+                default -> { from = java.time.LocalDate.of(currentDate.getYear(), 1, 1); to = java.time.LocalDate.of(currentDate.getYear(), 12, 31); }
+            }
+            new com.pessoal.agenda.ui.view.SessionHistoryWindow(AppContextHolder.get().taskSessionRepository(), null).show();
+        });
+
+        // append history button to actions
+        actionsSection.getChildren().add(historyBtn);
+
         ListView<String> alertsList = new ListView<>(ctx.alertItems);
         alertsList.getStyleClass().add("clean-list");
         VBox.setVgrow(alertsList, Priority.ALWAYS);
@@ -461,6 +504,15 @@ public class AgendaTabController {
         list.getStyleClass().add("clean-list");
         list.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         currentMainListView = list;
+        list.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2) {
+                DatabaseService.RowItem sel = list.getSelectionModel().getSelectedItem();
+                if (sel != null) {
+                    AppContextHolder.get().taskService().findById(sel.id()).ifPresent(t ->
+                        new com.pessoal.agenda.ui.view.TaskTimerWindow(t, AppContextHolder.get().taskSessionRepository()).show());
+                }
+            }
+        });
         VBox.setVgrow(list, Priority.ALWAYS);
         VBox box = new VBox(list); VBox.setVgrow(box, Priority.ALWAYS);
         return box;
@@ -480,6 +532,15 @@ public class AgendaTabController {
             header.setMaxWidth(Double.MAX_VALUE); header.setAlignment(Pos.CENTER);
             ListView<DatabaseService.RowItem> dayList = new ListView<>(weekDayItems.get(i));
             dayList.getStyleClass().add("clean-list"); VBox.setVgrow(dayList, Priority.ALWAYS);
+            dayList.setOnMouseClicked(ev -> {
+                if (ev.getClickCount() == 2) {
+                    DatabaseService.RowItem sel = dayList.getSelectionModel().getSelectedItem();
+                    if (sel != null) {
+                        AppContextHolder.get().taskService().findById(sel.id()).ifPresent(t ->
+                            new com.pessoal.agenda.ui.view.TaskTimerWindow(t, AppContextHolder.get().taskSessionRepository()).show());
+                    }
+                }
+            });
             dayList.getSelectionModel().selectedItemProperty().addListener(
                     (obs, o, n) -> { if (n != null) currentMainListView = dayList; });
             VBox col = new VBox(6, header, dayList);
@@ -501,6 +562,100 @@ public class AgendaTabController {
         list.getStyleClass().add("clean-list");
         list.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         currentMainListView = list; VBox.setVgrow(list, Priority.ALWAYS);
+        // Custom cell: mostra controles do timer se for a tarefa ativa
+        list.setCellFactory(lv -> new ListCell<>() {
+            private final HBox cellBox = new HBox(8);
+            private final Label textLabel = new Label();
+            private final Label timerLabel = new Label();
+            private final Button playPauseBtn = new Button();
+            private final Button stopBtn = new Button();
+            private final Button resetBtn = new Button();
+            private Long cellTaskId = null;
+            private Runnable tickUnsubscriber = null;
+            {
+                playPauseBtn.setPrefWidth(32); playPauseBtn.setFocusTraversable(false);
+                stopBtn.setPrefWidth(32); stopBtn.setFocusTraversable(false);
+                resetBtn.setPrefWidth(32); resetBtn.setFocusTraversable(false);
+                playPauseBtn.setText("▶");
+                stopBtn.setText("■");
+                resetBtn.setText("⟲");
+                timerLabel.getStyleClass().add("timer-label-inline");
+                cellBox.setAlignment(Pos.CENTER_LEFT);
+            }
+            @Override
+            protected void updateItem(DatabaseService.RowItem item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null); setText(null); cellTaskId = null;
+                    if (tickUnsubscriber != null) { tickUnsubscriber.run(); tickUnsubscriber = null; }
+                    return;
+                }
+                cellTaskId = item.id();
+                var timerService = com.pessoal.agenda.service.TaskTimerService.get();
+                if (timerService.getActiveTaskId() != null && timerService.getActiveTaskId().equals(item.id())) {
+                    // Timer ativo para esta tarefa: mostra controles
+                    textLabel.setText(item.text());
+                    // Atualiza label do timer
+                    long s = timerService.getElapsedSeconds();
+                    timerLabel.setText(formatTimer(s));
+                    // Atualização em tempo real (múltiplos listeners)
+                    if (tickUnsubscriber != null) { tickUnsubscriber.run(); tickUnsubscriber = null; }
+                    java.util.function.Consumer<Long> tickListener = sec -> {
+                        if (cellTaskId != null && timerService.getActiveTaskId() != null && timerService.getActiveTaskId().equals(cellTaskId)) {
+                            javafx.application.Platform.runLater(() -> timerLabel.setText(formatTimer(sec)));
+                        }
+                    };
+                    timerService.addTickListener(tickListener);
+                    tickUnsubscriber = () -> timerService.removeTickListener(tickListener);
+                    // Botões
+                    playPauseBtn.setText(timerService.isRunning() ? "⏸" : "▶");
+                    playPauseBtn.setOnAction(e -> {
+                        if (timerService.isRunning()) timerService.pause(); else timerService.resume();
+                        playPauseBtn.setText(timerService.isRunning() ? "⏸" : "▶");
+                    });
+                    stopBtn.setOnAction(e -> {
+                        // Ao parar, exibe o mesmo diálogo de salvar sessão do TaskTimerWindow
+                        var task = db.findTaskById(cellTaskId);
+                        if (task != null) {
+                            com.pessoal.agenda.ui.view.TaskTimerWindow.showSaveSessionDialog(
+                                task,
+                                db.getTaskSessionRepository(),
+                                null,
+                                () -> { list.refresh(); }
+                            );
+                        } else {
+                            timerService.stop();
+                            list.refresh();
+                        }
+                    });
+                    resetBtn.setOnAction(e -> { timerService.reset(); });
+                    cellBox.getChildren().setAll(textLabel, timerLabel, playPauseBtn, stopBtn, resetBtn);
+                    setGraphic(cellBox); setText(null);
+                } else {
+                    // Não é a tarefa ativa: mostra só o texto
+                    setGraphic(null); setText(item.text());
+                    if (tickUnsubscriber != null) { tickUnsubscriber.run(); tickUnsubscriber = null; }
+                }
+            }
+            private String formatTimer(long s) {
+                long hh = s / 3600, mm = (s % 3600) / 60, ss = s % 60;
+                return String.format("%02d:%02d:%02d", hh, mm, ss);
+            }
+        });
+        list.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2) {
+                DatabaseService.RowItem sel = list.getSelectionModel().getSelectedItem();
+                if (sel != null) {
+                    AppContextHolder.get().taskService().findById(sel.id()).ifPresent(task -> {
+                        new com.pessoal.agenda.ui.view.TaskTimerWindow(
+                            task,
+                            AppContextHolder.get().taskSessionRepository(),
+                            this::refreshMainListView // callback para refresh
+                        ).show();
+                    });
+                }
+            }
+        });
         VBox box = new VBox(list); VBox.setVgrow(box, Priority.ALWAYS);
         return box;
     }
@@ -603,5 +758,11 @@ public class AgendaTabController {
         for (TaskStatus s : TaskStatus.values()) if (s.label().equals(label)) return s;
         return TaskStatus.PENDENTE;
     }
-}
 
+    // Força refresh da lista principal (usado para atualizar células do timer)
+    private void refreshMainListView() {
+        if (currentMainListView != null) {
+            javafx.application.Platform.runLater(() -> currentMainListView.refresh());
+        }
+    }
+}

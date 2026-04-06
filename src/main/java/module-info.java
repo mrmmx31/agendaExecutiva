@@ -7,5 +7,6 @@ module com.pessoal.agenda {
     requires org.xerial.sqlitejdbc;
 
     opens com.pessoal.agenda to javafx.fxml;
+    opens com.pessoal.agenda.model to javafx.base;
     exports com.pessoal.agenda;
 }

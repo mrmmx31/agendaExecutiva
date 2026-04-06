@@ -260,6 +260,17 @@ public class Database {
                     created_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )""");
 
+            // ── Checklist de Próximas Ações (Ideias / Projetos) ───────────
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS idea_checklist_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    idea_id INTEGER NOT NULL,
+                    text TEXT NOT NULL DEFAULT '',
+                    done INTEGER NOT NULL DEFAULT 0,
+                    position INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )""");
+
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao inicializar schema do banco", e);
         }
@@ -281,6 +292,20 @@ public class Database {
         applyAlterIfMissing("ALTER TABLE tasks ADD COLUMN status TEXT NOT NULL DEFAULT 'PENDENTE'");
         // Protocolos: validade em dias
         applyAlterIfMissing("ALTER TABLE protocols ADD COLUMN validity_days INTEGER NOT NULL DEFAULT 0");
+        // Ideias e Projetos: campos avancados (pipeline cientifico)
+        applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN priority TEXT NOT NULL DEFAULT 'NORMAL'");
+        applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN idea_type TEXT NOT NULL DEFAULT 'GERAL'");
+        applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN impact_level TEXT NOT NULL DEFAULT 'MEDIO'");
+        applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN feasibility INTEGER NOT NULL DEFAULT 3");
+        applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN estimated_hours INTEGER NOT NULL DEFAULT 0");
+        applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN start_date TEXT");
+        applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN target_date TEXT");
+        applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN methodology TEXT");
+        applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN next_actions TEXT");
+        applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN keywords TEXT");
+        applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN references_text TEXT");
+        // Modo da seção Próximas Ações: 'text' ou 'checklist'
+        applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN next_actions_mode TEXT NOT NULL DEFAULT 'text'");
     }
 
     private void applyAlterIfMissing(String alterSql) {

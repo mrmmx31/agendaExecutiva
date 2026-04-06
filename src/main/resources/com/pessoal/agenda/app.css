@@ -522,3 +522,57 @@
 /* KPI color variants */
 .kpi-red { -fx-border-color: #e53935; }
 .kpi-red-value { -fx-text-fill: #c62828; }
+
+/* ── Ideias e Projetos — Kanban & Cards ──────────────────────────────────── */
+.ideas-kanban-scroll {
+    -fx-background-color: #edf1f8;
+    -fx-border-color: transparent;
+}
+.ideas-kanban-scroll > .viewport {
+    -fx-background-color: #edf1f8;
+}
+.idea-card {
+    -fx-background-color: white;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-border-width: 0 0 0 4;
+    -fx-padding: 8 12 8 12;
+    -fx-effect: dropshadow(gaussian, rgba(3,24,62,0.07), 6, 0.2, 0, 2);
+    -fx-cursor: hand;
+}
+.idea-badge {
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+    -fx-padding: 2 7 2 7;
+    -fx-background-radius: 10;
+}
+/* Lista de ideias — células expandidas */
+.ideas-list .list-cell {
+    -fx-padding: 0;
+    -fx-background-color: #f7fbff;
+    -fx-border-color: transparent transparent #dce8f5 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.ideas-list .list-cell:selected {
+    -fx-background-color: #dce8f8;
+}
+.ideas-list .list-cell:odd {
+    -fx-background-color: #f0f5fc;
+}
+.ideas-list .list-cell:hover {
+    -fx-background-color: #e8f1fa;
+}
+/* Coluna Kanban */
+.kanban-col-header {
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-text-fill: white;
+    -fx-padding: 6 10 6 10;
+    -fx-background-radius: 6 6 0 0;
+}
+.kanban-col-body {
+    -fx-background-color: #f3f7fb;
+    -fx-border-radius: 0 0 6 6;
+    -fx-background-radius: 0 0 6 6;
+}
+

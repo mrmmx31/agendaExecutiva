@@ -29,6 +29,7 @@ public class AppContext {
     private final StudyPlanRepository studyPlanRepository;
     private final StudyEntryRepository studyEntryRepository;
     private final ProjectIdeaRepository projectIdeaRepository;
+    private final IdeaChecklistRepository ideaChecklistRepository;
     private final CategoryRepository categoryRepository;
     private final ProtocolRepository protocolRepository;
     private final StudyScheduleRepository studyScheduleRepository;
@@ -54,6 +55,7 @@ public class AppContext {
         this.studyPlanRepository = new StudyPlanRepository(database);
         this.studyEntryRepository = new StudyEntryRepository(database);
         this.projectIdeaRepository = new ProjectIdeaRepository(database);
+        this.ideaChecklistRepository = new IdeaChecklistRepository(database);
         this.categoryRepository = new CategoryRepository(database);
         this.protocolRepository = new ProtocolRepository(database);
         this.studyScheduleRepository = new StudyScheduleRepository(database);
@@ -111,6 +113,10 @@ public class AppContext {
 
     public ProjectIdeaRepository projectIdeaRepository() {
         return projectIdeaRepository;
+    }
+
+    public IdeaChecklistRepository ideaChecklistRepository() {
+        return ideaChecklistRepository;
     }
 
     public CategoryRepository categoryRepository() {

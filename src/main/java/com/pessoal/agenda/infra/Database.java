@@ -306,6 +306,15 @@ public class Database {
         applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN references_text TEXT");
         // Modo da seção Próximas Ações: 'text' ou 'checklist'
         applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN next_actions_mode TEXT NOT NULL DEFAULT 'text'");
+        // Vendas e Estoque: suporte a materiais e serviços
+        applyAlterIfMissing("ALTER TABLE sales_entries ADD COLUMN item_type TEXT NOT NULL DEFAULT 'material'");
+        applyAlterIfMissing("ALTER TABLE sales_entries ADD COLUMN client_name TEXT");
+        applyAlterIfMissing("ALTER TABLE sales_entries ADD COLUMN notes TEXT");
+        applyAlterIfMissing("ALTER TABLE sales_entries ADD COLUMN status TEXT NOT NULL DEFAULT 'recebido'");
+        applyAlterIfMissing("ALTER TABLE inventory_items ADD COLUMN item_type TEXT NOT NULL DEFAULT 'material'");
+        applyAlterIfMissing("ALTER TABLE inventory_items ADD COLUMN unit_price REAL NOT NULL DEFAULT 0");
+        applyAlterIfMissing("ALTER TABLE inventory_items ADD COLUMN category TEXT NOT NULL DEFAULT 'Geral'");
+        applyAlterIfMissing("ALTER TABLE inventory_items ADD COLUMN description TEXT");
     }
 
     private void applyAlterIfMissing(String alterSql) {

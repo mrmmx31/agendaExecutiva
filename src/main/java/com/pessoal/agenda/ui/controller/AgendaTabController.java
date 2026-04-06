@@ -7,6 +7,7 @@ import com.pessoal.agenda.model.ScheduleType;
 import com.pessoal.agenda.model.Task;
 import com.pessoal.agenda.model.TaskPriority;
 import com.pessoal.agenda.model.TaskStatus;
+import com.pessoal.agenda.tools.ICalendarExporter;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -14,8 +15,11 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import java.io.File;
+import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -377,6 +381,12 @@ public class AgendaTabController {
 
         // append history button to actions
         actionsSection.getChildren().add(historyBtn);
+
+        // ── Exportar para Google Calendar ─────────────────────────────────
+        Button exportIcsBtn = new Button("📅  Exportar para Google Calendar");
+        exportIcsBtn.getStyleClass().add("secondary-button"); exportIcsBtn.setMaxWidth(Double.MAX_VALUE);
+        exportIcsBtn.setOnAction(e -> exportToICalendar());
+        actionsSection.getChildren().add(exportIcsBtn);
 
         ListView<String> alertsList = new ListView<>(ctx.alertItems);
         alertsList.getStyleClass().add("clean-list");
@@ -764,5 +774,108 @@ public class AgendaTabController {
         if (currentMainListView != null) {
             javafx.application.Platform.runLater(() -> currentMainListView.refresh());
         }
+    }
+
+    // ── Exportação para Google Calendar (iCalendar .ics) ──────────────────────
+
+    private void exportToICalendar() {
+        List<Task> tasks;
+        String periodDesc;
+        Locale ptBR = Locale.forLanguageTag("pt-BR");
+        var repo = AppContextHolder.get().taskRepository();
+
+        switch (currentView) {
+            case DIA -> {
+                tasks = repo.findByDay(currentDate, categoryFilter);
+                periodDesc = currentDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", ptBR));
+            }
+            case SEMANA -> {
+                LocalDate weekStart = currentDate.with(DayOfWeek.MONDAY);
+                java.util.LinkedHashMap<Long, Task> dedup = new java.util.LinkedHashMap<>();
+                for (int i = 0; i < 7; i++) {
+                    for (Task t : repo.findByDay(weekStart.plusDays(i), categoryFilter)) {
+                        dedup.putIfAbsent(t.id(), t);
+                    }
+                }
+                tasks = new java.util.ArrayList<>(dedup.values());
+                LocalDate weekEnd = weekStart.plusDays(6);
+                periodDesc = "semana de " + weekStart.format(DateTimeFormatter.ofPattern("dd/MM", ptBR))
+                           + " a " + weekEnd.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", ptBR));
+            }
+            case ANO -> {
+                java.util.LinkedHashMap<Long, Task> dedup = new java.util.LinkedHashMap<>();
+                for (int m = 1; m <= 12; m++) {
+                    for (Task t : repo.findByMonth(YearMonth.of(currentDate.getYear(), m), categoryFilter)) {
+                        dedup.putIfAbsent(t.id(), t);
+                    }
+                }
+                tasks = new java.util.ArrayList<>(dedup.values());
+                periodDesc = "ano " + currentDate.getYear();
+            }
+            default -> { // MES
+                tasks = repo.findByMonth(YearMonth.from(currentDate), categoryFilter);
+                periodDesc = YearMonth.from(currentDate)
+                        .format(DateTimeFormatter.ofPattern("MMMM 'de' yyyy", ptBR));
+            }
+        }
+
+        if (tasks.isEmpty()) {
+            new Alert(Alert.AlertType.INFORMATION,
+                    "Não há tarefas no período selecionado para exportar.",
+                    ButtonType.OK).showAndWait();
+            return;
+        }
+
+        // Diálogo de confirmação
+        Dialog<ButtonType> optDialog = new Dialog<>();
+        optDialog.setTitle("Exportar para Google Calendar");
+        optDialog.setHeaderText("Exportar tarefas — " + periodDesc);
+        optDialog.setContentText(
+                "Serão exportadas " + tasks.size() + " tarefa(s) no formato iCalendar (.ics).\n\n"
+                + "Após salvar o arquivo, importe-o no Google Calendar:\n"
+                + "  1. Acesse calendar.google.com\n"
+                + "  2. Configurações ⚙ → Importar e exportar → Importar\n"
+                + "  3. Selecione o arquivo .ics gerado\n"
+                + "  4. Escolha o calendário de destino e clique em Importar");
+        optDialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        ((Button) optDialog.getDialogPane().lookupButton(ButtonType.OK)).setText("Salvar arquivo .ics");
+
+        optDialog.showAndWait().ifPresent(btn -> {
+            if (btn != ButtonType.OK) return;
+
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Salvar arquivo iCalendar");
+            fc.setInitialFileName("agenda-cientifica-" + currentDate.getYear() + ".ics");
+            fc.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter("Arquivos iCalendar (*.ics)", "*.ics"));
+
+            Stage owner = (Stage) contentArea.getScene().getWindow();
+            File dest = fc.showSaveDialog(owner);
+            if (dest == null) return;
+
+            try {
+                ICalendarExporter.export(tasks, dest.toPath());
+                ctx.setStatus("✅ Exportado: " + dest.getName() + " (" + tasks.size() + " tarefa(s))");
+
+                Alert success = new Alert(Alert.AlertType.INFORMATION);
+                success.setTitle("Exportação concluída");
+                success.setHeaderText("Arquivo iCalendar gerado com sucesso!");
+                success.setContentText(
+                        "Arquivo salvo em:\n" + dest.getAbsolutePath() + "\n\n"
+                        + "Para importar no Google Calendar:\n"
+                        + "  1. Acesse calendar.google.com\n"
+                        + "  2. Clique em Configurações ⚙ (canto superior direito)\n"
+                        + "  3. Va em \"Importar e exportar\"\n"
+                        + "  4. Clique em \"Importar\" e selecione o arquivo\n"
+                        + "  5. Escolha o calendario de destino e confirme\n\n"
+                        + "Compativel tambem com Outlook, Apple Calendar\n"
+                        + "e qualquer app que suporte iCalendar (RFC 5545).");
+                success.showAndWait();
+            } catch (IOException ex) {
+                ctx.setStatus("Erro ao exportar: " + ex.getMessage());
+                new Alert(Alert.AlertType.ERROR,
+                        "Erro ao gerar o arquivo:\n" + ex.getMessage(), ButtonType.OK).showAndWait();
+            }
+        });
     }
 }

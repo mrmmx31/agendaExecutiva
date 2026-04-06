@@ -13,6 +13,11 @@ public class FinanceRepository {
                 type, description, amount, dueDate != null ? dueDate.toString() : null, paid ? 1 : 0);
     }
     public void markPaid(long id) { db.execute("UPDATE finance_entries SET paid=1 WHERE id=?", id); }
+    public void deleteById(long id) { db.execute("DELETE FROM finance_entries WHERE id=?", id); }
+    public void update(long id, String type, String description, double amount, LocalDate dueDate, boolean paid) {
+        db.execute("UPDATE finance_entries SET entry_type=?,description=?,amount=?,due_date=?,paid=? WHERE id=?",
+                type, description, amount, dueDate != null ? dueDate.toString() : null, paid ? 1 : 0, id);
+    }
     public List<FinanceEntry> findAll() {
         List<FinanceEntry> list = new ArrayList<>();
         try (Connection conn = db.connect();

@@ -9,6 +9,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
@@ -18,9 +19,10 @@ import java.util.List;
 /**
  * Controller da aba Protocolos Operacionais.
  *
- * Layout Master-Detail:
- *   LEFT  — barra de filtros + lista de templates com badges
- *   RIGHT — formulário de definição (com vínculo a tarefa para tipo TAREFA) + passos
+ * Layout:
+ *   TOP    — toolbar com filtros completos e botão de novo protocolo
+ *   MIDDLE — barra de KPIs (total, execuções ativas)
+ *   BOTTOM — SplitPane: lista de protocolos (esq) | formulário científico (dir)
  */
 public class ChecklistController {
 
@@ -28,16 +30,16 @@ public class ChecklistController {
 
     private final ObservableList<Protocol> protocolItems = FXCollections.observableArrayList();
 
-    // ── Estado dos filtros ─────────────────────────────────────────────────
+    // ── filtros ───────────────────────────────────────────────────────────────
     private String categoryFilter = null;
     private String typeFilter     = null;
     private String statusFilter   = null;
 
-    // ── KPI labels (referência para refresh) ──────────────────────────────
+    // ── KPI labels ────────────────────────────────────────────────────────────
     private Label kpiTotal;
     private Label kpiActive;
 
-    // ── Campos do formulário ───────────────────────────────────────────────
+    // ── campos do formulário ──────────────────────────────────────────────────
     private Long                            editingId = null;
     private Label                           formModeLabel;
     private Button                          saveBtn;
@@ -55,22 +57,20 @@ public class ChecklistController {
 
     private final List<StepRow> stepRows = new ArrayList<>();
 
-    /** Opção para o ComboBox de tarefas vinculadas. */
     private record TaskOption(Long id, String title) {
         static final TaskOption NONE = new TaskOption(null, "— nenhuma tarefa vinculada —");
         @Override public String toString() { return title; }
     }
 
-    /** Opção para o ComboBox de status de execução. */
     private record StatusOption(String key, String label) {
         @Override public String toString() { return label; }
     }
 
     public ChecklistController(SharedContext ctx) { this.ctx = ctx; }
 
-    // ══════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════════
     // Construção da aba
-    // ══════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════════
 
     public Tab buildTab() {
         Tab tab = new Tab("Protocolos Operacionais");
@@ -78,22 +78,22 @@ public class ChecklistController {
 
         kpiTotal  = new Label("0");
         kpiActive = new Label("0");
+
+        // ── KPI bar ──────────────────────────────────────────────────────────
         HBox kpiBar = new HBox(10,
-            UIHelper.createMiniKpi("Protocolos cadastrados", kpiTotal,  "kpi-blue"),
-            UIHelper.createMiniKpi("Execuções ativas",       kpiActive, "kpi-orange"));
-        kpiBar.setPadding(new Insets(0, 0, 8, 0));
+                UIHelper.createMiniKpi("TOTAL DE PROTOCOLOS", kpiTotal,  "kpi-blue"),
+                UIHelper.createMiniKpi("EXECUÇÕES ATIVAS",    kpiActive, "kpi-orange"));
+        kpiBar.setPadding(new Insets(10, 14, 10, 14));
+        for (Node n : kpiBar.getChildren()) HBox.setHgrow(n, Priority.ALWAYS);
 
-        // ── Barra de filtros ──────────────────────────────────────────────
-        HBox filterBar = buildFilterBar();
-
-        // ── Lista de protocolos ───────────────────────────────────────────
+        // ── Lista de protocolos ───────────────────────────────────────────────
         protocolListView = new ListView<>(protocolItems);
         protocolListView.getStyleClass().add("clean-list");
         protocolListView.setCellFactory(lv -> buildProtocolCell());
         VBox.setVgrow(protocolListView, Priority.ALWAYS);
 
         protocolListView.getSelectionModel().selectedItemProperty().addListener(
-            (obs, old, sel) -> { if (sel != null) loadProtocolIntoForm(sel); });
+                (obs, old, sel) -> { if (sel != null) loadProtocolIntoForm(sel); });
 
         protocolListView.setOnMouseClicked(e -> {
             javafx.scene.Node node = e.getPickResult().getIntersectedNode();
@@ -107,60 +107,72 @@ public class ChecklistController {
             }
         });
 
-        Label hint = new Label("⇥  Duplo clique → abrir janela de execução");
+        Label hint = new Label("↵  Duplo clique → abrir janela de execução do protocolo");
         hint.getStyleClass().add("study-dates-label");
 
-        Button newBtn    = new Button("+ Novo");    newBtn.getStyleClass().add("primary-button");
-        Button removeBtn = new Button("✕ Remover"); removeBtn.getStyleClass().add("danger-button");
-        newBtn.setOnAction(e -> clearForm());
+        Button removeBtn = new Button("🗑  Remover");
+        removeBtn.getStyleClass().add("danger-button");
         removeBtn.setOnAction(e -> removeSelectedProtocol());
 
-        HBox leftBtns = new HBox(8, newBtn, removeBtn); leftBtns.setAlignment(Pos.CENTER_LEFT);
+        HBox leftBottom = new HBox(UIHelper.createSpacer(), removeBtn);
 
-        VBox leftPanel = new VBox(8, filterBar, protocolListView, hint, leftBtns);
+        VBox leftPanel = new VBox(8, protocolListView, hint, leftBottom);
         leftPanel.setPadding(new Insets(12));
         leftPanel.getStyleClass().add("section-card");
+        VBox.setVgrow(leftPanel, Priority.ALWAYS);
 
-        VBox rightPanel = buildForm();
-        rightPanel.setMaxWidth(520);
-        SplitPane.setResizableWithParent(rightPanel, Boolean.FALSE);
+        // ── Formulário (painel direito) ───────────────────────────────────────
+        VBox rightContent = buildForm();
+        ScrollPane rightScroll = new ScrollPane(rightContent);
+        rightScroll.setFitToWidth(true);
+        rightScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        rightScroll.getStyleClass().add("edge-to-edge");
+        VBox.setVgrow(rightScroll, Priority.ALWAYS);
 
-        SplitPane split = new SplitPane(leftPanel, rightPanel);
-        split.setDividerPositions(0.55);
+        SplitPane split = new SplitPane(leftPanel, rightScroll);
+        split.setDividerPositions(0.52);
         VBox.setVgrow(split, Priority.ALWAYS);
 
-        VBox content = new VBox(8, kpiBar, split);
-        content.setPadding(new Insets(14));
+        VBox content = new VBox(0, buildToolbar(), kpiBar, split);
+        content.setPadding(new Insets(0, 14, 14, 14));
         tab.setContent(content);
 
         refresh();
         return tab;
     }
 
-    // ── Barra de filtros ───────────────────────────────────────────────────
+    // ── Toolbar com filtros ────────────────────────────────────────────────────
 
-    private HBox buildFilterBar() {
-        // ── Categoria ─────────────────────────────────────────────────────
+    private HBox buildToolbar() {
+        Button newBtn = new Button("＋  Novo Protocolo");
+        newBtn.getStyleClass().add("primary-button");
+        newBtn.setOnAction(e -> clearForm());
+
+        // ── Filtro de categoria ───────────────────────────────────────────
         ComboBox<String> catFilterCombo = new ComboBox<>();
         catFilterCombo.getStyleClass().add("input-control");
-        catFilterCombo.getItems().add("Todas");
+        catFilterCombo.setPrefWidth(155);
+        catFilterCombo.setPromptText("Categoria");
+        catFilterCombo.getItems().add("Todas as categorias");
         ctx.checklistCatNames.addListener((javafx.collections.ListChangeListener<String>) ch -> {
             String cur = catFilterCombo.getValue();
-            catFilterCombo.getItems().setAll("Todas");
+            catFilterCombo.getItems().setAll("Todas as categorias");
             catFilterCombo.getItems().addAll(ctx.checklistCatNames);
-            catFilterCombo.setValue(cur != null ? cur : "Todas");
+            catFilterCombo.setValue(cur != null ? cur : "Todas as categorias");
         });
         catFilterCombo.getItems().addAll(ctx.checklistCatNames);
-        catFilterCombo.setValue("Todas");
+        catFilterCombo.setValue("Todas as categorias");
         catFilterCombo.setOnAction(e -> {
             String v = catFilterCombo.getValue();
-            categoryFilter = "Todas".equals(v) ? null : v;
+            categoryFilter = "Todas as categorias".equals(v) ? null : v;
             refresh();
         });
 
-        // ── Tipo ──────────────────────────────────────────────────────────
+        // ── Filtro de tipo ────────────────────────────────────────────────
         ComboBox<String> typeFilterCombo = new ComboBox<>();
         typeFilterCombo.getStyleClass().add("input-control");
+        typeFilterCombo.setPrefWidth(185);
+        typeFilterCombo.setPromptText("Tipo de protocolo");
         typeFilterCombo.getItems().add("Todos os tipos");
         for (ProtocolExecutionType t : ProtocolExecutionType.values())
             typeFilterCombo.getItems().add(t.name());
@@ -168,8 +180,10 @@ public class ChecklistController {
         typeFilterCombo.setConverter(new javafx.util.StringConverter<>() {
             @Override public String toString(String s) {
                 if (s == null || "Todos os tipos".equals(s)) return "Todos os tipos";
-                try { return ProtocolExecutionType.valueOf(s).icon() + " " + ProtocolExecutionType.valueOf(s).label(); }
-                catch (Exception e) { return s; }
+                try {
+                    ProtocolExecutionType t = ProtocolExecutionType.valueOf(s);
+                    return t.icon() + " " + t.label();
+                } catch (Exception ignored) { return s; }
             }
             @Override public String fromString(String s) { return s; }
         });
@@ -179,16 +193,17 @@ public class ChecklistController {
             refresh();
         });
 
-        // ── Status de execução ─────────────────────────────────────────────
+        // ── Filtro de status ──────────────────────────────────────────────
         List<StatusOption> statusOpts = List.of(
-            new StatusOption(null,             "Todos os status"),
-            new StatusOption("COM_ATIVA",      "● Com execução ativa"),
-            new StatusOption("SEM_ATIVA",      "○ Sem execução ativa"),
-            new StatusOption("VALIDADE_VENCIDA","⚠ Validade vencida"),
-            new StatusOption("VENCE_7DIAS",    "⏰ Vence em 7 dias")
+                new StatusOption(null,              "Todos os status"),
+                new StatusOption("COM_ATIVA",       "● Com execução ativa"),
+                new StatusOption("SEM_ATIVA",       "○ Sem execução ativa"),
+                new StatusOption("VALIDADE_VENCIDA","⚠ Validade vencida"),
+                new StatusOption("VENCE_7DIAS",     "⏰ Vence em 7 dias")
         );
         ComboBox<StatusOption> statusFilterCombo = new ComboBox<>();
         statusFilterCombo.getStyleClass().add("input-control");
+        statusFilterCombo.setPrefWidth(200);
         statusFilterCombo.getItems().addAll(statusOpts);
         statusFilterCombo.setValue(statusOpts.get(0));
         statusFilterCombo.setOnAction(e -> {
@@ -197,35 +212,26 @@ public class ChecklistController {
             refresh();
         });
 
-        // ── Botão limpar filtros ──────────────────────────────────────────
-        Button clearFiltersBtn = new Button("✕ Limpar");
-        clearFiltersBtn.getStyleClass().add("secondary-button");
-        clearFiltersBtn.setOnAction(e -> {
+        Button clearBtn = new Button("✕  Limpar");
+        clearBtn.getStyleClass().add("secondary-button");
+        clearBtn.setOnAction(e -> {
             categoryFilter = null; typeFilter = null; statusFilter = null;
-            catFilterCombo.setValue("Todas");
+            catFilterCombo.setValue("Todas as categorias");
             typeFilterCombo.setValue("Todos os tipos");
             statusFilterCombo.setValue(statusOpts.get(0));
             refresh();
         });
 
-        Label catLbl    = new Label("Cat:");    catLbl.getStyleClass().add("form-label");
-        Label typeLbl   = new Label("Tipo:");   typeLbl.getStyleClass().add("form-label");
-        Label statusLbl = new Label("Status:"); statusLbl.getStyleClass().add("form-label");
-
-        HBox bar = new HBox(6,
-            catLbl, catFilterCombo,
-            new Separator(javafx.geometry.Orientation.VERTICAL),
-            typeLbl, typeFilterCombo,
-            new Separator(javafx.geometry.Orientation.VERTICAL),
-            statusLbl, statusFilterCombo,
-            UIHelper.createSpacer(),
-            clearFiltersBtn);
+        Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox bar = new HBox(8, newBtn, spacer,
+                catFilterCombo, typeFilterCombo, statusFilterCombo, clearBtn);
         bar.setAlignment(Pos.CENTER_LEFT);
-        bar.setPadding(new Insets(0, 0, 4, 0));
+        bar.setPadding(new Insets(10, 14, 10, 14));
+        bar.getStyleClass().add("agenda-top-bar");
         return bar;
     }
 
-    // ── Célula customizada ─────────────────────────────────────────────────
+    // ── Célula customizada da lista ────────────────────────────────────────────
 
     private ListCell<Protocol> buildProtocolCell() {
         return new ListCell<>() {
@@ -244,6 +250,7 @@ public class ChecklistController {
                 execBadge.getStyleClass().addAll("study-badge", "badge-status-em_andamento");
                 taskLbl.getStyleClass().add("study-dates-label");
                 descLbl.getStyleClass().add("study-plan-detail");
+                descLbl.setWrapText(false);
                 Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
                 HBox top  = new HBox(6, typeBadge, nameLbl, sp, validityBadge, execBadge);
                 HBox bot  = new HBox(6, catLbl, taskLbl, descLbl);
@@ -253,6 +260,7 @@ public class ChecklistController {
                 container.setPadding(new Insets(4, 0, 4, 0));
                 setGraphic(container); setText(null);
             }
+
             @Override protected void updateItem(Protocol p, boolean empty) {
                 super.updateItem(p, empty);
                 if (empty || p == null) { setGraphic(null); return; }
@@ -261,7 +269,6 @@ public class ChecklistController {
                 nameLbl.setText(p.name());
                 catLbl.setText(p.category() != null ? p.category() : "Geral");
 
-                // Tarefa vinculada
                 if (p.hasLinkedTask() && p.linkedTaskTitle() != null) {
                     taskLbl.setText("  📌 " + p.linkedTaskTitle());
                     taskLbl.setVisible(true); taskLbl.setManaged(true);
@@ -269,18 +276,18 @@ public class ChecklistController {
                     taskLbl.setVisible(false); taskLbl.setManaged(false);
                 }
 
-                // Badge execução ativa
                 int active = AppContextHolder.get().protocolRepository().countActiveExecutionsOf(p.id());
                 execBadge.setVisible(active > 0); execBadge.setManaged(active > 0);
                 execBadge.setText("  ● " + active + " ativa  ");
 
-                // Badge de validade
-                validityBadge.getStyleClass().removeAll("deadline-overdue", "deadline-warn", "deadline-ok", "study-dates-label");
+                validityBadge.getStyleClass().removeAll(
+                        "deadline-overdue", "deadline-warn", "deadline-ok", "study-dates-label");
                 if (p.hasValidity()) {
                     java.time.LocalDate nextDue = AppContextHolder.get().protocolRepository()
                             .nextDueDate(p.id(), p.validityDays());
                     if (nextDue != null) {
-                        long days = java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), nextDue);
+                        long days = java.time.temporal.ChronoUnit.DAYS.between(
+                                java.time.LocalDate.now(), nextDue);
                         if (days < 0) {
                             validityBadge.setText("  ⚠ Vencido há " + (-days) + "d  ");
                             validityBadge.getStyleClass().add("deadline-overdue");
@@ -301,23 +308,29 @@ public class ChecklistController {
                 }
 
                 String d = p.description() != null && !p.description().isBlank()
-                        ? "  —  " + p.description().substring(0, Math.min(50, p.description().length()))
-                          + (p.description().length() > 50 ? "…" : "") : "";
+                        ? "  —  " + p.description().substring(0, Math.min(60, p.description().length()))
+                          + (p.description().length() > 60 ? "…" : "") : "";
                 descLbl.setText(d);
             }
         };
     }
 
-    // ── Formulário ─────────────────────────────────────────────────────────
+    // ── Formulário (section-cards científicos) ─────────────────────────────────
 
     private VBox buildForm() {
-        formModeLabel = new Label("Novo protocolo");
-        formModeLabel.getStyleClass().add("section-title");
+        // ── Cabeçalho do formulário ───────────────────────────────────────
+        formModeLabel = new Label("📋 Novo Protocolo Operacional");
+        formModeLabel.setStyle(
+                "-fx-font-size: 14px; -fx-font-weight: 800; -fx-text-fill: #03183e;"
+                + " -fx-border-color: transparent transparent #d6e4f5 transparent;"
+                + " -fx-border-width: 0 0 1 0; -fx-padding: 0 0 8 0;");
+        formModeLabel.setWrapText(true);
+        formModeLabel.setMaxWidth(Double.MAX_VALUE);
 
+        // ── Campos ────────────────────────────────────────────────────────
         nameField = new TextField();
         nameField.getStyleClass().add("input-control");
         nameField.setPromptText("Ex.: Ligar Motor X, Pré-voo, Calibração do espectrômetro...");
-        HBox.setHgrow(nameField, Priority.ALWAYS);
 
         typeCombo = new ComboBox<>();
         typeCombo.getStyleClass().add("input-control");
@@ -329,79 +342,97 @@ public class ChecklistController {
         catFormCombo.getStyleClass().add("input-control");
         catFormCombo.setItems(ctx.checklistCatNames);
         catFormCombo.setMaxWidth(Double.MAX_VALUE);
+        if (!ctx.checklistCatNames.isEmpty()) catFormCombo.setValue(ctx.checklistCatNames.get(0));
 
         descArea = new TextArea();
         descArea.getStyleClass().add("input-control");
         descArea.setPromptText("Objetivo, contexto e quando utilizar este protocolo...");
-        descArea.setPrefRowCount(2); descArea.setWrapText(true);
+        descArea.setPrefRowCount(3);
+        descArea.setWrapText(true);
 
         validityDaysField = new TextField();
         validityDaysField.getStyleClass().add("input-control");
         validityDaysField.setPromptText("0 = sem validade");
-        validityDaysField.setMinWidth(90);
-        validityDaysField.setPrefWidth(130);
+        validityDaysField.setPrefWidth(120);
         validityDaysField.setMaxWidth(160);
 
-        // ── ComboBox de tarefas vinculadas ─────────────────────────────────
+        Label vHint = new Label(
+                "Nº de dias que o resultado permanece válido após a última conclusão.\n"
+              + "Ex: 30 = mensal · 90 = trimestral · 180 = semestral · 365 = anual");
+        vHint.getStyleClass().add("study-dates-label");
+        vHint.setWrapText(true);
+        HBox.setHgrow(vHint, Priority.ALWAYS);
+
+        Label typeHint = new Label(ProtocolExecutionType.RECORRENTE.description());
+        typeHint.getStyleClass().add("study-dates-label");
+        typeHint.setWrapText(true);
+
+        // ── Vínculo com tarefa ────────────────────────────────────────────
         linkedTaskCombo = new ComboBox<>();
         linkedTaskCombo.getStyleClass().add("input-control");
         linkedTaskCombo.setMaxWidth(Double.MAX_VALUE);
         linkedTaskCombo.setPromptText("Selecionar tarefa da agenda...");
-
-        Label taskLinkLbl = new Label("Tarefa vinculada:");
-        taskLinkLbl.getStyleClass().add("form-label");
-        linkedTaskRow = new HBox(8, taskLinkLbl, linkedTaskCombo);
         HBox.setHgrow(linkedTaskCombo, Priority.ALWAYS);
-        linkedTaskRow.setAlignment(Pos.CENTER_LEFT);
-        linkedTaskRow.setVisible(false); linkedTaskRow.setManaged(false);
 
-        Label typeHint = new Label(ProtocolExecutionType.RECORRENTE.description());
-        typeHint.getStyleClass().add("study-dates-label"); typeHint.setWrapText(true);
+        linkedTaskRow = new HBox(0, linkedTaskCombo);
+        linkedTaskRow.setAlignment(Pos.CENTER_LEFT);
+        linkedTaskRow.setVisible(false);
+        linkedTaskRow.setManaged(false);
 
         typeCombo.setOnAction(e -> {
             ProtocolExecutionType t = typeCombo.getValue();
             if (t != null) typeHint.setText(t.description());
             boolean isTarefa = (t == ProtocolExecutionType.TAREFA);
-            linkedTaskRow.setVisible(isTarefa); linkedTaskRow.setManaged(isTarefa);
+            linkedTaskRow.setVisible(isTarefa);
+            linkedTaskRow.setManaged(isTarefa);
             if (isTarefa) reloadTaskOptions();
         });
 
-        GridPane grid = new GridPane();
-        grid.getStyleClass().add("form-grid"); grid.setHgap(10); grid.setVgap(8);
+        // ── Linha tipo + categoria ────────────────────────────────────────
+        VBox typeCtrl = labeledControl("Tipo de Execução", typeCombo);
+        VBox catCtrl  = labeledControl("Categoria do Protocolo", catFormCombo);
+        HBox.setHgrow(typeCtrl, Priority.ALWAYS);
+        HBox.setHgrow(catCtrl,  Priority.ALWAYS);
+        HBox typeCatRow = new HBox(10, typeCtrl, catCtrl);
 
-        Label nLbl = new Label("Nome *:");          nLbl.getStyleClass().add("form-label");
-        Label tLbl = new Label("Tipo:");             tLbl.getStyleClass().add("form-label");
-        Label cLbl = new Label("Categoria:");        cLbl.getStyleClass().add("form-label");
-        Label dLbl = new Label("Descrição:");        dLbl.getStyleClass().add("form-label");
-        Label vLbl = new Label("Validade (dias):"); vLbl.getStyleClass().add("form-label");
-        Label vHnt = new Label("Nº de dias que o resultado fica válido após a última conclusão (ex: 180 = semestral). 0 = sem validade.");
-        vHnt.getStyleClass().add("study-dates-label"); vHnt.setWrapText(true);
+        // Linha de validade
+        HBox validityRow = new HBox(10, validityDaysField, vHint);
+        validityRow.setAlignment(Pos.TOP_LEFT);
 
-        grid.add(nLbl, 0, 0); grid.add(nameField,    1, 0, 3, 1); GridPane.setHgrow(nameField, Priority.ALWAYS);
-        grid.add(tLbl, 0, 1); grid.add(typeCombo,    1, 1, 3, 1); GridPane.setHgrow(typeCombo, Priority.ALWAYS);
-        grid.add(cLbl, 0, 2); grid.add(catFormCombo, 1, 2, 3, 1); GridPane.setHgrow(catFormCombo, Priority.ALWAYS);
-        grid.add(dLbl, 0, 3); grid.add(descArea,     1, 3, 3, 1);
-        grid.add(vLbl, 0, 4); grid.add(new HBox(8, validityDaysField, vHnt), 1, 4, 3, 1);
+        // ── Section card: Definição do Protocolo ──────────────────────────
+        VBox definitionCard = buildSectionCard("📋 Definição do Protocolo",
+                fieldRow("Nome *", nameField),
+                typeCatRow,
+                typeHint,
+                linkedTaskRow,
+                fieldRow("Descrição / Objetivo", descArea),
+                namedRow("Validade (dias)", validityRow));
 
-        // ── Passos ──────────────────────────────────────────────────────
-        Label stepsTitle = new Label("Passos do Protocolo");
-        stepsTitle.getStyleClass().add("form-label");
-
+        // ── Section card: Passos do Protocolo ─────────────────────────────
         stepsEditorBox = new VBox(4);
+        stepsEditorBox.setPadding(new Insets(2, 0, 2, 0));
 
-        Button addStepBtn = new Button("+ Passo");
+        Button addStepBtn = new Button("＋  Adicionar Passo");
         addStepBtn.getStyleClass().add("secondary-button");
+        addStepBtn.setStyle("-fx-font-size: 11px;");
         addStepBtn.setOnAction(e -> addStepRow(null));
 
         ScrollPane stepsScroll = new ScrollPane(stepsEditorBox);
-        stepsScroll.setFitToWidth(true); stepsScroll.setPrefHeight(180);
-        stepsScroll.getStyleClass().add("edge-to-edge");
-        VBox.setVgrow(stepsScroll, Priority.ALWAYS);
+        stepsScroll.setFitToWidth(true);
+        stepsScroll.setPrefHeight(200);
+        stepsScroll.setMaxHeight(350);
+        stepsScroll.setStyle("-fx-background-color: #f8fafc;"
+                + " -fx-border-color: #dce8f5; -fx-border-radius: 5;");
 
-        // ── Botões ────────────────────────────────────────────────────────
-        saveBtn      = new Button("Salvar protocolo"); saveBtn.getStyleClass().add("primary-button");
-        cancelFormBtn = new Button("Limpar");          cancelFormBtn.getStyleClass().add("secondary-button");
-        executeBtn   = new Button("▶  Executar");      executeBtn.getStyleClass().add("secondary-button");
+        VBox stepsCard = buildSectionCardWithAction("⚙ Passos do Protocolo", addStepBtn, stepsScroll);
+
+        // ── Botões de ação ────────────────────────────────────────────────
+        saveBtn       = new Button("💾  Salvar Protocolo");
+        saveBtn.getStyleClass().add("primary-button");
+        cancelFormBtn = new Button("✕  Cancelar");
+        cancelFormBtn.getStyleClass().add("secondary-button");
+        executeBtn    = new Button("▶  Executar Protocolo");
+        executeBtn.getStyleClass().add("secondary-button");
         executeBtn.setVisible(false); executeBtn.setManaged(false);
 
         saveBtn.setOnAction(e -> saveProtocol());
@@ -411,61 +442,49 @@ public class ChecklistController {
             if (sel != null) openExecutionWindow(sel);
         });
 
-        HBox btnRow = new HBox(8, saveBtn, cancelFormBtn, executeBtn);
+        HBox btnRow = new HBox(8, saveBtn, cancelFormBtn,
+                UIHelper.createSpacer(), executeBtn);
         btnRow.setAlignment(Pos.CENTER_LEFT);
+        btnRow.setPadding(new Insets(8, 0, 0, 0));
+        btnRow.setStyle("-fx-border-color: #d6e4f5; -fx-border-width: 1 0 0 0;");
 
-        VBox panel = new VBox(8,
-            formModeLabel, grid, linkedTaskRow, typeHint,
-            new Separator(),
-            new HBox(8, stepsTitle, UIHelper.createSpacer(), addStepBtn),
-            stepsScroll, btnRow);
+        VBox panel = new VBox(12, formModeLabel, definitionCard, stepsCard, btnRow);
         panel.setPadding(new Insets(14));
-        panel.getStyleClass().add("section-card");
         return panel;
     }
 
-    /** Popula o ComboBox de tarefas com as tarefas abertas. */
-    private void reloadTaskOptions() {
-        TaskOption current = linkedTaskCombo.getValue();
-        linkedTaskCombo.getItems().clear();
-        linkedTaskCombo.getItems().add(TaskOption.NONE);
-        AppContextHolder.get().taskRepository().findOpenTasks().stream()
-            .map(t -> new TaskOption(t.id(), t.title()))
-            .forEach(linkedTaskCombo.getItems()::add);
-        // Restaurar seleção anterior, se ainda existir
-        if (current != null && current.id() != null) {
-            linkedTaskCombo.getItems().stream()
-                .filter(o -> o.id() != null && o.id().equals(current.id()))
-                .findFirst().ifPresentOrElse(
-                    linkedTaskCombo::setValue,
-                    () -> linkedTaskCombo.setValue(TaskOption.NONE));
-        } else {
-            linkedTaskCombo.setValue(TaskOption.NONE);
-        }
-    }
-
-    // ── Linhas de passo ────────────────────────────────────────────────────
+    // ── Linhas de passo ────────────────────────────────────────────────────────
 
     private void addStepRow(ProtocolStep existing) {
         int order = stepRows.size() + 1;
 
-        Label orderLbl = new Label(order + "."); orderLbl.getStyleClass().add("form-label"); orderLbl.setMinWidth(26);
+        Label orderLbl = new Label(order + ".");
+        orderLbl.setStyle("-fx-font-weight: 700; -fx-font-size: 12px;"
+                + " -fx-text-fill: #5a7a9e; -fx-min-width: 26px;");
+
         TextField stepField = new TextField(existing != null ? existing.stepText() : "");
-        stepField.getStyleClass().add("input-control"); stepField.setPromptText("Descrição do passo...");
+        stepField.getStyleClass().add("input-control");
+        stepField.setPromptText("Descrição do passo...");
         HBox.setHgrow(stepField, Priority.ALWAYS);
-        CheckBox criticalCb = new CheckBox("⚠");
+
+        CheckBox criticalCb = new CheckBox("⚠ Crítico");
         criticalCb.setSelected(existing != null && existing.critical());
-        criticalCb.setTooltip(new Tooltip("Passo crítico/obrigatório"));
+        criticalCb.setStyle("-fx-font-size: 11px; -fx-text-fill: #b71c1c;");
+        criticalCb.setTooltip(new Tooltip("Passo obrigatório — bloqueia conclusão se não marcado"));
 
         Button upBtn   = new Button("▲"); upBtn.getStyleClass().add("icon-button");
         Button downBtn = new Button("▼"); downBtn.getStyleClass().add("icon-button");
         Button delBtn  = new Button("✕"); delBtn.getStyleClass().addAll("icon-button", "danger");
-        upBtn.setTooltip(new Tooltip("Mover passo para cima"));
-        downBtn.setTooltip(new Tooltip("Mover passo para baixo"));
-        delBtn.setTooltip(new Tooltip("Remover este passo"));
+        upBtn.setTooltip(new Tooltip("Mover para cima"));
+        downBtn.setTooltip(new Tooltip("Mover para baixo"));
+        delBtn.setTooltip(new Tooltip("Remover passo"));
 
-        HBox row = new HBox(5, orderLbl, stepField, criticalCb, upBtn, downBtn, delBtn);
-        row.setAlignment(Pos.CENTER_LEFT); row.setPadding(new Insets(2, 4, 2, 4));
+        HBox row = new HBox(6, orderLbl, stepField, criticalCb, upBtn, downBtn, delBtn);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(3, 4, 3, 6));
+        row.setStyle("-fx-background-color: white; -fx-background-radius: 4;"
+                + " -fx-border-color: #e8eef4; -fx-border-radius: 4;"
+                + " -fx-border-width: 1;");
 
         StepRow sr = new StepRow(existing != null ? existing.id() : null, stepField, criticalCb, row);
         stepRows.add(sr);
@@ -498,9 +517,9 @@ public class ChecklistController {
 
     private record StepRow(Long dbId, TextField field, CheckBox criticalCb, HBox row) {}
 
-    // ══════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════════
     // Lógica
-    // ══════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════════
 
     public void refresh() {
         ProtocolRepository repo = AppContextHolder.get().protocolRepository();
@@ -517,17 +536,16 @@ public class ChecklistController {
         descArea.setText(p.description() != null ? p.description() : "");
         validityDaysField.setText(p.validityDays() > 0 ? String.valueOf(p.validityDays()) : "");
 
-        // Vínculo com tarefa
         boolean isTarefa = p.executionType() == ProtocolExecutionType.TAREFA;
         linkedTaskRow.setVisible(isTarefa); linkedTaskRow.setManaged(isTarefa);
         if (isTarefa) {
             reloadTaskOptions();
             if (p.linkedTaskId() != null) {
                 linkedTaskCombo.getItems().stream()
-                    .filter(o -> o.id() != null && o.id().equals(p.linkedTaskId()))
-                    .findFirst().ifPresentOrElse(
-                        linkedTaskCombo::setValue,
-                        () -> linkedTaskCombo.setValue(TaskOption.NONE));
+                        .filter(o -> o.id() != null && o.id().equals(p.linkedTaskId()))
+                        .findFirst().ifPresentOrElse(
+                                linkedTaskCombo::setValue,
+                                () -> linkedTaskCombo.setValue(TaskOption.NONE));
             } else {
                 linkedTaskCombo.setValue(TaskOption.NONE);
             }
@@ -537,9 +555,9 @@ public class ChecklistController {
         for (ProtocolStep s : AppContextHolder.get().protocolRepository().findSteps(p.id()))
             addStepRow(s);
 
-        formModeLabel.setText("Editando: \"" + p.name() + "\"");
-        saveBtn.setText("Salvar alterações");
-        cancelFormBtn.setText("✕ Cancelar edição");
+        formModeLabel.setText("✏  Editando: " + p.name());
+        saveBtn.setText("💾  Salvar Alterações");
+        cancelFormBtn.setText("✕  Cancelar Edição");
         cancelFormBtn.getStyleClass().removeAll("secondary-button", "danger-button");
         cancelFormBtn.getStyleClass().add("danger-button");
         executeBtn.setVisible(true); executeBtn.setManaged(true);
@@ -553,9 +571,9 @@ public class ChecklistController {
         linkedTaskRow.setVisible(false); linkedTaskRow.setManaged(false);
         linkedTaskCombo.getItems().clear(); linkedTaskCombo.setValue(null);
         stepRows.clear(); stepsEditorBox.getChildren().clear();
-        formModeLabel.setText("Novo protocolo");
-        saveBtn.setText("Salvar protocolo");
-        cancelFormBtn.setText("Limpar");
+        formModeLabel.setText("📋 Novo Protocolo Operacional");
+        saveBtn.setText("💾  Salvar Protocolo");
+        cancelFormBtn.setText("✕  Cancelar");
         cancelFormBtn.getStyleClass().removeAll("secondary-button", "danger-button");
         cancelFormBtn.getStyleClass().add("secondary-button");
         executeBtn.setVisible(false); executeBtn.setManaged(false);
@@ -567,12 +585,12 @@ public class ChecklistController {
         if (name.isBlank())    { ctx.setStatus("Nome do protocolo é obrigatório."); return; }
         if (stepRows.isEmpty()){ ctx.setStatus("Adicione ao menos um passo ao protocolo."); return; }
 
-        ProtocolExecutionType type = typeCombo.getValue() != null ? typeCombo.getValue() : ProtocolExecutionType.RECORRENTE;
+        ProtocolExecutionType type = typeCombo.getValue() != null
+                ? typeCombo.getValue() : ProtocolExecutionType.RECORRENTE;
         String cat  = catFormCombo.getValue() != null ? catFormCombo.getValue() : "Geral";
         String desc = descArea.getText();
         int    validityDays = safeParseInt(validityDaysField.getText());
 
-        // Tarefa vinculada (só para tipo TAREFA)
         Long linkedTaskId = null;
         if (type == ProtocolExecutionType.TAREFA) {
             TaskOption sel = linkedTaskCombo.getValue();
@@ -603,12 +621,13 @@ public class ChecklistController {
         Protocol sel = protocolListView.getSelectionModel().getSelectedItem();
         if (sel == null) { ctx.setStatus("Selecione um protocolo para remover."); return; }
         int active = AppContextHolder.get().protocolRepository().countActiveExecutionsOf(sel.id());
-        String extra = active > 0 ? "\n⚠ " + active + " execução(ões) ativa(s) serão canceladas!" : "";
+        String extra = active > 0
+                ? "\n⚠ " + active + " execução(ões) ativa(s) serão canceladas!" : "";
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Remover Protocolo Operacional");
         confirm.setHeaderText("Remover \"" + sel.name() + "\"?");
         confirm.setContentText(
-            "Todos os passos e o histórico completo de execuções serão removidos permanentemente." + extra);
+                "Todos os passos e o histórico de execuções serão removidos permanentemente." + extra);
         confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
             AppContextHolder.get().protocolRepository().deleteProtocol(sel.id());
             clearForm(); refresh(); ctx.triggerDashboardRefresh();
@@ -616,16 +635,96 @@ public class ChecklistController {
         });
     }
 
+    private void reloadTaskOptions() {
+        TaskOption current = linkedTaskCombo.getValue();
+        linkedTaskCombo.getItems().clear();
+        linkedTaskCombo.getItems().add(TaskOption.NONE);
+        AppContextHolder.get().taskRepository().findOpenTasks().stream()
+                .map(t -> new TaskOption(t.id(), t.title()))
+                .forEach(linkedTaskCombo.getItems()::add);
+        if (current != null && current.id() != null) {
+            linkedTaskCombo.getItems().stream()
+                    .filter(o -> o.id() != null && o.id().equals(current.id()))
+                    .findFirst().ifPresentOrElse(
+                            linkedTaskCombo::setValue,
+                            () -> linkedTaskCombo.setValue(TaskOption.NONE));
+        } else {
+            linkedTaskCombo.setValue(TaskOption.NONE);
+        }
+    }
+
     private void openExecutionWindow(Protocol p) {
-        new ProtocolExecutionWindow(
-            p,
-            AppContextHolder.get().protocolRepository(),
-            this::refresh
-        ).show();
+        new ProtocolExecutionWindow(p, AppContextHolder.get().protocolRepository(), this::refresh).show();
     }
 
     private static int safeParseInt(String s) {
         try { return Integer.parseInt(s == null ? "0" : s.trim()); }
         catch (NumberFormatException e) { return 0; }
+    }
+
+    // ── Builder helpers (estilo científico, igual a outras janelas) ────────────
+
+    /** Controle com rótulo acima (coluna). */
+    private static VBox labeledControl(String label, Node control) {
+        Label lbl = new Label(label);
+        lbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #5a7a9e; -fx-font-weight: 600;");
+        lbl.setMinWidth(Region.USE_PREF_SIZE);
+        VBox box = new VBox(3, lbl, control);
+        HBox.setHgrow(box, Priority.ALWAYS);
+        return box;
+    }
+
+    /** Linha rótulo (esq.) + controle (dir., expande). */
+    private static HBox fieldRow(String label, Node control) {
+        Label lbl = new Label(label);
+        lbl.setStyle("-fx-font-size: 11.5px; -fx-text-fill: #5a7a9e; -fx-font-weight: 600;");
+        lbl.setMinWidth(160);
+        HBox row = new HBox(10, lbl, control);
+        row.setAlignment(Pos.TOP_LEFT);
+        HBox.setHgrow(control, Priority.ALWAYS);
+        return row;
+    }
+
+    /** Linha com rótulo curto + controle sem expansão. */
+    private static HBox namedRow(String label, Node control) {
+        Label lbl = new Label(label);
+        lbl.setStyle("-fx-font-size: 11.5px; -fx-text-fill: #5a7a9e; -fx-font-weight: 600;");
+        lbl.setMinWidth(160);
+        HBox row = new HBox(10, lbl, control);
+        row.setAlignment(Pos.CENTER_LEFT);
+        return row;
+    }
+
+    /** Card de seção estilo científico com múltiplos conteúdos. */
+    private static VBox buildSectionCard(String title, Node... content) {
+        Label hdr = new Label(title);
+        hdr.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #03183e;"
+                + " -fx-padding: 0 0 6 0;"
+                + " -fx-border-color: transparent transparent #d6e4f5 transparent;"
+                + " -fx-border-width: 0 0 1 0;");
+        hdr.setMaxWidth(Double.MAX_VALUE);
+        VBox card = new VBox(10, hdr);
+        card.getChildren().addAll(content);
+        card.getStyleClass().add("section-card");
+        card.setPadding(new Insets(12));
+        return card;
+    }
+
+    /** Card de seção com botão de ação no cabeçalho. */
+    private static VBox buildSectionCardWithAction(String title, Button action, Node... content) {
+        Label hdr = new Label(title);
+        hdr.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #03183e;");
+        hdr.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(hdr, Priority.ALWAYS);
+        HBox headerRow = new HBox(8, hdr, action);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
+        headerRow.setStyle("-fx-padding: 0 0 6 0;"
+                + " -fx-border-color: transparent transparent #d6e4f5 transparent;"
+                + " -fx-border-width: 0 0 1 0;");
+        VBox card = new VBox(10, headerRow);
+        card.getChildren().addAll(content);
+        card.getStyleClass().add("section-card");
+        card.setPadding(new Insets(12));
+        return card;
     }
 }

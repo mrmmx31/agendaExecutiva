@@ -21,19 +21,17 @@ import java.util.Optional;
  * Janela de execução de um Protocolo Operacional.
  *
  * Layout:
- *   TOP    — cabeçalho: nome, tipo, descrição, progresso atual
+ *   TOP    — header-bar: nome, tipo, categoria, validade, progresso
  *   CENTER — SplitPane(execução atual com checkboxes | histórico de execuções)
- *   BOTTOM — barra de ações
- *
- * Regra: apenas uma janela por protocolo. Se a janela já estiver aberta,
- * ela é trazida para frente em vez de abrir uma duplicata.
  */
 public class ProtocolExecutionWindow {
 
     private static final DateTimeFormatter DT_FMT =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final DateTimeFormatter DATE_FMT =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    /** Janelas atualmente abertas, indexadas pelo ID do protocolo. */
+    /** Janelas abertas por ID de protocolo. */
     private static final java.util.Map<Long, Stage> openWindows =
             new java.util.HashMap<>();
 
@@ -43,7 +41,7 @@ public class ProtocolExecutionWindow {
 
     private Stage stage;
 
-    // ── Execução atual ──────────────────────────────────────────────────
+    // ── Execução atual ──────────────────────────────────────────────────────
     private ProtocolExecution currentExecution;
     private Label             execHeaderLabel;
     private Label             execProgressLabel;
@@ -57,11 +55,11 @@ public class ProtocolExecutionWindow {
     private Button            restartBtn;
     private Button            cancelExecBtn;
 
-    // ── Histórico ──────────────────────────────────────────────────────
+    // ── Histórico ──────────────────────────────────────────────────────────
     private final ObservableList<ProtocolExecution> historyItems =
             FXCollections.observableArrayList();
     private ListView<ProtocolExecution> historyList;
-    private Label                       historyDetailLabel;
+    private VBox                        historyDetailBox;
 
     public ProtocolExecutionWindow(Protocol protocol,
                                    ProtocolRepository repo,
@@ -72,26 +70,22 @@ public class ProtocolExecutionWindow {
     }
 
     public void show() {
-        // ── Evita abrir duplicata para o mesmo protocolo ─────────────────
         Stage existing = openWindows.get(protocol.id());
         if (existing != null && existing.isShowing()) {
-            existing.toFront();
-            existing.requestFocus();
-            return;
+            existing.toFront(); existing.requestFocus(); return;
         }
 
         stage = new Stage();
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle(protocol.executionType().icon() + "  " + protocol.name());
-        stage.setMinWidth(860);
-        stage.setMinHeight(560);
+        stage.setMinWidth(920);
+        stage.setMinHeight(580);
 
         VBox root = new VBox(0);
-        root.getStyleClass().add("diary-root");
-
+        root.getStyleClass().add("app-root");
         root.getChildren().addAll(buildHeader(), buildCenter());
 
-        Scene scene = new Scene(root, 960, 620);
+        Scene scene = new Scene(root, 1020, 650);
         try {
             scene.getStylesheets().add(
                 getClass().getResource("/com/pessoal/agenda/app.css").toExternalForm());
@@ -109,70 +103,92 @@ public class ProtocolExecutionWindow {
         stage.show();
     }
 
-    // ── Header ─────────────────────────────────────────────────────────
+    // ── Header (header-bar) ─────────────────────────────────────────────────
 
     private HBox buildHeader() {
+        // Badge de tipo
         Label typeBadge = new Label("  " + protocol.executionType().icon()
-                + " " + protocol.executionType().label() + "  ");
+                + "  " + protocol.executionType().label() + "  ");
         typeBadge.getStyleClass().addAll("study-badge", "badge-type");
+        typeBadge.setStyle(typeBadge.getStyle()
+                + "-fx-font-size: 11px; -fx-text-fill: #7ec8e3;"
+                + " -fx-background-color: rgba(0,180,216,0.15);"
+                + " -fx-border-color: rgba(0,180,216,0.4); -fx-border-radius: 10;");
 
+        // Nome do protocolo
         Label nameLbl = new Label(protocol.name());
-        nameLbl.getStyleClass().add("diary-plan-title");
+        nameLbl.getStyleClass().add("page-title");
+        nameLbl.setWrapText(true);
 
-        Label catLbl = new Label(protocol.category() != null ? protocol.category() : "Geral");
-        catLbl.getStyleClass().add("study-dates-label");
+        // Categoria
+        Label catBadge = new Label("  " + (protocol.category() != null ? protocol.category() : "Geral") + "  ");
+        catBadge.setStyle("-fx-font-size: 10.5px; -fx-text-fill: #a8d4e6;"
+                + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
+        // Barra de progresso
         execProgressBar = new ProgressBar(0);
-        execProgressBar.setPrefWidth(200);
+        execProgressBar.setPrefWidth(220);
         execProgressBar.setPrefHeight(10);
         execProgressBar.getStyleClass().add("study-progress-bar");
 
         execProgressLabel = new Label("—");
-        execProgressLabel.getStyleClass().add("study-progress-label");
+        execProgressLabel.setStyle("-fx-font-size: 11.5px; -fx-font-weight: 700;"
+                + " -fx-text-fill: #7ec8e3;"
+                + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
-        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        HBox row1 = new HBox(8, typeBadge, nameLbl, sp, execProgressBar, execProgressLabel);
-        row1.setAlignment(Pos.CENTER_LEFT);
+        Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox topRow = new HBox(10, typeBadge, nameLbl, catBadge, spacer,
+                execProgressBar, execProgressLabel);
+        topRow.setAlignment(Pos.CENTER_LEFT);
 
+        // Descrição / hint de tipo
         Label descLbl = new Label(
             protocol.description() != null && !protocol.description().isBlank()
                 ? protocol.description() : protocol.executionType().description());
-        descLbl.getStyleClass().add("diary-entry-detail");
+        descLbl.setStyle("-fx-text-fill: #a8d4e6; -fx-font-size: 11.5px;"
+                + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
         descLbl.setWrapText(true);
 
-        // Badge de validade/prazo
+        // Badge de validade
         Label validityLbl = new Label();
+        validityLbl.setWrapText(false);
         if (protocol.hasValidity()) {
             java.time.LocalDate nextDue = repo.nextDueDate(protocol.id(), protocol.validityDays());
             if (nextDue != null) {
                 long days = java.time.temporal.ChronoUnit.DAYS.between(
                         java.time.LocalDate.now(), nextDue);
                 if (days < 0) {
-                    validityLbl.setText("⚠  Validade vencida há " + (-days) + " dias  (válido por "
-                            + protocol.validityDays() + "d)");
-                    validityLbl.getStyleClass().add("deadline-overdue");
+                    validityLbl.setText("⚠  Validade VENCIDA há " + (-days) + " dias"
+                            + "  (ciclo: " + protocol.validityDays() + "d)");
+                    validityLbl.setStyle("-fx-text-fill: #ff6b6b; -fx-font-weight: 700;"
+                            + " -fx-font-size: 11px;"
+                            + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
                 } else {
-                    validityLbl.setText("📅  Válido por mais " + days + " dias  (expira em "
-                            + nextDue.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ")");
-                    validityLbl.getStyleClass().add(days <= 7 ? "deadline-warn" : "deadline-ok");
+                    validityLbl.setText("📅  Válido por mais " + days + " dias"
+                            + "  (expira: " + nextDue.format(DATE_FMT) + ")");
+                    validityLbl.setStyle("-fx-text-fill: " + (days <= 7 ? "#ffa94d" : "#69db7c") + ";"
+                            + " -fx-font-size: 11px;"
+                            + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
                 }
             } else {
                 validityLbl.setText("📅  Validade: " + protocol.validityDays() + " dias após conclusão");
-                validityLbl.getStyleClass().add("study-dates-label");
+                validityLbl.setStyle("-fx-text-fill: #a8d4e6; -fx-font-size: 11px;"
+                        + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
             }
         }
 
-        VBox header = new VBox(4, row1,
-                new HBox(6, catLbl, new Label("|"), descLbl),
-                validityLbl);
-        validityLbl.setVisible(protocol.hasValidity());
-        validityLbl.setManaged(protocol.hasValidity());
-        header.setPadding(new Insets(12, 14, 10, 14));
-        header.getStyleClass().add("diary-header");
-        return new HBox(header);
+        VBox headerContent = new VBox(5, topRow, descLbl);
+        if (protocol.hasValidity()) headerContent.getChildren().add(validityLbl);
+        headerContent.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(headerContent, Priority.ALWAYS);
+
+        HBox header = new HBox(headerContent);
+        header.setPadding(new Insets(14, 18, 12, 18));
+        header.getStyleClass().add("header-bar");
+        return header;
     }
 
-    // ── Center ─────────────────────────────────────────────────────────
+    // ── Center ──────────────────────────────────────────────────────────────
 
     private SplitPane buildCenter() {
         SplitPane sp = new SplitPane(buildExecutionPanel(), buildHistoryPanel());
@@ -181,14 +197,18 @@ public class ProtocolExecutionWindow {
         return sp;
     }
 
-    // ── Painel de Execução Atual ────────────────────────────────────────
+    // ── Painel de Execução Atual ─────────────────────────────────────────────
 
     private VBox buildExecutionPanel() {
         execHeaderLabel = new Label("Nenhuma execução ativa");
-        execHeaderLabel.getStyleClass().add("section-title");
+        execHeaderLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;"
+                + " -fx-text-fill: #03183e;"
+                + " -fx-border-color: transparent transparent #d6e4f5 transparent;"
+                + " -fx-border-width: 0 0 1 0; -fx-padding: 0 0 6 0;");
+        execHeaderLabel.setMaxWidth(Double.MAX_VALUE);
 
         // Painel "sem execução"
-        noExecLabel = new Label("Nenhuma execução em andamento.\nClique em 'Iniciar' para começar.");
+        noExecLabel = new Label("Nenhuma execução em andamento.\nClique em 'Iniciar Execução' para começar.");
         noExecLabel.getStyleClass().add("study-dates-label");
         noExecLabel.setWrapText(true);
         noExecLabel.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
@@ -201,8 +221,8 @@ public class ProtocolExecutionWindow {
         noExecBox.setAlignment(Pos.CENTER);
         noExecBox.setPadding(new Insets(40));
 
-        // Painel de execução ativa
-        stepsContainer = new VBox(6);
+        // Passos da execução ativa
+        stepsContainer = new VBox(5);
         stepsContainer.setPadding(new Insets(4, 0, 4, 0));
 
         ScrollPane stepsScroll = new ScrollPane(stepsContainer);
@@ -210,12 +230,16 @@ public class ProtocolExecutionWindow {
         stepsScroll.getStyleClass().add("edge-to-edge");
         VBox.setVgrow(stepsScroll, Priority.ALWAYS);
 
+        // Notas
+        Label notesLbl = new Label("Observações da execução:");
+        notesLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #5a7a9e; -fx-font-weight: 600;");
         execNotesArea = new TextArea();
         execNotesArea.getStyleClass().add("input-control");
         execNotesArea.setPromptText("Observações desta execução (opcional)...");
         execNotesArea.setPrefRowCount(2);
         execNotesArea.setWrapText(true);
 
+        // Botões de conclusão
         completeBtn = new Button("✓  Concluir Execução");
         completeBtn.getStyleClass().add("primary-button");
         completeBtn.setOnAction(e -> completeExecution(false));
@@ -228,30 +252,33 @@ public class ProtocolExecutionWindow {
         cancelExecBtn.getStyleClass().add("danger-button");
         cancelExecBtn.setOnAction(e -> cancelCurrentExecution());
 
-        HBox actionBar = new HBox(8, completeBtn, restartBtn, cancelExecBtn);
+        HBox actionBar = new HBox(8, completeBtn, restartBtn, createSpacer(), cancelExecBtn);
         actionBar.setAlignment(Pos.CENTER_LEFT);
         actionBar.setPadding(new Insets(8, 0, 0, 0));
+        actionBar.setStyle("-fx-border-color: #d6e4f5; -fx-border-width: 1 0 0 0;");
 
-        activeExecPanel = new VBox(8, stepsScroll, new Label("Observações:"), execNotesArea, actionBar);
+        activeExecPanel = new VBox(8, stepsScroll, notesLbl, execNotesArea, actionBar);
         activeExecPanel.setPadding(new Insets(8, 0, 0, 0));
+        VBox.setVgrow(stepsScroll, Priority.ALWAYS);
         VBox.setVgrow(activeExecPanel, Priority.ALWAYS);
 
-        // StackPane alterna entre os dois painéis
         VBox panel = new VBox(8, execHeaderLabel, noExecBox);
         panel.setPadding(new Insets(12));
         panel.getStyleClass().add("section-card");
         VBox.setVgrow(panel, Priority.ALWAYS);
 
-        // Guardar referência para trocar conteúdo dinamicamente
         panel.setUserData(new Object[]{ noExecBox, activeExecPanel });
         return panel;
     }
 
-    // ── Painel de Histórico ─────────────────────────────────────────────
+    // ── Painel de Histórico ──────────────────────────────────────────────────
 
     private VBox buildHistoryPanel() {
-        Label title = new Label("Histórico de Execuções");
-        title.getStyleClass().add("section-title");
+        Label title = new Label("📜 Histórico de Execuções");
+        title.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #03183e;"
+                + " -fx-border-color: transparent transparent #d6e4f5 transparent;"
+                + " -fx-border-width: 0 0 1 0; -fx-padding: 0 0 6 0;");
+        title.setMaxWidth(Double.MAX_VALUE);
 
         historyList = new ListView<>(historyItems);
         historyList.getStyleClass().add("clean-list");
@@ -261,23 +288,24 @@ public class ProtocolExecutionWindow {
                 if (empty || e == null) { setText(null); setGraphic(null); return; }
 
                 String icon  = e.isCompleted() ? "✓" : e.isCancelled() ? "✗" : "●";
-                String color = e.isCompleted() ? "#27ae60" : e.isCancelled() ? "#e74c3c" : "#e67e22";
+                Color  color = e.isCompleted() ? Color.web("#27ae60")
+                             : e.isCancelled() ? Color.web("#e74c3c") : Color.web("#e67e22");
                 String iter  = e.executionType() == ProtocolExecutionType.EXPERIMENTO
-                             ? " — Iter. " + e.iterationNumber() : "";
+                             ? "  Iter. " + e.iterationNumber() : "";
                 String dt    = e.startedAt() != null ? e.startedAt().format(DT_FMT) : "?";
                 String steps = e.totalSteps() > 0
-                             ? " (" + e.checkedSteps() + "/" + e.totalSteps() + " passos)" : "";
+                             ? "  " + e.checkedSteps() + "/" + e.totalSteps() + " passos" : "";
 
                 Label iconLbl = new Label(icon);
-                iconLbl.setTextFill(Color.web(color));
-                iconLbl.setStyle("-fx-font-weight:bold; -fx-font-size:14px;");
+                iconLbl.setTextFill(color);
+                iconLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
                 Label mainLbl = new Label(dt + iter + steps);
                 mainLbl.getStyleClass().add("study-plan-detail");
 
-                Label statusLbl = new Label(e.status());
+                Label statusLbl = new Label("  " + e.status() + "  ");
                 statusLbl.getStyleClass().addAll("study-badge",
-                    "badge-status-" + e.status().toLowerCase());
+                        "badge-status-" + e.status().toLowerCase());
 
                 Region sp2 = new Region(); HBox.setHgrow(sp2, Priority.ALWAYS);
                 HBox row = new HBox(8, iconLbl, mainLbl, sp2, statusLbl);
@@ -287,21 +315,30 @@ public class ProtocolExecutionWindow {
         });
         VBox.setVgrow(historyList, Priority.ALWAYS);
 
-        historyDetailLabel = new Label("Selecione uma execução para ver detalhes.");
-        historyDetailLabel.getStyleClass().add("study-dates-label");
-        historyDetailLabel.setWrapText(true);
+        // Painel de detalhes da execução selecionada
+        historyDetailBox = new VBox(6);
+        historyDetailBox.setStyle("-fx-background-color: #f8fafc;"
+                + " -fx-background-radius: 5; -fx-border-color: #dce8f5;"
+                + " -fx-border-radius: 5; -fx-padding: 8;");
+        historyDetailBox.setMinHeight(80);
+
+        Label detailHdr = new Label("Detalhes da Execução");
+        detailHdr.setStyle("-fx-font-size: 10.5px; -fx-text-fill: #5a7a9e; -fx-font-weight: 700;");
+        historyDetailBox.getChildren().add(
+                new Label("Selecione uma execução para ver detalhes.") {{
+                    getStyleClass().add("study-dates-label"); }});
 
         historyList.getSelectionModel().selectedItemProperty().addListener(
             (obs, old, sel) -> showHistoryDetail(sel));
 
-        VBox panel = new VBox(8, title, historyList, new Separator(), historyDetailLabel);
+        VBox panel = new VBox(8, title, historyList, historyDetailBox);
         panel.setPadding(new Insets(12));
         panel.getStyleClass().add("section-card");
         VBox.setVgrow(panel, Priority.ALWAYS);
         return panel;
     }
 
-    // ── Lógica de Execução ──────────────────────────────────────────────
+    // ── Lógica de Execução ───────────────────────────────────────────────────
 
     private void loadCurrentExecution() {
         currentExecution = repo.findActiveExecution(protocol.id()).orElse(null);
@@ -314,8 +351,6 @@ public class ProtocolExecutionWindow {
 
     @SuppressWarnings("unchecked")
     private void refreshExecutionPanel() {
-        // Localiza o VBox pai via buildExecutionPanel
-        // Usamos o stage para encontrar o SplitPane
         SplitPane sp = (SplitPane) ((VBox) stage.getScene().getRoot())
                 .getChildren().stream()
                 .filter(n -> n instanceof SplitPane)
@@ -326,26 +361,23 @@ public class ProtocolExecutionWindow {
         Object[] refs  = (Object[]) execPanel.getUserData();
         if (refs == null) return;
 
-        VBox noExecBox      = (VBox) refs[0];
-        VBox activePanel    = (VBox) refs[1];
+        VBox noExecBox   = (VBox) refs[0];
+        VBox activePanel = (VBox) refs[1];
 
-        // Atualiza header
         if (currentExecution == null) {
             execHeaderLabel.setText("Nenhuma execução ativa");
             execProgressBar.setProgress(0);
             execProgressLabel.setText("—");
-            startBtn.setVisible(true);
 
-            // Verifica se foi uso único já executado
             boolean unicoJaUsado = protocol.executionType() == ProtocolExecutionType.UNICO
                     && !repo.findExecutions(protocol.id(), "CONCLUIDA").isEmpty();
             if (unicoJaUsado) {
                 noExecLabel.setText("Este protocolo é de uso único e já foi executado.\n"
-                        + "Consulte o histórico para ver o registro.");
-                startBtn.setVisible(false);
+                        + "Consulte o histórico para ver o registro completo.");
+                startBtn.setVisible(false); startBtn.setManaged(false);
             } else {
-                noExecLabel.setText("Nenhuma execução em andamento.\nClique em 'Iniciar' para começar.");
-                startBtn.setVisible(true);
+                noExecLabel.setText("Nenhuma execução em andamento.\nClique em 'Iniciar Execução' para começar.");
+                startBtn.setVisible(true); startBtn.setManaged(true);
             }
 
             execPanel.getChildren().remove(activePanel);
@@ -355,7 +387,7 @@ public class ProtocolExecutionWindow {
             String iterLabel = protocol.executionType() == ProtocolExecutionType.EXPERIMENTO
                     ? "  —  Iteração " + iter : "";
             execHeaderLabel.setText("Em execução" + iterLabel
-                    + "  |  Iniciada: "
+                    + "  ·  Iniciada: "
                     + (currentExecution.startedAt() != null
                        ? currentExecution.startedAt().format(DT_FMT) : "?"));
 
@@ -369,10 +401,8 @@ public class ProtocolExecutionWindow {
 
             refreshSteps();
 
-            // Ajusta botões de conclusão por tipo
             boolean supportsRestart = protocol.executionType().supportsRestart();
-            restartBtn.setVisible(supportsRestart);
-            restartBtn.setManaged(supportsRestart);
+            restartBtn.setVisible(supportsRestart); restartBtn.setManaged(supportsRestart);
 
             if (protocol.executionType() == ProtocolExecutionType.EXPERIMENTO) {
                 restartBtn.setText("↺  Concluir Iter. " + iter + " → Próxima");
@@ -392,48 +422,57 @@ public class ProtocolExecutionWindow {
         stepsContainer.getChildren().clear();
         if (currentExecution == null) return;
 
-        List<ProtocolExecutionStep> steps =
-                repo.findExecutionSteps(currentExecution.id());
+        List<ProtocolExecutionStep> steps = repo.findExecutionSteps(currentExecution.id());
 
         for (ProtocolExecutionStep s : steps) {
-            CheckBox cb = new CheckBox();
-            cb.setSelected(s.checked());
-            cb.setDisable(s.checked()); // passo já marcado vira read-only — mas pode desmarcar
+            boolean done = s.checked();
 
-            Label stepLbl = new Label(s.stepOrder() + ".  " + s.stepText());
+            CheckBox cb = new CheckBox();
+            cb.setSelected(done);
+            cb.setDisable(done);
+
+            Label numLbl = new Label(s.stepOrder() + ".");
+            numLbl.setStyle("-fx-font-weight: 700; -fx-font-size: 12px; -fx-text-fill: #5a7a9e;"
+                    + " -fx-min-width: 28px;");
+
+            Label stepLbl = new Label(s.stepText());
             stepLbl.getStyleClass().add(s.critical() ? "study-plan-title" : "study-plan-detail");
-            if (s.checked()) stepLbl.setStyle("-fx-opacity:0.55; -fx-strikethrough:true;");
+            stepLbl.setWrapText(true);
+            HBox.setHgrow(stepLbl, Priority.ALWAYS);
+            if (done) stepLbl.setStyle("-fx-opacity: 0.5; -fx-strikethrough: true;");
 
             Label critLbl = new Label();
-            if (s.critical()) { critLbl.setText("⚠ crítico"); critLbl.getStyleClass().add("deadline-overdue"); }
+            if (s.critical()) {
+                critLbl.setText("⚠ crítico");
+                critLbl.setStyle("-fx-font-size: 9.5px; -fx-font-weight: 700;"
+                        + " -fx-text-fill: #b71c1c; -fx-background-color: #fde8e8;"
+                        + " -fx-background-radius: 8; -fx-padding: 1 6 1 6;");
+            }
 
-            Label timeStampLbl = new Label(
-                s.checkedAt() != null ? s.checkedAt().format(DT_FMT) : "");
-            timeStampLbl.getStyleClass().add("study-dates-label");
+            Label timeStampLbl = new Label(s.checkedAt() != null ? s.checkedAt().format(DT_FMT) : "");
+            timeStampLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #5a7a9e;"
+                    + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
-            // Desfazer marcação
             Button undoBtn = new Button("↩");
-            undoBtn.setTooltip(new Tooltip("Desmarcar este passo"));
             undoBtn.getStyleClass().add("secondary-button");
-            undoBtn.setVisible(s.checked());
-            undoBtn.setManaged(s.checked());
-            undoBtn.setOnAction(e -> {
-                repo.uncheckStep(s.id());
-                reloadExecution();
-            });
+            undoBtn.setStyle("-fx-font-size: 11px; -fx-padding: 2 8 2 8;");
+            undoBtn.setTooltip(new Tooltip("Desmarcar este passo"));
+            undoBtn.setVisible(done); undoBtn.setManaged(done);
+            undoBtn.setOnAction(e -> { repo.uncheckStep(s.id()); reloadExecution(); });
 
             cb.setOnAction(e -> {
-                if (cb.isSelected()) {
-                    repo.checkStep(s.id(), null);
-                    reloadExecution();
-                }
+                if (cb.isSelected()) { repo.checkStep(s.id(), null); reloadExecution(); }
             });
 
-            Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
-            HBox row = new HBox(10, cb, stepLbl, critLbl, spacer, timeStampLbl, undoBtn);
+            HBox row = new HBox(8, cb, numLbl, stepLbl, critLbl,
+                    new Region() {{ HBox.setHgrow(this, Priority.ALWAYS); }},
+                    timeStampLbl, undoBtn);
             row.setAlignment(Pos.CENTER_LEFT);
-            row.setPadding(new Insets(4, 8, 4, 8));
-            row.getStyleClass().add(s.checked() ? "checklist-done-row" : "checklist-pending-row");
+            row.setPadding(new Insets(6, 10, 6, 10));
+            row.setStyle("-fx-background-color: " + (done ? "#f8fffe" : "white") + ";"
+                    + " -fx-background-radius: 5;"
+                    + " -fx-border-color: " + (done ? "#b2dfdb" : "#e8eef4") + ";"
+                    + " -fx-border-radius: 5; -fx-border-width: 1;");
             stepsContainer.getChildren().add(row);
         }
     }
@@ -445,18 +484,15 @@ public class ProtocolExecutionWindow {
     }
 
     private void startNewExecution() {
-        repo.startExecution(protocol.id());
-        reloadExecution();
+        repo.startExecution(protocol.id()); reloadExecution();
     }
 
     private void completeExecution(boolean andRestart) {
         if (currentExecution == null) return;
         String notes = execNotesArea.getText();
 
-        // Verifica passos críticos não marcados
         List<ProtocolExecutionStep> steps = repo.findExecutionSteps(currentExecution.id());
-        long criticalPending = steps.stream()
-                .filter(s -> s.critical() && !s.checked()).count();
+        long criticalPending = steps.stream().filter(s -> s.critical() && !s.checked()).count();
         if (criticalPending > 0) {
             Alert warn = new Alert(Alert.AlertType.CONFIRMATION);
             warn.setTitle("Passos Críticos Pendentes");
@@ -482,7 +518,8 @@ public class ProtocolExecutionWindow {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Cancelar Execução");
         confirm.setHeaderText("Cancelar a execução em andamento?");
-        confirm.setContentText("O progresso será perdido. A execução ficará registrada como Cancelada no histórico.");
+        confirm.setContentText(
+                "O progresso será perdido. A execução ficará registrada como Cancelada no histórico.");
         confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
             repo.cancelExecution(currentExecution.id());
             currentExecution = null;
@@ -491,22 +528,68 @@ public class ProtocolExecutionWindow {
     }
 
     private void showHistoryDetail(ProtocolExecution exec) {
+        historyDetailBox.getChildren().clear();
         if (exec == null) {
-            historyDetailLabel.setText("Selecione uma execução para ver detalhes.");
+            historyDetailBox.getChildren().add(new Label("Selecione uma execução para ver detalhes.") {{
+                getStyleClass().add("study-dates-label");
+            }});
             return;
         }
-        StringBuilder sb = new StringBuilder();
-        sb.append("Status: ").append(exec.status()).append("\n");
-        if (exec.startedAt() != null)
-            sb.append("Início: ").append(exec.startedAt().format(DT_FMT)).append("\n");
-        if (exec.completedAt() != null)
-            sb.append("Fim: ").append(exec.completedAt().format(DT_FMT)).append("\n");
-        sb.append("Progresso: ").append(exec.checkedSteps())
-          .append("/").append(exec.totalSteps()).append(" passos");
-        if (exec.notes() != null && !exec.notes().isBlank())
-            sb.append("\nObservações: ").append(exec.notes());
-        historyDetailLabel.setText(sb.toString());
+
+        // Status badge
+        Label statusBadge = new Label("  " + exec.status() + "  ");
+        statusBadge.getStyleClass().addAll("study-badge",
+                "badge-status-" + exec.status().toLowerCase());
+
+        // Métricas
+        HBox statusRow = new HBox(8, statusBadge);
+        if (exec.executionType() == ProtocolExecutionType.EXPERIMENTO)
+            statusRow.getChildren().add(new Label("Iteração " + exec.iterationNumber() + "  ") {{
+                setStyle("-fx-font-size: 11px; -fx-text-fill: #5a7a9e;"
+                        + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
+            }});
+        statusRow.setAlignment(Pos.CENTER_LEFT);
+
+        historyDetailBox.getChildren().add(statusRow);
+
+        // Detalhes de tempo
+        addDetailRow(historyDetailBox, "Início",
+                exec.startedAt() != null ? exec.startedAt().format(DT_FMT) : "—");
+        addDetailRow(historyDetailBox, "Conclusão",
+                exec.completedAt() != null ? exec.completedAt().format(DT_FMT) : "—");
+
+        // Duração
+        if (exec.startedAt() != null && exec.completedAt() != null) {
+            long mins = java.time.Duration.between(exec.startedAt(), exec.completedAt()).toMinutes();
+            addDetailRow(historyDetailBox, "Duração",
+                    mins < 60 ? mins + " min"
+                              : (mins / 60) + "h " + (mins % 60) + "min");
+        }
+
+        addDetailRow(historyDetailBox, "Progresso",
+                exec.checkedSteps() + " / " + exec.totalSteps() + " passos concluídos");
+
+        if (exec.notes() != null && !exec.notes().isBlank()) {
+            Label notesLbl = new Label("Obs: " + exec.notes());
+            notesLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #1e3a5f; -fx-wrap-text: true;"
+                    + " -fx-background-color: #f0f5fc; -fx-background-radius: 4; -fx-padding: 4 6 4 6;");
+            notesLbl.setWrapText(true);
+            historyDetailBox.getChildren().add(notesLbl);
+        }
+    }
+
+    private static void addDetailRow(VBox parent, String key, String value) {
+        Label lbl = new Label(key + ":  " + value);
+        lbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #1e3a5f;"
+                + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
+        parent.getChildren().add(lbl);
+    }
+
+    // ── Spacer helper ────────────────────────────────────────────────────────
+
+    private static Region createSpacer() {
+        Region r = new Region();
+        HBox.setHgrow(r, Priority.ALWAYS);
+        return r;
     }
 }
-
-

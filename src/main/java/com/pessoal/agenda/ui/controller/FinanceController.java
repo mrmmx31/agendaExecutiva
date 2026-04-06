@@ -34,17 +34,24 @@ public class FinanceController {
     private static final NumberFormat BRL =
             NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR"));
 
-    private static final String[] ENTRY_TYPES = {"pagamento", "orçamento", "lançamento"};
-    private static final String TYPE_ALL      = "Todos os tipos";
-    private static final String STATUS_ALL    = "Todos os status";
-    private static final String STATUS_PAGAR  = "A pagar";
-    private static final String STATUS_VENCIDO= "Vencido";
-    private static final String STATUS_PAGO   = "Pago";
+    private static final String[] ENTRY_TYPES  = {"pagamento", "recebimento", "orçamento", "lançamento"};
+    private static final String TYPE_ALL       = "Todos os tipos";
+    private static final String STATUS_ALL     = "Todos os status";
+    private static final String STATUS_PAGAR   = "A pagar";
+    private static final String STATUS_VENCIDO = "Vencido";
+    private static final String STATUS_PAGO    = "Pago";
+    private static final String STATUS_RECEBER = "A receber";
+
+    /** Retorna true se o tipo representa uma DESPESA (saída de dinheiro). */
+    private static boolean isExpense(String type) {
+        if (type == null) return true;
+        return !type.equalsIgnoreCase("recebimento");
+    }
 
     private final SharedContext ctx;
 
     // ── KPI labels ─────────────────────────────────────────────────────────
-    private Label kpiTotalLbl, kpiPagarLbl, kpiVencidoLbl, kpiPagoLbl, kpiValorLbl;
+    private Label kpiReceitasLbl, kpiDespesasLbl, kpiSaldoLbl, kpiVencidoLbl, kpiReceberLbl;
 
     // ── Filtros ─────────────────────────────────────────────────────────────
     private String typeFilter   = null;
@@ -115,7 +122,7 @@ public class FinanceController {
         });
 
         ComboBox<String> statusFilterCombo = new ComboBox<>();
-        statusFilterCombo.getItems().addAll(STATUS_ALL, STATUS_PAGAR, STATUS_VENCIDO, STATUS_PAGO);
+        statusFilterCombo.getItems().addAll(STATUS_ALL, STATUS_PAGAR, STATUS_VENCIDO, STATUS_PAGO, STATUS_RECEBER);
         statusFilterCombo.setValue(STATUS_ALL);
         statusFilterCombo.setPrefWidth(155);
         statusFilterCombo.setPromptText("Status");
@@ -157,18 +164,18 @@ public class FinanceController {
     // ── KPI Bar ───────────────────────────────────────────────────────────────
 
     private HBox buildKpiBar() {
-        kpiTotalLbl   = new Label("0"); kpiTotalLbl.getStyleClass().add("kpi-value");
-        kpiPagarLbl   = new Label("0"); kpiPagarLbl.getStyleClass().add("kpi-value");
-        kpiVencidoLbl = new Label("0"); kpiVencidoLbl.getStyleClass().add("kpi-value");
-        kpiPagoLbl    = new Label("0"); kpiPagoLbl.getStyleClass().add("kpi-value");
-        kpiValorLbl   = new Label("R$ 0,00"); kpiValorLbl.getStyleClass().add("kpi-value");
+        kpiReceitasLbl = new Label("R$ 0,00"); kpiReceitasLbl.getStyleClass().add("kpi-value");
+        kpiDespesasLbl = new Label("R$ 0,00"); kpiDespesasLbl.getStyleClass().add("kpi-value");
+        kpiSaldoLbl    = new Label("R$ 0,00"); kpiSaldoLbl.getStyleClass().add("kpi-value");
+        kpiVencidoLbl  = new Label("0");        kpiVencidoLbl.getStyleClass().add("kpi-value");
+        kpiReceberLbl  = new Label("0");        kpiReceberLbl.getStyleClass().add("kpi-value");
 
         HBox bar = new HBox(10,
-                kpiCard("TOTAL",         kpiTotalLbl,   "kpi-blue"),
-                kpiCard("A PAGAR",        kpiPagarLbl,   "kpi-orange"),
-                kpiCard("VENCIDOS",       kpiVencidoLbl, "kpi-red"),
-                kpiCard("PAGOS",          kpiPagoLbl,    "kpi-green"),
-                kpiCard("VALOR PENDENTE", kpiValorLbl,   "kpi-purple")
+                kpiCard("RECEITAS",    kpiReceitasLbl, "kpi-green"),
+                kpiCard("DESPESAS",    kpiDespesasLbl, "kpi-orange"),
+                kpiCard("SALDO",       kpiSaldoLbl,    "kpi-cyan"),
+                kpiCard("VENCIDOS",    kpiVencidoLbl,  "kpi-red"),
+                kpiCard("A RECEBER",   kpiReceberLbl,  "kpi-indigo")
         );
         bar.setPadding(new Insets(10, 14, 6, 14));
         bar.setAlignment(Pos.CENTER_LEFT);
@@ -250,7 +257,7 @@ public class FinanceController {
 
         descField = new TextField();
         descField.getStyleClass().add("input-control");
-        descField.setPromptText("Ex: Conta de energia, Aluguel, Assinatura...");
+        descField.setPromptText("Ex: Conta de energia, Salário, Assinatura...");
 
         amountField = new TextField();
         amountField.getStyleClass().add("input-control");
@@ -262,6 +269,12 @@ public class FinanceController {
 
         paidCheck = new CheckBox("Já pago / concluído");
         paidCheck.getStyleClass().add("recurrence-day-check");
+
+        // Update checkbox label when type changes
+        typeCombo.setOnAction(e -> {
+            boolean isReceipt = "recebimento".equalsIgnoreCase(typeCombo.getValue());
+            paidCheck.setText(isReceipt ? "Já recebido" : "Já pago / concluído");
+        });
 
         notesArea = new TextArea();
         notesArea.getStyleClass().add("input-control");
@@ -370,9 +383,14 @@ public class FinanceController {
         if (markPaidBtn == null) return;
         boolean canPay = sel != null && !sel.paid();
         markPaidBtn.setDisable(!canPay);
-        markPaidBtn.setText(canPay
-                ? "✓  Marcar Pago — " + sel.description()
-                : "✓  Marcar como Pago");
+        if (canPay) {
+            boolean isReceipt = "recebimento".equalsIgnoreCase(sel.entryType());
+            markPaidBtn.setText(isReceipt
+                    ? "✓  Marcar Recebido — " + sel.description()
+                    : "✓  Marcar Pago — " + sel.description());
+        } else {
+            markPaidBtn.setText("✓  Marcar como Pago / Recebido");
+        }
     }
 
     // ── Pendências Urgentes ───────────────────────────────────────────────────
@@ -394,7 +412,7 @@ public class FinanceController {
         urgentBox.getChildren().clear();
 
         List<FinanceEntry> overdue = all.stream()
-                .filter(FinanceEntry::isOverdue)
+                .filter(e -> isExpense(e.entryType()) && e.isOverdue())
                 .sorted((a, b) -> a.dueDate().compareTo(b.dueDate()))
                 .toList();
 
@@ -464,8 +482,11 @@ public class FinanceController {
                     + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;"
                     + typeStyle(entry.entryType()));
 
-            // Status badge
-            String statusTxt = entry.paid() ? "PAGO" : (overdue ? "VENCIDO" : "A PAGAR");
+            // Status badge — recebimento uses "RECEBIDO" instead of "PAGO"
+            boolean isReceipt = "recebimento".equalsIgnoreCase(entry.entryType());
+            String statusTxt = entry.paid()
+                    ? (isReceipt ? "RECEBIDO" : "PAGO")
+                    : (overdue ? "VENCIDO" : (isReceipt ? "A RECEBER" : "A PAGAR"));
             Label statusBadge = new Label("  " + statusTxt + "  ");
             statusBadge.setStyle("-fx-padding: 2 8 2 8; -fx-background-radius: 10;"
                     + " -fx-font-size: 9.5px; -fx-font-weight: 700;"
@@ -502,9 +523,10 @@ public class FinanceController {
         private String typeStyle(String type) {
             if (type == null) return " -fx-background-color: #f5f5f5; -fx-text-fill: #757575;";
             return switch (type.toLowerCase()) {
-                case "pagamento" -> " -fx-background-color: #fff3e0; -fx-text-fill: #e65100;";
-                case "orçamento" -> " -fx-background-color: #e8eaf6; -fx-text-fill: #283593;";
-                default          -> " -fx-background-color: #e8f5e9; -fx-text-fill: #1b5e20;";
+                case "pagamento"    -> " -fx-background-color: #fff3e0; -fx-text-fill: #e65100;";
+                case "recebimento"  -> " -fx-background-color: #e0f7f4; -fx-text-fill: #006d5b;";
+                case "orçamento"    -> " -fx-background-color: #e8eaf6; -fx-text-fill: #283593;";
+                default             -> " -fx-background-color: #e8f5e9; -fx-text-fill: #1b5e20;";
             };
         }
     }
@@ -547,6 +569,8 @@ public class FinanceController {
         amountField.setText(String.format(Locale.US, "%.2f", e.amount()));
         duePicker.setValue(e.dueDate() != null ? e.dueDate() : LocalDate.now());
         paidCheck.setSelected(e.paid());
+        boolean isReceipt = "recebimento".equalsIgnoreCase(e.entryType());
+        paidCheck.setText(isReceipt ? "Já recebido" : "Já pago / concluído");
         if (notesArea != null) notesArea.clear();
 
         formModeLabel.setText("✎ Editando: \"" + e.description() + "\"");
@@ -601,7 +625,8 @@ public class FinanceController {
                 return switch (statusFilter) {
                     case STATUS_PAGO    ->  e.paid();
                     case STATUS_VENCIDO ->  e.isOverdue();
-                    case STATUS_PAGAR   -> !e.paid() && !e.isOverdue();
+                    case STATUS_PAGAR   -> !e.paid() && !e.isOverdue() && isExpense(e.entryType());
+                    case STATUS_RECEBER -> !e.paid() && "recebimento".equalsIgnoreCase(e.entryType());
                     default             -> true;
                 };
             }
@@ -614,17 +639,43 @@ public class FinanceController {
     }
 
     private void updateKpis(List<FinanceEntry> all) {
-        long total   = all.size();
-        long pago    = all.stream().filter(FinanceEntry::paid).count();
-        long vencido = all.stream().filter(FinanceEntry::isOverdue).count();
-        long pagar   = all.stream().filter(e -> !e.paid() && !e.isOverdue()).count();
-        double valor = all.stream().filter(e -> !e.paid()).mapToDouble(FinanceEntry::amount).sum();
+        // Receitas = soma de todos os recebimentos
+        double receitas = all.stream()
+                .filter(e -> "recebimento".equalsIgnoreCase(e.entryType()))
+                .mapToDouble(FinanceEntry::amount).sum();
 
-        if (kpiTotalLbl   != null) kpiTotalLbl.setText(String.valueOf(total));
-        if (kpiPagarLbl   != null) kpiPagarLbl.setText(String.valueOf(pagar));
-        if (kpiVencidoLbl != null) kpiVencidoLbl.setText(String.valueOf(vencido));
-        if (kpiPagoLbl    != null) kpiPagoLbl.setText(String.valueOf(pago));
-        if (kpiValorLbl   != null) kpiValorLbl.setText(formatBrl(valor));
+        // Despesas = soma de todos os não-recebimentos
+        double despesas = all.stream()
+                .filter(e -> isExpense(e.entryType()))
+                .mapToDouble(FinanceEntry::amount).sum();
+
+        // Saldo = recebimentos já recebidos − despesas já pagas
+        double saldoRecebido = all.stream()
+                .filter(e -> "recebimento".equalsIgnoreCase(e.entryType()) && e.paid())
+                .mapToDouble(FinanceEntry::amount).sum();
+        double saldoPago = all.stream()
+                .filter(e -> isExpense(e.entryType()) && e.paid())
+                .mapToDouble(FinanceEntry::amount).sum();
+        double saldo = saldoRecebido - saldoPago;
+
+        // Vencidos = despesas vencidas (não pagas)
+        long vencido = all.stream()
+                .filter(e -> isExpense(e.entryType()) && e.isOverdue()).count();
+
+        // A receber = recebimentos ainda não recebidos
+        long aReceber = all.stream()
+                .filter(e -> "recebimento".equalsIgnoreCase(e.entryType()) && !e.paid()).count();
+
+        if (kpiReceitasLbl != null) kpiReceitasLbl.setText(formatBrl(receitas));
+        if (kpiDespesasLbl != null) kpiDespesasLbl.setText(formatBrl(despesas));
+        if (kpiSaldoLbl    != null) {
+            kpiSaldoLbl.setText(formatBrl(saldo));
+            // Colorir saldo: verde se positivo, vermelho se negativo
+            kpiSaldoLbl.setStyle(kpiSaldoLbl.getStyle()
+                    + (saldo >= 0 ? " -fx-text-fill: #1b5e20;" : " -fx-text-fill: #b71c1c;"));
+        }
+        if (kpiVencidoLbl  != null) kpiVencidoLbl.setText(String.valueOf(vencido));
+        if (kpiReceberLbl  != null) kpiReceberLbl.setText(String.valueOf(aReceber));
     }
 
     public void refresh() {

@@ -142,12 +142,16 @@ public class FinanceController {
             applyFilters();
         });
 
+        Button printBtn = new Button("🖨  Imprimir");
+        printBtn.getStyleClass().add("secondary-button");
+        printBtn.setOnAction(e -> printCurrentView());
+
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
 
         HBox bar = new HBox(10, addBtn, spacer,
                 filterLabel("Tipo:"), typeFilterCombo,
                 filterLabel("Status:"), statusFilterCombo,
-                clearBtn);
+                clearBtn, printBtn);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.getStyleClass().add("agenda-top-bar");
         bar.setPadding(new Insets(8, 14, 8, 14));
@@ -698,5 +702,64 @@ public class FinanceController {
 
     private static String formatBrl(double value) {
         return BRL.format(value);
+    }
+
+    // ── Impressão de relatório financeiro ─────────────────────────────────────
+
+    private void printCurrentView() {
+        // ── Diálogo de filtros pré-populado com o estado atual da tela ────
+        ComboBox<String> dlgTypeCombo = new ComboBox<>();
+        dlgTypeCombo.getItems().addAll(TYPE_ALL, "pagamento", "recebimento", "orçamento", "lançamento");
+        dlgTypeCombo.setValue(typeFilter != null ? typeFilter : TYPE_ALL);
+        dlgTypeCombo.getStyleClass().add("input-control");
+        dlgTypeCombo.setMaxWidth(Double.MAX_VALUE);
+
+        ComboBox<String> dlgStatusCombo = new ComboBox<>();
+        dlgStatusCombo.getItems().addAll(STATUS_ALL, STATUS_PAGAR, STATUS_VENCIDO, STATUS_PAGO, STATUS_RECEBER);
+        dlgStatusCombo.setValue(statusFilter != null ? statusFilter : STATUS_ALL);
+        dlgStatusCombo.getStyleClass().add("input-control");
+        dlgStatusCombo.setMaxWidth(Double.MAX_VALUE);
+
+        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+        grid.setHgap(10); grid.setVgap(8); grid.setPadding(new Insets(10, 0, 0, 0));
+        grid.add(new Label("Tipo:"),   0, 0); grid.add(dlgTypeCombo,   1, 0);
+        grid.add(new Label("Status:"), 0, 1); grid.add(dlgStatusCombo, 1, 1);
+        javafx.scene.layout.GridPane.setHgrow(dlgTypeCombo,   javafx.scene.layout.Priority.ALWAYS);
+        javafx.scene.layout.GridPane.setHgrow(dlgStatusCombo, javafx.scene.layout.Priority.ALWAYS);
+
+        Dialog<ButtonType> printDlg = new Dialog<>();
+        printDlg.setTitle("Opções de Impressão");
+        printDlg.setHeaderText("Financeiro e Pendências — Filtros para impressão");
+        printDlg.getDialogPane().setContent(grid);
+        printDlg.getDialogPane().setMinWidth(380);
+        printDlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        ((Button) printDlg.getDialogPane().lookupButton(ButtonType.OK)).setText("🖨 Gerar Relatório");
+        ((Button) printDlg.getDialogPane().lookupButton(ButtonType.CANCEL)).setText("Cancelar");
+
+        var dlgResult = printDlg.showAndWait();
+        if (dlgResult.isEmpty() || dlgResult.get() != ButtonType.OK) return;
+
+        // ── Aplicar filtros selecionados no diálogo ───────────────────────
+        String dlgType   = TYPE_ALL.equals(dlgTypeCombo.getValue())    ? null : dlgTypeCombo.getValue();
+        String dlgStatus = STATUS_ALL.equals(dlgStatusCombo.getValue()) ? null : dlgStatusCombo.getValue();
+
+        List<FinanceEntry> all = repo().findAll();
+        List<FinanceEntry> filtered = all.stream().filter(e -> {
+            if (dlgType != null && !dlgType.equalsIgnoreCase(e.entryType())) return false;
+            if (dlgStatus != null) {
+                return switch (dlgStatus) {
+                    case STATUS_PAGO    ->  e.paid();
+                    case STATUS_VENCIDO ->  e.isOverdue();
+                    case STATUS_PAGAR   -> !e.paid() && !e.isOverdue() && isExpense(e.entryType());
+                    case STATUS_RECEBER -> !e.paid() && "recebimento".equalsIgnoreCase(e.entryType());
+                    default             -> true;
+                };
+            }
+            return true;
+        }).toList();
+
+        String html = com.pessoal.agenda.ui.util.PrintReportService.generateFinanceReport(
+                new java.util.ArrayList<>(filtered));
+        com.pessoal.agenda.ui.view.PrintPreviewWindow.open(html, "Financeiro e Pendências");
     }
 }

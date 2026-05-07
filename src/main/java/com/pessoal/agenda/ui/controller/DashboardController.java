@@ -3,17 +3,18 @@ package com.pessoal.agenda.ui.controller;
 import com.pessoal.agenda.DatabaseService;
 import com.pessoal.agenda.app.AppContextHolder;
 import com.pessoal.agenda.app.SharedContext;
-import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.Tab;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.time.YearMonth;
+import java.util.function.IntConsumer;
 
 /**
  * Controller da aba Dashboard.
@@ -24,9 +25,21 @@ public class DashboardController {
     private final SharedContext    ctx;
     private final DatabaseService  db;
 
+    /**
+     * Callback para navegar até uma aba pelo índice.
+     * Índices: 0=Dashboard, 1=Agenda, 2=Checklist, 3=Financeiro,
+     *          4=Vendas, 5=Estudos, 6=Ideias, 7=Config.
+     */
+    private IntConsumer tabNavigator;
+
     public DashboardController(SharedContext ctx, DatabaseService db) {
         this.ctx = ctx;
         this.db  = db;
+    }
+
+    /** Define o callback de navegação entre abas (chamado pelo AgendaApp). */
+    public void setTabNavigator(IntConsumer navigator) {
+        this.tabNavigator = navigator;
     }
 
     // ── Construção da aba ──────────────────────────────────────────────────
@@ -51,13 +64,52 @@ public class DashboardController {
 
         ListView<String> upcomingList = new ListView<>(ctx.upcomingItems);
         upcomingList.getStyleClass().add("clean-list");
+        Tooltip.install(upcomingList,
+                new Tooltip("Duplo clique para navegar até a aba correspondente ao item selecionado."));
+        upcomingList.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2 && tabNavigator != null) {
+                String item = upcomingList.getSelectionModel().getSelectedItem();
+                if (item == null) return;
+                // Formato: "due_date | Tarefa | title"  ou  "due_date | Pagamento | title"
+                if (item.contains("| Tarefa |") || item.contains("|Tarefa|")) {
+                    tabNavigator.accept(1); // Agenda e Prioridades
+                } else if (item.contains("| Pagamento |") || item.contains("|Pagamento|")) {
+                    tabNavigator.accept(3); // Financeiro e Pendências
+                }
+            }
+        });
+
         ListView<String> alertsList = new ListView<>(ctx.alertItems);
         alertsList.getStyleClass().add("clean-list");
+        Tooltip.install(alertsList,
+                new Tooltip("Duplo clique para navegar até a aba correspondente ao alerta selecionado."));
+        alertsList.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2 && tabNavigator != null) {
+                String item = alertsList.getSelectionModel().getSelectedItem();
+                if (item == null) return;
+                // Formato: "Tarefa atrasada: ..."  ou  "Pagamento pendente: ..."
+                if (item.startsWith("Tarefa atrasada:")) {
+                    tabNavigator.accept(1); // Agenda e Prioridades
+                } else if (item.startsWith("Pagamento pendente:")) {
+                    tabNavigator.accept(3); // Financeiro e Pendências
+                }
+            }
+        });
+
+        Label upcomingHint = new Label("💡 Duplo clique para navegar à aba correspondente");
+        upcomingHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #8aaccc; -fx-font-style: italic;");
+
+        Label alertsHint = new Label("💡 Duplo clique para navegar à aba correspondente");
+        alertsHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #8aaccc; -fx-font-style: italic;");
 
         VBox upcomingBox = UIHelper.createCardSection("Próximos prazos críticos",
-                new VBox(8, new Label("Visão consolidada de tarefas e pagamentos."), upcomingList));
+                new VBox(4,
+                        new VBox(4, new Label("Visão consolidada de tarefas e pagamentos."), upcomingHint),
+                        upcomingList));
         VBox alertsBox = UIHelper.createCardSection("Alertas de atraso",
-                new VBox(8, new Label("Pendências vencidas que exigem ação imediata."), alertsList));
+                new VBox(4,
+                        new VBox(4, new Label("Pendências vencidas que exigem ação imediata."), alertsHint),
+                        alertsList));
 
         HBox bottom = new HBox(12, upcomingBox, alertsBox);
         HBox.setHgrow(upcomingBox, Priority.ALWAYS);

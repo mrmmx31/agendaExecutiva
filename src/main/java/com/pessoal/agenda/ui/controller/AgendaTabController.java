@@ -388,6 +388,12 @@ public class AgendaTabController {
         exportIcsBtn.setOnAction(e -> exportToICalendar());
         actionsSection.getChildren().add(exportIcsBtn);
 
+        // ── Imprimir relatório de tarefas ──────────────────────────────────
+        Button printBtn = new Button("🖨  Imprimir Relatório");
+        printBtn.getStyleClass().add("secondary-button"); printBtn.setMaxWidth(Double.MAX_VALUE);
+        printBtn.setOnAction(e -> printCurrentView());
+        actionsSection.getChildren().add(printBtn);
+
         ListView<String> alertsList = new ListView<>(ctx.alertItems);
         alertsList.getStyleClass().add("clean-list");
         VBox.setVgrow(alertsList, Priority.ALWAYS);
@@ -774,6 +780,133 @@ public class AgendaTabController {
         if (currentMainListView != null) {
             javafx.application.Platform.runLater(() -> currentMainListView.refresh());
         }
+    }
+
+    // ── Impressão de relatório de tarefas ─────────────────────────────────────
+
+    private void printCurrentView() {
+        Locale ptBR = Locale.forLanguageTag("pt-BR");
+
+        // ── Passo 1: Descrição do período (sem chamadas ao BD) ────────────
+        String periodDesc = switch (currentView) {
+            case DIA    -> currentDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", ptBR));
+            case SEMANA -> {
+                LocalDate ws = currentDate.with(DayOfWeek.MONDAY);
+                yield "Semana " + ws.format(DateTimeFormatter.ofPattern("dd/MM", ptBR))
+                    + " – " + ws.plusDays(6).format(DateTimeFormatter.ofPattern("dd/MM/yyyy", ptBR));
+            }
+            case ANO    -> "Ano " + currentDate.getYear();
+            default     -> YearMonth.from(currentDate)
+                               .format(DateTimeFormatter.ofPattern("MMMM 'de' yyyy", ptBR));
+        };
+
+        // ── Passo 2: Diálogo de filtros ───────────────────────────────────
+        Label periodInfo = new Label(periodDesc);
+        periodInfo.setStyle("-fx-font-weight: bold;");
+
+        ComboBox<String> dlgCatCombo = new ComboBox<>();
+        dlgCatCombo.getItems().add("Todas as categorias");
+        dlgCatCombo.getItems().addAll(ctx.taskCatNames);
+        dlgCatCombo.setValue(categoryFilter != null ? categoryFilter : "Todas as categorias");
+        dlgCatCombo.getStyleClass().add("input-control");
+        dlgCatCombo.setMaxWidth(Double.MAX_VALUE);
+
+        ComboBox<String> dlgStatusCombo = new ComboBox<>();
+        dlgStatusCombo.getItems().addAll("Todos os status", "Pendente", "Em Andamento",
+                "Concluída", "Bloqueada", "Cancelada", "Atrasada");
+        dlgStatusCombo.setValue("Todos os status");
+        dlgStatusCombo.getStyleClass().add("input-control");
+        dlgStatusCombo.setMaxWidth(Double.MAX_VALUE);
+
+        ComboBox<String> dlgPrioCombo = new ComboBox<>();
+        dlgPrioCombo.getItems().addAll("Todas as prioridades", "Crítica", "Alta", "Normal", "Baixa");
+        dlgPrioCombo.setValue("Todas as prioridades");
+        dlgPrioCombo.getStyleClass().add("input-control");
+        dlgPrioCombo.setMaxWidth(Double.MAX_VALUE);
+
+        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+        grid.setHgap(10); grid.setVgap(8); grid.setPadding(new Insets(10, 0, 0, 0));
+        grid.add(new Label("Período:"),    0, 0); grid.add(periodInfo,     1, 0);
+        grid.add(new Label("Categoria:"),  0, 1); grid.add(dlgCatCombo,    1, 1);
+        grid.add(new Label("Status:"),     0, 2); grid.add(dlgStatusCombo, 1, 2);
+        grid.add(new Label("Prioridade:"), 0, 3); grid.add(dlgPrioCombo,   1, 3);
+        javafx.scene.layout.GridPane.setHgrow(dlgCatCombo,    Priority.ALWAYS);
+        javafx.scene.layout.GridPane.setHgrow(dlgStatusCombo, Priority.ALWAYS);
+        javafx.scene.layout.GridPane.setHgrow(dlgPrioCombo,   Priority.ALWAYS);
+
+        Dialog<ButtonType> printDlg = new Dialog<>();
+        printDlg.setTitle("Opções de Impressão");
+        printDlg.setHeaderText("Agenda e Prioridades — Filtros para impressão");
+        printDlg.getDialogPane().setContent(grid);
+        printDlg.getDialogPane().setMinWidth(420);
+        printDlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        ((Button) printDlg.getDialogPane().lookupButton(ButtonType.OK)).setText("🖨 Gerar Relatório");
+        ((Button) printDlg.getDialogPane().lookupButton(ButtonType.CANCEL)).setText("Cancelar");
+
+        var dlgResult = printDlg.showAndWait();
+        if (dlgResult.isEmpty() || dlgResult.get() != ButtonType.OK) return;
+
+        // ── Passo 3: Ler valores do diálogo ───────────────────────────────
+        String printCat  = "Todas as categorias".equals(dlgCatCombo.getValue()) ? null : dlgCatCombo.getValue();
+        String statusSel = dlgStatusCombo.getValue();
+        String prioSel   = dlgPrioCombo.getValue();
+
+        // ── Passo 4: Buscar tarefas do período com filtro de categoria ────
+        var repo = AppContextHolder.get().taskRepository();
+        List<Task> tasks;
+        switch (currentView) {
+            case DIA -> {
+                tasks = new java.util.ArrayList<>(repo.findByDay(currentDate, printCat));
+            }
+            case SEMANA -> {
+                LocalDate weekStart = currentDate.with(DayOfWeek.MONDAY);
+                java.util.LinkedHashMap<Long, Task> dedup = new java.util.LinkedHashMap<>();
+                for (int i = 0; i < 7; i++) {
+                    for (Task t : repo.findByDay(weekStart.plusDays(i), printCat)) dedup.putIfAbsent(t.id(), t);
+                }
+                tasks = new java.util.ArrayList<>(dedup.values());
+            }
+            case ANO -> {
+                java.util.LinkedHashMap<Long, Task> dedup = new java.util.LinkedHashMap<>();
+                for (int m = 1; m <= 12; m++) {
+                    for (Task t : repo.findByMonth(YearMonth.of(currentDate.getYear(), m), printCat)) dedup.putIfAbsent(t.id(), t);
+                }
+                tasks = new java.util.ArrayList<>(dedup.values());
+            }
+            default -> {
+                tasks = new java.util.ArrayList<>(repo.findByMonth(YearMonth.from(currentDate), printCat));
+            }
+        }
+
+        // ── Passo 5: Aplicar filtro de status ─────────────────────────────
+        if (!"Todos os status".equals(statusSel)) {
+            tasks = tasks.stream().filter(t -> switch (statusSel) {
+                case "Pendente"     -> !t.done() && t.status() == TaskStatus.PENDENTE && !t.isOverdue();
+                case "Em Andamento" -> t.status() == TaskStatus.EM_ANDAMENTO;
+                case "Concluída"    -> t.done() || t.status() == TaskStatus.CONCLUIDA;
+                case "Bloqueada"    -> t.status() == TaskStatus.BLOQUEADA;
+                case "Cancelada"    -> t.status() == TaskStatus.CANCELADA;
+                case "Atrasada"     -> t.isOverdue() && !t.done();
+                default             -> true;
+            }).toList();
+        }
+
+        // ── Passo 6: Aplicar filtro de prioridade ─────────────────────────
+        if (!"Todas as prioridades".equals(prioSel)) {
+            tasks = tasks.stream().filter(t -> {
+                String pn = t.priority() != null ? t.priority().name() : "NORMAL";
+                return switch (prioSel) {
+                    case "Crítica" -> "CRITICA".equals(pn);
+                    case "Alta"    -> "ALTA".equals(pn);
+                    case "Normal"  -> "NORMAL".equals(pn);
+                    case "Baixa"   -> "BAIXA".equals(pn);
+                    default        -> true;
+                };
+            }).toList();
+        }
+
+        String html = com.pessoal.agenda.ui.util.PrintReportService.generateAgendaReport(tasks, periodDesc);
+        com.pessoal.agenda.ui.view.PrintPreviewWindow.open(html, "Agenda e Prioridades — " + periodDesc);
     }
 
     // ── Exportação para Google Calendar (iCalendar .ics) ──────────────────────

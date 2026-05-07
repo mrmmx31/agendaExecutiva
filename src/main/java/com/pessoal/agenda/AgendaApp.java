@@ -75,6 +75,10 @@ public class AgendaApp extends Application {
         // Montagem do TabPane
         TabPane tabPane = new TabPane();
         tabPane.getStyleClass().add("main-tabs");
+
+        // Navegação a partir do Dashboard: Agenda=1, Financeiro=3
+        dashboardCtrl.setTabNavigator(idx -> tabPane.getSelectionModel().select(idx));
+
         tabPane.getTabs().addAll(
                 dashboardCtrl.buildTab(),
                 agendaCtrl.buildTab(),

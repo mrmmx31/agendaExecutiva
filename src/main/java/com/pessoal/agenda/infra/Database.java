@@ -315,6 +315,8 @@ public class Database {
         applyAlterIfMissing("ALTER TABLE inventory_items ADD COLUMN unit_price REAL NOT NULL DEFAULT 0");
         applyAlterIfMissing("ALTER TABLE inventory_items ADD COLUMN category TEXT NOT NULL DEFAULT 'Geral'");
         applyAlterIfMissing("ALTER TABLE inventory_items ADD COLUMN description TEXT");
+        // Checklist de Ideias/Projetos: coluna Kanban
+        applyAlterIfMissing("ALTER TABLE idea_checklist_items ADD COLUMN kanban_column TEXT NOT NULL DEFAULT 'backlog'");
     }
 
     private void applyAlterIfMissing(String alterSql) {

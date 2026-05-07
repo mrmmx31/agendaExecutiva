@@ -42,7 +42,7 @@ public class IdeaChecklistRepository {
     public IdeaChecklistItem addItem(long ideaId, String text) {
         int pos = db.queryInt(
                 "SELECT COALESCE(MAX(position),0)+1 FROM idea_checklist_items WHERE idea_id=?", ideaId);
-        String sql = "INSERT INTO idea_checklist_items(idea_id,text,done,position) VALUES(?,?,0,?)";
+        String sql = "INSERT INTO idea_checklist_items(idea_id,text,done,position,kanban_column) VALUES(?,?,0,?,'backlog')";
         try (Connection conn = db.connect();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setLong(1, ideaId);
@@ -51,16 +51,30 @@ public class IdeaChecklistRepository {
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 long id = keys.next() ? keys.getLong(1) : -1;
-                return new IdeaChecklistItem(id, ideaId, text, false, pos);
+                return new IdeaChecklistItem(id, ideaId, text, false, pos, "backlog");
             }
         } catch (SQLException e) { throw new RuntimeException("Erro ao adicionar item de checklist", e); }
     }
 
     // ── Atualizações ──────────────────────────────────────────────────────────
 
-    /** Altera o estado concluído/pendente do item. Persiste imediatamente. */
+    /** Altera o estado concluído/pendente do item — sincroniza a coluna Kanban. */
     public void updateDone(long id, boolean done) {
-        db.execute("UPDATE idea_checklist_items SET done=? WHERE id=?", done ? 1 : 0, id);
+        if (done) {
+            db.execute("UPDATE idea_checklist_items SET done=1, kanban_column='concluido' WHERE id=?", id);
+        } else {
+            // Se voltou para pendente, só tira da coluna 'concluido'; mantém em_andamento / em_revisao / backlog.
+            db.execute("UPDATE idea_checklist_items SET done=0,"
+                    + " kanban_column=CASE WHEN kanban_column='concluido' THEN 'backlog' ELSE kanban_column END"
+                    + " WHERE id=?", id);
+        }
+    }
+
+    /** Move um item para outra coluna do Kanban e sincroniza o flag done. */
+    public void updateColumn(long id, String column) {
+        boolean done = "concluido".equals(column);
+        db.execute("UPDATE idea_checklist_items SET kanban_column=?, done=? WHERE id=?",
+                column, done ? 1 : 0, id);
     }
 
     /** Altera o texto de um item existente. */
@@ -93,12 +107,14 @@ public class IdeaChecklistRepository {
     // ── Helper ────────────────────────────────────────────────────────────────
 
     private IdeaChecklistItem mapRow(ResultSet rs) throws SQLException {
+        String col = rs.getString("kanban_column");
         return new IdeaChecklistItem(
                 rs.getLong("id"),
                 rs.getLong("idea_id"),
                 rs.getString("text"),
                 rs.getInt("done") == 1,
-                rs.getInt("position"));
+                rs.getInt("position"),
+                col != null ? col : "backlog");
     }
 }
 

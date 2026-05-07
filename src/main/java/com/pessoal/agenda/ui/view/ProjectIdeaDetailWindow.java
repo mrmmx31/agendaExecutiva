@@ -1,6 +1,8 @@
 package com.pessoal.agenda.ui.view;
 
 import com.pessoal.agenda.app.AppContextHolder;
+import com.pessoal.agenda.model.Category;
+import com.pessoal.agenda.model.CategoryDomain;
 import com.pessoal.agenda.model.IdeaChecklistItem;
 import com.pessoal.agenda.model.ProjectIdea;
 import com.pessoal.agenda.repository.IdeaChecklistRepository;
@@ -177,9 +179,19 @@ public class ProjectIdeaDetailWindow {
         categoryCombo = new ComboBox<>();
         categoryCombo.getStyleClass().add("input-control");
         categoryCombo.setEditable(true);
-        categoryCombo.getItems().addAll("Geral","Pesquisa","Engenharia","Medicina","Software",
-                "Biologia","Física","Química","Matemática","Dados","Inovação");
-        categoryCombo.setValue(nvl(idea.category(), "Geral"));
+        // Popula com as categorias de Ideias cadastradas nas Configurações
+        List<String> ideaCatNames = AppContextHolder.get()
+                .categoryService()
+                .list(CategoryDomain.IDEA)
+                .stream()
+                .map(Category::name)
+                .toList();
+        if (ideaCatNames.isEmpty()) {
+            categoryCombo.getItems().add("Geral");
+        } else {
+            categoryCombo.getItems().addAll(ideaCatNames);
+        }
+        categoryCombo.setValue(nvl(idea.category(), categoryCombo.getItems().get(0)));
 
         feasibilitySpinner = new Spinner<>(1, 5, Math.max(1, Math.min(5, idea.feasibility())));
         feasibilitySpinner.setEditable(true);

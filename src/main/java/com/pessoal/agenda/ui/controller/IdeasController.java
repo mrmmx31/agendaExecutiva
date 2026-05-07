@@ -4,11 +4,13 @@ import com.pessoal.agenda.app.AppContextHolder;
 import com.pessoal.agenda.app.SharedContext;
 import com.pessoal.agenda.model.ProjectIdea;
 import com.pessoal.agenda.repository.ProjectIdeaRepository;
+import com.pessoal.agenda.ui.view.ProjectChecklistWindow;
 import com.pessoal.agenda.ui.view.ProjectIdeaDetailWindow;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 
 import java.time.LocalDate;
@@ -16,6 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 /**
  * Controller da aba Ideias e Projetos Científicos.
@@ -43,6 +46,9 @@ public class IdeasController {
 
     private final SharedContext ctx;
     private ProjectIdeaRepository repo;
+
+    // ── context menu único reutilizável ───────────────────────────────────────
+    private final ContextMenu sharedContextMenu = new ContextMenu();
 
     // ── estado de filtros ─────────────────────────────────────────────────────
     private String filterCategory = null;
@@ -189,9 +195,14 @@ public class IdeasController {
                 catFilter.getValue() != null && !catFilter.getValue().startsWith("Todas") ? catFilter.getValue() : "Geral",
                 () -> { refreshView(); ctx.triggerDashboardRefresh(); }));
 
+        // Botão imprimir relatório
+        Button printBtn = new Button("🖨  Imprimir");
+        printBtn.getStyleClass().add("secondary-button");
+        printBtn.setOnAction(e -> printIdeas());
+
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox bar = new HBox(8, viewToggle, searchField, statusFilter, prioFilter, typeFilter, catFilter, spacer, newBtn);
+        HBox bar = new HBox(8, viewToggle, searchField, statusFilter, prioFilter, typeFilter, catFilter, spacer, printBtn, newBtn);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(10, 14, 10, 14));
         bar.getStyleClass().add("agenda-top-bar");
@@ -242,9 +253,17 @@ public class IdeasController {
         list.getItems().addAll(ideas);
         list.setCellFactory(lv -> new IdeaListCell());
         list.setOnMouseClicked(e -> {
-            if (e.getClickCount() == 2) {
-                ProjectIdea sel = list.getSelectionModel().getSelectedItem();
-                if (sel != null) openDetail(sel);
+            ProjectIdea sel = list.getSelectionModel().getSelectedItem();
+            if (e.getButton() == MouseButton.SECONDARY) {
+                if (sel != null) {
+                    buildContextMenu(sel).show(list, e.getScreenX(), e.getScreenY());
+                } else {
+                    sharedContextMenu.hide();
+                }
+                e.consume();
+            } else if (e.getButton() == MouseButton.PRIMARY) {
+                sharedContextMenu.hide();
+                if (sel != null && e.getClickCount() == 2) openDetail(sel);
             }
         });
         list.setPrefHeight(Integer.MAX_VALUE);
@@ -352,7 +371,17 @@ public class IdeasController {
                 + " -fx-padding: 8 10 8 10;"
                 + " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 4, 0.2, 0, 1);"
                 + " -fx-cursor: hand;");
-        card.setOnMouseClicked(e -> { if (e.getClickCount() == 2) openDetail(idea); });
+        card.setOnMouseClicked(e -> {
+            if (e.getButton() == MouseButton.PRIMARY && e.getClickCount() == 2) {
+                sharedContextMenu.hide();
+                openDetail(idea);
+            } else if (e.getButton() == MouseButton.SECONDARY) {
+                buildContextMenu(idea).show(card, e.getScreenX(), e.getScreenY());
+                e.consume();
+            } else if (e.getButton() == MouseButton.PRIMARY) {
+                sharedContextMenu.hide();
+            }
+        });
 
         // Tooltip com descrição
         if (idea.description() != null && !idea.description().isBlank()) {
@@ -361,6 +390,115 @@ public class IdeasController {
             Tooltip.install(card, tp);
         }
         return card;
+    }
+
+    // ── Impressão de relatório de ideias ──────────────────────────────────────
+
+    private void printIdeas() {
+        // ── Controles pré-populados com o estado atual da tela ────────────
+        ComboBox<String> dlgStatusFilter = new ComboBox<>();
+        dlgStatusFilter.getItems().add("Todos os status");
+        for (String[] s : STATUS_DEF) dlgStatusFilter.getItems().add(s[1]);
+        String statusDisplay = "Todos os status";
+        if (filterStatus != null) {
+            for (String[] s : STATUS_DEF) { if (s[0].equals(filterStatus)) { statusDisplay = s[1]; break; } }
+        }
+        dlgStatusFilter.setValue(statusDisplay);
+        dlgStatusFilter.getStyleClass().add("input-control");
+        dlgStatusFilter.setMaxWidth(Double.MAX_VALUE);
+
+        ComboBox<String> dlgPrioFilter = new ComboBox<>();
+        dlgPrioFilter.getItems().addAll("Todas as prioridades","🔴 Crítica","🟠 Alta","🔵 Normal","🟢 Baixa");
+        dlgPrioFilter.setValue(filterPriority == null ? "Todas as prioridades" : switch (filterPriority) {
+            case "CRITICA" -> "🔴 Crítica";
+            case "ALTA"    -> "🟠 Alta";
+            case "NORMAL"  -> "🔵 Normal";
+            case "BAIXA"   -> "🟢 Baixa";
+            default        -> "Todas as prioridades";
+        });
+        dlgPrioFilter.getStyleClass().add("input-control");
+        dlgPrioFilter.setMaxWidth(Double.MAX_VALUE);
+
+        ComboBox<String> dlgTypeFilter = new ComboBox<>();
+        dlgTypeFilter.getItems().addAll("Todos os tipos","📋 Geral","🔬 Pesquisa","⚙ Engenharia",
+                "💡 Hipótese","🧪 Experimento","💻 Software","📐 Metodologia","🚀 Inovação");
+        dlgTypeFilter.setValue(filterType == null ? "Todos os tipos" : switch (filterType) {
+            case "PESQUISA"    -> "🔬 Pesquisa";
+            case "ENGENHARIA"  -> "⚙ Engenharia";
+            case "HIPOTESE"    -> "💡 Hipótese";
+            case "EXPERIMENTO" -> "🧪 Experimento";
+            case "SOFTWARE"    -> "💻 Software";
+            case "METODOLOGIA" -> "📐 Metodologia";
+            case "INOVACAO"    -> "🚀 Inovação";
+            default            -> "Todos os tipos";
+        });
+        dlgTypeFilter.getStyleClass().add("input-control");
+        dlgTypeFilter.setMaxWidth(Double.MAX_VALUE);
+
+        ComboBox<String> dlgCatFilter = new ComboBox<>();
+        dlgCatFilter.getItems().add("Todas as categorias");
+        dlgCatFilter.getItems().addAll(ctx.ideaCatNames);
+        dlgCatFilter.setValue(filterCategory != null ? filterCategory : "Todas as categorias");
+        dlgCatFilter.getStyleClass().add("input-control");
+        dlgCatFilter.setMaxWidth(Double.MAX_VALUE);
+
+        TextField dlgSearchField = new TextField(filterSearch != null ? filterSearch : "");
+        dlgSearchField.setPromptText("Buscar por título, descrição ou palavras-chave");
+        dlgSearchField.getStyleClass().add("input-control");
+
+        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+        grid.setHgap(10); grid.setVgap(8); grid.setPadding(new Insets(10, 0, 0, 0));
+        grid.add(new Label("Status:"),     0, 0); grid.add(dlgStatusFilter, 1, 0);
+        grid.add(new Label("Prioridade:"), 0, 1); grid.add(dlgPrioFilter,   1, 1);
+        grid.add(new Label("Tipo:"),       0, 2); grid.add(dlgTypeFilter,   1, 2);
+        grid.add(new Label("Categoria:"),  0, 3); grid.add(dlgCatFilter,    1, 3);
+        grid.add(new Label("Busca:"),      0, 4); grid.add(dlgSearchField,  1, 4);
+        javafx.scene.layout.GridPane.setHgrow(dlgStatusFilter, Priority.ALWAYS);
+        javafx.scene.layout.GridPane.setHgrow(dlgPrioFilter,   Priority.ALWAYS);
+        javafx.scene.layout.GridPane.setHgrow(dlgTypeFilter,   Priority.ALWAYS);
+        javafx.scene.layout.GridPane.setHgrow(dlgCatFilter,    Priority.ALWAYS);
+        javafx.scene.layout.GridPane.setHgrow(dlgSearchField,  Priority.ALWAYS);
+
+        Dialog<ButtonType> printDlg = new Dialog<>();
+        printDlg.setTitle("Opções de Impressão");
+        printDlg.setHeaderText("Ideias e Projetos — Filtros para impressão");
+        printDlg.getDialogPane().setContent(grid);
+        printDlg.getDialogPane().setMinWidth(480);
+        printDlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        ((Button) printDlg.getDialogPane().lookupButton(ButtonType.OK)).setText("🖨 Gerar Relatório");
+        ((Button) printDlg.getDialogPane().lookupButton(ButtonType.CANCEL)).setText("Cancelar");
+
+        var dlgResult = printDlg.showAndWait();
+        if (dlgResult.isEmpty() || dlgResult.get() != ButtonType.OK) return;
+
+        // ── Mapear valores do diálogo para chaves internas ────────────────
+        String cat    = "Todas as categorias".equals(dlgCatFilter.getValue()) ? null : dlgCatFilter.getValue();
+        String status = null;
+        if (!"Todos os status".equals(dlgStatusFilter.getValue())) {
+            for (String[] s : STATUS_DEF) { if (s[1].equals(dlgStatusFilter.getValue())) { status = s[0]; break; } }
+        }
+        String priority = switch (dlgPrioFilter.getValue()) {
+            case "🔴 Crítica" -> "CRITICA";
+            case "🟠 Alta"    -> "ALTA";
+            case "🔵 Normal"  -> "NORMAL";
+            case "🟢 Baixa"   -> "BAIXA";
+            default           -> null;
+        };
+        String type = switch (dlgTypeFilter.getValue()) {
+            case "🔬 Pesquisa"     -> "PESQUISA";
+            case "⚙ Engenharia"   -> "ENGENHARIA";
+            case "💡 Hipótese"    -> "HIPOTESE";
+            case "🧪 Experimento" -> "EXPERIMENTO";
+            case "💻 Software"    -> "SOFTWARE";
+            case "📐 Metodologia" -> "METODOLOGIA";
+            case "🚀 Inovação"    -> "INOVACAO";
+            default               -> null;
+        };
+        String search = dlgSearchField.getText().isBlank() ? null : dlgSearchField.getText().trim();
+
+        List<ProjectIdea> ideas = repo.findWithFilters(cat, status, priority, type, search);
+        String html = com.pessoal.agenda.ui.util.PrintReportService.generateIdeasReport(ideas);
+        com.pessoal.agenda.ui.view.PrintPreviewWindow.open(html, "Ideias e Projetos");
     }
 
     // ── Refresh da view ───────────────────────────────────────────────────────
@@ -388,6 +526,100 @@ public class IdeasController {
         new ProjectIdeaDetailWindow(idea, repo, () -> {
             refreshView(); ctx.triggerDashboardRefresh();
         }).show();
+    }
+
+    private void duplicateIdea(ProjectIdea idea) {
+        ProjectIdea copy = new ProjectIdea(
+                0,
+                idea.title() + " (Cópia)",
+                idea.description(),
+                "nova",
+                idea.category(),
+                idea.priority(),
+                idea.ideaType(),
+                idea.impactLevel(),
+                idea.feasibility(),
+                idea.estimatedHours(),
+                idea.startDate(),
+                idea.targetDate(),
+                idea.methodology(),
+                idea.nextActions(),
+                idea.keywords(),
+                idea.referencesText()
+        );
+        long newId = repo.saveFullIdea(copy);
+        Optional<ProjectIdea> saved = repo.findById(newId);
+        saved.ifPresent(s -> {
+            refreshView();
+            ctx.triggerDashboardRefresh();
+            openDetail(s);
+        });
+    }
+
+    private void deleteIdeaWithConfirm(ProjectIdea idea) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Confirmar Exclusão");
+        alert.setHeaderText("Excluir ideia/projeto?");
+        alert.setContentText("Deseja realmente excluir \"" + idea.title() + "\"?\nEsta ação não pode ser desfeita.");
+        alert.showAndWait().ifPresent(btn -> {
+            if (btn == ButtonType.OK) {
+                repo.deleteById(idea.id());
+                refreshView();
+                ctx.triggerDashboardRefresh();
+            }
+        });
+    }
+
+    private void changeStatus(ProjectIdea idea, String newStatus) {
+        ProjectIdea updated = new ProjectIdea(
+                idea.id(), idea.title(), idea.description(),
+                newStatus, idea.category(), idea.priority(),
+                idea.ideaType(), idea.impactLevel(), idea.feasibility(),
+                idea.estimatedHours(), idea.startDate(), idea.targetDate(),
+                idea.methodology(), idea.nextActions(), idea.keywords(),
+                idea.referencesText()
+        );
+        repo.update(updated);
+        refreshView();
+        ctx.triggerDashboardRefresh();
+    }
+
+    /** Popula e retorna o ContextMenu único reutilizável para a ideia dada. */
+    private ContextMenu buildContextMenu(ProjectIdea idea) {
+        sharedContextMenu.hide();
+        sharedContextMenu.getItems().clear();
+        sharedContextMenu.setAutoHide(true);
+
+        MenuItem editItem = new MenuItem("✏  Editar / Abrir Detalhes");
+        editItem.setOnAction(e -> openDetail(idea));
+
+        MenuItem checklistItem = new MenuItem("☑  Checklist do Projeto");
+        checklistItem.setOnAction(e -> ProjectChecklistWindow.open(
+                idea, () -> { refreshView(); ctx.triggerDashboardRefresh(); }));
+
+        MenuItem dupItem = new MenuItem("⧉  Duplicar");
+        dupItem.setOnAction(e -> duplicateIdea(idea));
+
+        // Submenu de status
+        Menu statusMenu = new Menu("🔄  Alterar Status");
+        for (String[] sd : STATUS_DEF) {
+            String key = sd[0]; String label = sd[1];
+            MenuItem si = new MenuItem(label);
+            if (normalizeStatus(idea.status()).equals(key)) {
+                si.setStyle("-fx-font-weight: bold; -fx-text-fill: #1565c0;");
+            }
+            si.setOnAction(e -> changeStatus(idea, key));
+            statusMenu.getItems().add(si);
+        }
+
+        SeparatorMenuItem sep = new SeparatorMenuItem();
+
+        MenuItem deleteItem = new MenuItem("🗑  Excluir");
+        deleteItem.setStyle("-fx-text-fill: #c62828;");
+        deleteItem.setOnAction(e -> deleteIdeaWithConfirm(idea));
+
+        sharedContextMenu.getItems().addAll(editItem, checklistItem, dupItem, statusMenu, sep, deleteItem);
+        return sharedContextMenu;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

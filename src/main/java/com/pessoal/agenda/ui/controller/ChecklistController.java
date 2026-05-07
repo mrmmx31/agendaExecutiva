@@ -222,9 +222,13 @@ public class ChecklistController {
             refresh();
         });
 
+        Button printBtn = new Button("🖨  Imprimir Checklists");
+        printBtn.getStyleClass().add("secondary-button");
+        printBtn.setOnAction(e -> printChecklists());
+
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
         HBox bar = new HBox(8, newBtn, spacer,
-                catFilterCombo, typeFilterCombo, statusFilterCombo, clearBtn);
+                catFilterCombo, typeFilterCombo, statusFilterCombo, clearBtn, printBtn);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(10, 14, 10, 14));
         bar.getStyleClass().add("agenda-top-bar");
@@ -655,6 +659,94 @@ public class ChecklistController {
 
     private void openExecutionWindow(Protocol p) {
         new ProtocolExecutionWindow(p, AppContextHolder.get().protocolRepository(), this::refresh).show();
+    }
+
+    // ── Impressão de checklists ────────────────────────────────────────────────
+
+    private void printChecklists() {
+        // ── Diálogo de filtros pré-populado com o estado atual da tela ────
+        ComboBox<String> dlgCatCombo = new ComboBox<>();
+        dlgCatCombo.getItems().add("Todas as categorias");
+        dlgCatCombo.getItems().addAll(ctx.checklistCatNames);
+        dlgCatCombo.setValue(categoryFilter != null ? categoryFilter : "Todas as categorias");
+        dlgCatCombo.getStyleClass().add("input-control");
+        dlgCatCombo.setMaxWidth(Double.MAX_VALUE);
+
+        ComboBox<String> dlgTypeCombo = new ComboBox<>();
+        dlgTypeCombo.getItems().add("Todos os tipos");
+        for (ProtocolExecutionType t : ProtocolExecutionType.values())
+            dlgTypeCombo.getItems().add(t.icon() + " " + t.label());
+        String typeDisplay = "Todos os tipos";
+        if (typeFilter != null) {
+            try {
+                ProtocolExecutionType t = ProtocolExecutionType.valueOf(typeFilter);
+                typeDisplay = t.icon() + " " + t.label();
+            } catch (Exception ignored) {}
+        }
+        dlgTypeCombo.setValue(typeDisplay);
+        dlgTypeCombo.getStyleClass().add("input-control");
+        dlgTypeCombo.setMaxWidth(Double.MAX_VALUE);
+
+        ComboBox<String> dlgStatusCombo = new ComboBox<>();
+        dlgStatusCombo.getItems().addAll("Todos os status", "● Com execução ativa",
+                "○ Sem execução ativa", "⚠ Validade vencida", "⏰ Vence em 7 dias");
+        dlgStatusCombo.setValue(statusFilter == null ? "Todos os status" : switch (statusFilter) {
+            case "COM_ATIVA"        -> "● Com execução ativa";
+            case "SEM_ATIVA"        -> "○ Sem execução ativa";
+            case "VALIDADE_VENCIDA" -> "⚠ Validade vencida";
+            case "VENCE_7DIAS"      -> "⏰ Vence em 7 dias";
+            default                 -> "Todos os status";
+        });
+        dlgStatusCombo.getStyleClass().add("input-control");
+        dlgStatusCombo.setMaxWidth(Double.MAX_VALUE);
+
+        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+        grid.setHgap(10); grid.setVgap(8); grid.setPadding(new javafx.geometry.Insets(10, 0, 0, 0));
+        grid.add(new javafx.scene.control.Label("Categoria:"), 0, 0); grid.add(dlgCatCombo,    1, 0);
+        grid.add(new javafx.scene.control.Label("Tipo:"),      0, 1); grid.add(dlgTypeCombo,   1, 1);
+        grid.add(new javafx.scene.control.Label("Status:"),    0, 2); grid.add(dlgStatusCombo, 1, 2);
+        javafx.scene.layout.GridPane.setHgrow(dlgCatCombo,    javafx.scene.layout.Priority.ALWAYS);
+        javafx.scene.layout.GridPane.setHgrow(dlgTypeCombo,   javafx.scene.layout.Priority.ALWAYS);
+        javafx.scene.layout.GridPane.setHgrow(dlgStatusCombo, javafx.scene.layout.Priority.ALWAYS);
+
+        Dialog<ButtonType> printDlg = new Dialog<>();
+        printDlg.setTitle("Opções de Impressão");
+        printDlg.setHeaderText("Protocolos Operacionais — Filtros para impressão");
+        printDlg.getDialogPane().setContent(grid);
+        printDlg.getDialogPane().setMinWidth(420);
+        printDlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        ((Button) printDlg.getDialogPane().lookupButton(ButtonType.OK)).setText("🖨 Gerar Relatório");
+        ((Button) printDlg.getDialogPane().lookupButton(ButtonType.CANCEL)).setText("Cancelar");
+
+        var dlgResult = printDlg.showAndWait();
+        if (dlgResult.isEmpty() || dlgResult.get() != ButtonType.OK) return;
+
+        // ── Mapear valores para chaves internas ───────────────────────────
+        String cat  = "Todas as categorias".equals(dlgCatCombo.getValue()) ? null : dlgCatCombo.getValue();
+        String type = resolveProtocolTypeFilter(dlgTypeCombo.getValue());
+        String stat = "Todos os status".equals(dlgStatusCombo.getValue()) ? null : switch (dlgStatusCombo.getValue()) {
+            case "● Com execução ativa"  -> "COM_ATIVA";
+            case "○ Sem execução ativa"  -> "SEM_ATIVA";
+            case "⚠ Validade vencida"    -> "VALIDADE_VENCIDA";
+            case "⏰ Vence em 7 dias"    -> "VENCE_7DIAS";
+            default                      -> null;
+        };
+
+        com.pessoal.agenda.repository.ProtocolRepository repo = AppContextHolder.get().protocolRepository();
+        List<Protocol> protocols = repo.findAllProtocols(cat, type, stat);
+        java.util.Map<Long, List<com.pessoal.agenda.model.ProtocolStep>> stepsMap = new java.util.HashMap<>();
+        for (Protocol p : protocols) stepsMap.put(p.id(), repo.findSteps(p.id()));
+        String html = com.pessoal.agenda.ui.util.PrintReportService.generateChecklistReport(protocols, stepsMap);
+        com.pessoal.agenda.ui.view.PrintPreviewWindow.open(html, "Checklist de Protocolos Operacionais");
+    }
+
+    /** Resolve o display "ícone label" de um tipo de protocolo para o nome do enum. */
+    private static String resolveProtocolTypeFilter(String display) {
+        if ("Todos os tipos".equals(display) || display == null) return null;
+        for (ProtocolExecutionType t : ProtocolExecutionType.values()) {
+            if ((t.icon() + " " + t.label()).equals(display)) return t.name();
+        }
+        return null;
     }
 
     private static int safeParseInt(String s) {

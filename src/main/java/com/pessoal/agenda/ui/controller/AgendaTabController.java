@@ -521,7 +521,11 @@ public class AgendaTabController {
         list.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         currentMainListView = list;
         list.setOnMouseClicked(e -> {
-            if (e.getClickCount() == 2) {
+            if (e.getButton() == javafx.scene.input.MouseButton.SECONDARY) {
+                DatabaseService.RowItem sel = list.getSelectionModel().getSelectedItem();
+                if (sel != null) showTaskContextMenu(sel, list, e.getScreenX(), e.getScreenY());
+                e.consume();
+            } else if (e.getClickCount() == 2 && e.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
                 DatabaseService.RowItem sel = list.getSelectionModel().getSelectedItem();
                 if (sel != null) {
                     AppContextHolder.get().taskService().findById(sel.id()).ifPresent(t ->
@@ -549,7 +553,11 @@ public class AgendaTabController {
             ListView<DatabaseService.RowItem> dayList = new ListView<>(weekDayItems.get(i));
             dayList.getStyleClass().add("clean-list"); VBox.setVgrow(dayList, Priority.ALWAYS);
             dayList.setOnMouseClicked(ev -> {
-                if (ev.getClickCount() == 2) {
+                if (ev.getButton() == javafx.scene.input.MouseButton.SECONDARY) {
+                    DatabaseService.RowItem sel = dayList.getSelectionModel().getSelectedItem();
+                    if (sel != null) showTaskContextMenu(sel, dayList, ev.getScreenX(), ev.getScreenY());
+                    ev.consume();
+                } else if (ev.getClickCount() == 2 && ev.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
                     DatabaseService.RowItem sel = dayList.getSelectionModel().getSelectedItem();
                     if (sel != null) {
                         AppContextHolder.get().taskService().findById(sel.id()).ifPresent(t ->
@@ -659,7 +667,11 @@ public class AgendaTabController {
             }
         });
         list.setOnMouseClicked(e -> {
-            if (e.getClickCount() == 2) {
+            if (e.getButton() == javafx.scene.input.MouseButton.SECONDARY) {
+                DatabaseService.RowItem sel = list.getSelectionModel().getSelectedItem();
+                if (sel != null) showTaskContextMenu(sel, list, e.getScreenX(), e.getScreenY());
+                e.consume();
+            } else if (e.getClickCount() == 2 && e.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
                 DatabaseService.RowItem sel = list.getSelectionModel().getSelectedItem();
                 if (sel != null) {
                     AppContextHolder.get().taskService().findById(sel.id()).ifPresent(task -> {
@@ -780,6 +792,65 @@ public class AgendaTabController {
         if (currentMainListView != null) {
             javafx.application.Platform.runLater(() -> currentMainListView.refresh());
         }
+    }
+
+    // ── Menu popup de contexto para tarefas ──────────────────────────────────
+
+    /** Menu popup (botão direito) para qualquer ListView de tarefas. */
+    private ContextMenu taskContextMenu;
+
+    private void showTaskContextMenu(DatabaseService.RowItem item,
+                                     javafx.scene.control.ListView<?> owner,
+                                     double screenX, double screenY) {
+        if (taskContextMenu != null) taskContextMenu.hide();
+        taskContextMenu = new ContextMenu();
+        taskContextMenu.setAutoHide(true);
+
+        MenuItem editItem = new MenuItem("✎  Editar tarefa");
+        editItem.setOnAction(e -> AppContextHolder.get().taskService().findById(item.id())
+                .ifPresentOrElse(this::loadTaskIntoForm, () -> ctx.setStatus("Tarefa não encontrada.")));
+
+        MenuItem doneItem = new MenuItem("✔  Marcar como concluída");
+        doneItem.setOnAction(e -> {
+            AppContextHolder.get().taskService().markDone(item.id());
+            refresh(); ctx.triggerDashboardRefresh();
+            ctx.setStatus("Tarefa concluída.");
+        });
+
+        MenuItem timerItem = new MenuItem("▶  Abrir timer/sessão");
+        timerItem.setOnAction(e -> AppContextHolder.get().taskService().findById(item.id()).ifPresent(
+                t -> new com.pessoal.agenda.ui.view.TaskTimerWindow(
+                        t, AppContextHolder.get().taskSessionRepository(), this::refreshMainListView).show()));
+
+        MenuItem checklistItem = new MenuItem("☑  Abrir checklist");
+        checklistItem.setOnAction(e -> AppContextHolder.get().taskService().findById(item.id()).ifPresent(
+                t -> com.pessoal.agenda.ui.view.TaskChecklistWindow.open(t, this::refreshMainListView)));
+
+        MenuItem historyItem = new MenuItem("📋  Histórico de sessões");
+        historyItem.setOnAction(e -> new com.pessoal.agenda.ui.view.SessionHistoryWindow(
+                AppContextHolder.get().taskSessionRepository(), item.id()).show());
+
+        SeparatorMenuItem sep = new SeparatorMenuItem();
+
+        MenuItem deleteItem = new MenuItem("✕  Remover tarefa");
+        deleteItem.setStyle("-fx-text-fill: #c62828;");
+        deleteItem.setOnAction(e -> {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle("Confirmar remoção");
+            confirm.setHeaderText("Remover tarefa selecionada?");
+            confirm.setContentText("Esta ação é permanente e não pode ser desfeita.");
+            confirm.showAndWait().ifPresent(btn -> {
+                if (btn == ButtonType.OK) {
+                    AppContextHolder.get().taskService().deleteTask(item.id());
+                    if (editingId != null && editingId == item.id()) resetForm();
+                    refresh(); ctx.triggerDashboardRefresh();
+                    ctx.setStatus("Tarefa removida.");
+                }
+            });
+        });
+
+        taskContextMenu.getItems().addAll(editItem, doneItem, timerItem, checklistItem, historyItem, sep, deleteItem);
+        taskContextMenu.show(owner, screenX, screenY);
     }
 
     // ── Impressão de relatório de tarefas ─────────────────────────────────────

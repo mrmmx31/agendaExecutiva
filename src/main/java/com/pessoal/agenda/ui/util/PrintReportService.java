@@ -421,7 +421,128 @@ public final class PrintReportService {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 5. Relatório de Checklist (Protocolos Operacionais)
+    // 5. Relatório de Checklist de Tarefa da Agenda
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Gera relatório de checklist de uma Tarefa da Agenda para impressão.
+     *
+     * @param task  tarefa de referência
+     * @param items itens do checklist
+     */
+    public static String generateTaskChecklistReport(
+            com.pessoal.agenda.model.Task task,
+            List<com.pessoal.agenda.model.TaskChecklistItem> items) {
+
+        int    total   = items.size();
+        long   done    = items.stream().filter(com.pessoal.agenda.model.TaskChecklistItem::done).count();
+        long   pending = total - done;
+        double pct     = total == 0 ? 0.0 : (double) done / total;
+        int    pctInt  = (int) Math.round(pct * 100);
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("<div class='report-header'>");
+        sb.append("<h1>&#9745; Checklist da Tarefa</h1>");
+        sb.append("<div class='meta'>");
+        sb.append("<strong>").append(esc(task.title())).append("</strong>");
+        if (task.category() != null)
+            sb.append(" &nbsp;&mdash;&nbsp; Categoria: ").append(esc(task.category()));
+        if (task.priority() != null)
+            sb.append(" &nbsp;&mdash;&nbsp; Prioridade: ").append(esc(task.priority().label()));
+        if (task.status() != null)
+            sb.append(" &nbsp;&mdash;&nbsp; Status: <strong>").append(esc(task.status().label())).append("</strong>");
+        if (task.dueDate() != null)
+            sb.append(" &nbsp;&mdash;&nbsp; Data: ").append(task.dueDate().format(DATE_FMT));
+        sb.append(" &nbsp;&mdash;&nbsp; Gerado em: ").append(LocalDate.now().format(DATE_FMT));
+        sb.append("</div></div>");
+
+        sb.append("<div class='kpi-row'>");
+        sb.append(kpiBox("TOTAL DE ITENS", String.valueOf(total)));
+        sb.append(kpiBox("CONCLU&Iacute;DOS", String.valueOf(done)));
+        sb.append(kpiBox("PENDENTES", String.valueOf(pending)));
+        sb.append(kpiBox("PROGRESSO", pctInt + "%"));
+        sb.append("</div>");
+
+        String barColor = pct == 1.0 ? "#1b5e20" : pct >= 0.7 ? "#2e7d32" : pct >= 0.4 ? "#f57f17" : "#c62828";
+        sb.append("<div style='margin-bottom:14px;'>");
+        sb.append("<div style='background:#dce8f5; border-radius:6px; height:13px; width:100%; overflow:hidden;'>");
+        sb.append("<div style='background:").append(barColor).append("; width:").append(pctInt)
+          .append("%; height:100%; border-radius:6px; -webkit-print-color-adjust:exact; print-color-adjust:exact;'></div>");
+        sb.append("</div>");
+        sb.append("<div style='font-size:9pt; color:#555; margin-top:3px;'>")
+          .append(done).append(" de ").append(total).append(" itens conclu&iacute;dos");
+        if (total > 0) sb.append("  (").append(pctInt).append("%)");
+        sb.append("</div></div>");
+
+        if (task.notes() != null && !task.notes().isBlank()) {
+            sb.append("<div style='margin-bottom:14px; font-size:10pt; color:#444;"
+                    + " padding:8px 12px; border-left:3px solid #1565c0; background:#f4f8ff;"
+                    + " -webkit-print-color-adjust:exact; print-color-adjust:exact;'>");
+            sb.append("<strong>Notas:</strong> ").append(esc(trunc(task.notes(), 400)));
+            sb.append("</div>");
+        }
+
+        if (items.isEmpty()) {
+            sb.append("<p style='font-style:italic; color:#888;'>Nenhum item no checklist desta tarefa.</p>");
+            return wrapHtml("Checklist — " + task.title(), sb.toString());
+        }
+
+        record KanbanCol(String key, String label, String color) {}
+        List<KanbanCol> cols = List.of(
+                new KanbanCol("backlog",      "Backlog",           "#546e7a"),
+                new KanbanCol("em_andamento", "Em Andamento",      "#1565c0"),
+                new KanbanCol("em_revisao",   "Em Revis&atilde;o", "#7b1fa2"),
+                new KanbanCol("concluido",    "Conclu&iacute;do",  "#2e7d32"));
+
+        for (KanbanCol col : cols) {
+            List<com.pessoal.agenda.model.TaskChecklistItem> colItems = items.stream()
+                    .filter(it -> col.key().equals(it.kanbanColumn() != null ? it.kanbanColumn() : "backlog"))
+                    .toList();
+            if (colItems.isEmpty()) continue;
+
+            sb.append("<div class='checklist-section'>");
+            sb.append("<div style='background-color:").append(col.color())
+              .append("; padding:7px 12px; margin:-12px -12px 10px -12px;"
+                    + " -webkit-print-color-adjust:exact; print-color-adjust:exact;'>");
+            sb.append("<strong style='font-size:12pt; color:white;'>").append(col.label()).append("</strong>");
+            sb.append("<span style='color:rgba(255,255,255,0.8); font-size:10pt;'> &nbsp;(")
+              .append(colItems.size()).append(" item(ns))</span>");
+            sb.append("</div>");
+            sb.append("<div class='steps-container'>");
+            int num = 1;
+            for (com.pessoal.agenda.model.TaskChecklistItem item : colItems) {
+                sb.append("<div class='step-row'>");
+                sb.append("<span class='step-order'>").append(num++).append(".</span>");
+                sb.append("<span class='step-checkbox'>")
+                  .append(item.done() ? "&#9745;" : "&#9744;").append("</span>");
+                sb.append("<span class='step-text'");
+                if (item.done())
+                    sb.append(" style='text-decoration:line-through; color:#9eafc0;'");
+                sb.append(">").append(esc(item.text())).append("</span>");
+                sb.append("</div>");
+            }
+            sb.append("</div></div>");
+        }
+
+        sb.append("<div style='margin-top:20px; padding:10px 12px; border:1.5px solid #333; font-size:9pt; color:#555;'>");
+        sb.append("<strong>Execu&ccedil;&atilde;o</strong><br/>");
+        sb.append("<div style='margin-top:8px;'>");
+        sb.append("Data: ___/___/__________ &nbsp;&nbsp;&nbsp; ");
+        sb.append("Respons&aacute;vel: __________________________ &nbsp;&nbsp;&nbsp; ");
+        sb.append("Assinatura: __________________________");
+        sb.append("</div>");
+        sb.append("<div style='margin-top:12px;'><strong>Observa&ccedil;&otilde;es:</strong><br/>");
+        sb.append("<div style='border-bottom:1px solid #bbb; height:18px; margin-top:6px;'></div>");
+        sb.append("<div style='border-bottom:1px solid #bbb; height:18px; margin-top:6px;'></div>");
+        sb.append("<div style='border-bottom:1px solid #bbb; height:18px; margin-top:6px;'></div>");
+        sb.append("</div></div>");
+
+        return wrapHtml("Checklist — " + task.title(), sb.toString());
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 6. Relatório de Checklist (Protocolos Operacionais)
     //    Ideal para impressão e marcação com lápis em campo/faculdade
     // ═══════════════════════════════════════════════════════════════════════════
 

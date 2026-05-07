@@ -271,6 +271,18 @@ public class Database {
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )""");
 
+            // ── Checklist de Tarefas da Agenda ─────────────────────────────
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS task_checklist_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    task_id INTEGER NOT NULL,
+                    text TEXT NOT NULL DEFAULT '',
+                    done INTEGER NOT NULL DEFAULT 0,
+                    position INTEGER NOT NULL DEFAULT 0,
+                    kanban_column TEXT NOT NULL DEFAULT 'backlog',
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )""");
+
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao inicializar schema do banco", e);
         }
@@ -317,6 +329,8 @@ public class Database {
         applyAlterIfMissing("ALTER TABLE inventory_items ADD COLUMN description TEXT");
         // Checklist de Ideias/Projetos: coluna Kanban
         applyAlterIfMissing("ALTER TABLE idea_checklist_items ADD COLUMN kanban_column TEXT NOT NULL DEFAULT 'backlog'");
+        // Checklist de Tarefas da Agenda: coluna kanban (já na tabela, mas garante compatibilidade)
+        applyAlterIfMissing("ALTER TABLE task_checklist_items ADD COLUMN kanban_column TEXT NOT NULL DEFAULT 'backlog'");
     }
 
     private void applyAlterIfMissing(String alterSql) {

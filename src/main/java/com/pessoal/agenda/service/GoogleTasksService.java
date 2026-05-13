@@ -1,5 +1,9 @@
 package com.pessoal.agenda.service;
 
+import com.pessoal.agenda.repository.GoogleTasksMappingRepository;
+import com.pessoal.agenda.repository.GoogleTasksMappingRepository.TaskMapping;
+import com.pessoal.agenda.repository.TaskRepository;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -9,6 +13,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Integração com o Google Tasks REST API v1.
@@ -39,10 +46,27 @@ public class GoogleTasksService {
         /** Data de vencimento extraída ou null */
         public LocalDate dueDate() {
             if (due == null || due.isBlank()) return null;
-            try { return LocalDate.parse(due.substring(0, 10)); } // "2024-05-10T00:00:00.000Z"
+            try { return LocalDate.parse(due.substring(0, 10)); }
             catch (Exception e) { return null; }
         }
         @Override public String toString() { return title != null ? title : "(sem título)"; }
+    }
+
+    /**
+     * Resultado de um ciclo de sincronização bidirecional.
+     * @param createdLocal    tarefas criadas localmente (vieram do Google)
+     * @param createdGoogle   tarefas criadas no Google (vieram do local)
+     * @param completedLocal  tarefas marcadas como concluídas localmente
+     * @param completedGoogle tarefas marcadas como concluídas no Google
+     * @param errors          número de erros não fatais
+     * @param log             mensagens de log legíveis
+     */
+    public record SyncResult(int createdLocal, int createdGoogle,
+                              int completedLocal, int completedGoogle,
+                              int errors, List<String> log) {
+        public boolean hasChanges() {
+            return createdLocal + createdGoogle + completedLocal + completedGoogle > 0;
+        }
     }
 
     // ── Task Lists ───────────────────────────────────────────────────────────
@@ -142,6 +166,116 @@ public class GoogleTasksService {
         patch("/lists/" + encode(taskListId) + "/tasks/" + encode(taskId), body);
     }
 
+    // ── Sync Bidirecional ────────────────────────────────────────────────────
+
+    /**
+     * Executa sincronização bidirecional completa entre uma lista do Google Tasks
+     * e as tarefas locais.
+     *
+     * Regras:
+     *  - Google task sem mapeamento → cria localmente + salva mapeamento
+     *  - Local task sem mapeamento  → cria no Google + salva mapeamento
+     *  - Concluída no Google e não localmente → conclui localmente
+     *  - Concluída localmente e não no Google → conclui no Google
+     *  - Título/notas locais → atualiza no Google (local é fonte de verdade para texto)
+     */
+    public SyncResult syncBidirectional(String googleListId,
+                                        TaskRepository taskRepo,
+                                        GoogleTasksMappingRepository mappingRepo)
+            throws IOException, InterruptedException {
+
+        List<String> log = new ArrayList<>();
+        int createdLocal = 0, createdGoogle = 0, completedLocal = 0, completedGoogle = 0, errors = 0;
+
+        // Busca todos os dados
+        List<GTask> googleTasks = listTasks(googleListId, true);
+        List<com.pessoal.agenda.model.Task> localTasks = taskRepo.findOpenTasks();
+
+        // Indexa as tarefas do Google por ID
+        Map<String, GTask> googleById = googleTasks.stream()
+                .collect(Collectors.toMap(GTask::id, t -> t));
+
+        // ── PASSO 1: para cada tarefa do Google ──────────────────────────────
+        for (GTask gt : googleTasks) {
+            try {
+                Optional<TaskMapping> mapping = mappingRepo.findByGoogleId(googleListId, gt.id());
+
+                if (mapping.isEmpty()) {
+                    // Nova no Google → cria localmente
+                    LocalDate due = gt.dueDate() != null ? gt.dueDate() : LocalDate.now();
+                    taskRepo.save(gt.title(),
+                            gt.notes() != null && !gt.notes().isBlank() ? gt.notes() : null,
+                            due, "Google Tasks");
+                    // Recupera o ID recém-inserido
+                    List<com.pessoal.agenda.model.Task> all = taskRepo.findOpenTasks();
+                    com.pessoal.agenda.model.Task created = all.stream()
+                            .filter(t -> t.title().equals(gt.title()))
+                            .reduce((a, b) -> b) // pega o mais recente
+                            .orElse(null);
+                    if (created != null) {
+                        mappingRepo.upsert(created.id(), googleListId, gt.id());
+                        if (gt.completed()) {
+                            taskRepo.markDone(created.id());
+                            completedLocal++;
+                        }
+                    }
+                    createdLocal++;
+                    log.add("⬇ Criado local: " + gt.title());
+                } else {
+                    // Mapeamento existe → sincroniza status de conclusão
+                    long localId = mapping.get().localTaskId();
+                    com.pessoal.agenda.model.Task local = taskRepo.findById(localId).orElse(null);
+
+                    if (local != null) {
+                        // Google concluiu → conclui localmente
+                        if (gt.completed() && !local.done()) {
+                            taskRepo.markDone(localId);
+                            completedLocal++;
+                            log.add("✓ Concluído local (Google): " + gt.title());
+                        }
+                        // Local concluiu → conclui no Google
+                        if (local.done() && !gt.completed()) {
+                            completeTask(googleListId, gt.id());
+                            completedGoogle++;
+                            log.add("✓ Concluído Google (local): " + local.title());
+                        }
+                        // Atualiza texto no Google com dados locais (local é fonte de verdade)
+                        if (!local.done() && !gt.completed()) {
+                            updateTask(googleListId, gt.id(),
+                                    local.title(), local.notes(), local.dueDate());
+                        }
+                        mappingRepo.upsert(localId, googleListId, gt.id());
+                    }
+                }
+            } catch (Exception e) {
+                errors++;
+                log.add("✗ Erro em '" + gt.title() + "': " + e.getMessage());
+            }
+        }
+
+        // ── PASSO 2: para cada tarefa local sem mapeamento → cria no Google ──
+        for (com.pessoal.agenda.model.Task local : localTasks) {
+            if (local.done()) continue; // não exporta tarefas já concluídas
+            try {
+                if (mappingRepo.findByLocalId(local.id()).isEmpty()) {
+                    String gId = createTask(googleListId, local.title(),
+                            local.notes(), local.dueDate());
+                    if (gId != null) {
+                        mappingRepo.upsert(local.id(), googleListId, gId);
+                        createdGoogle++;
+                        log.add("⬆ Criado Google: " + local.title());
+                    }
+                }
+            } catch (Exception e) {
+                errors++;
+                log.add("✗ Erro ao exportar '" + local.title() + "': " + e.getMessage());
+            }
+        }
+
+        return new SyncResult(createdLocal, createdGoogle, completedLocal, completedGoogle,
+                errors, log);
+    }
+
     // ── HTTP helpers ─────────────────────────────────────────────────────────
 
     private String get(String path) throws IOException, InterruptedException {
@@ -222,4 +356,7 @@ public class GoogleTasksService {
         return URLEncoder.encode(s, StandardCharsets.UTF_8);
     }
 }
+
+
+
 

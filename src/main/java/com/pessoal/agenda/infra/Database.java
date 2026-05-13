@@ -331,6 +331,25 @@ public class Database {
         applyAlterIfMissing("ALTER TABLE idea_checklist_items ADD COLUMN kanban_column TEXT NOT NULL DEFAULT 'backlog'");
         // Checklist de Tarefas da Agenda: coluna kanban (já na tabela, mas garante compatibilidade)
         applyAlterIfMissing("ALTER TABLE task_checklist_items ADD COLUMN kanban_column TEXT NOT NULL DEFAULT 'backlog'");
+
+        // Google Tasks: tabela de mapeamento local ↔ Google
+        applyCreateIfMissing("""
+            CREATE TABLE IF NOT EXISTS google_tasks_mapping (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                local_task_id  INTEGER NOT NULL,
+                google_list_id TEXT    NOT NULL,
+                google_task_id TEXT    NOT NULL,
+                last_synced_at TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(local_task_id),
+                UNIQUE(google_list_id, google_task_id)
+            )""");
+    }
+
+    /** Executa CREATE TABLE IF NOT EXISTS — usa o mesmo mecanismo idempotente. */
+    private void applyCreateIfMissing(String createSql) {
+        try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
+            stmt.execute(createSql);
+        } catch (SQLException ignored) { /* já existe */ }
     }
 
     private void applyAlterIfMissing(String alterSql) {

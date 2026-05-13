@@ -36,6 +36,7 @@ public class AppContext {
     private final StudyScheduleRepository studyScheduleRepository;
     private final StudyCompensationRepository studyCompensationRepository;
     private final com.pessoal.agenda.repository.TaskSessionRepository taskSessionRepository;
+    private final com.pessoal.agenda.repository.GoogleTasksMappingRepository googleTasksMappingRepository;
 
     private final TaskService taskService;
     private final AlertService alertService;
@@ -63,6 +64,7 @@ public class AppContext {
         this.studyScheduleRepository = new StudyScheduleRepository(database);
         this.studyCompensationRepository = new StudyCompensationRepository(database);
         this.taskSessionRepository = new com.pessoal.agenda.repository.TaskSessionRepository(database);
+        this.googleTasksMappingRepository = new com.pessoal.agenda.repository.GoogleTasksMappingRepository(database);
 
         this.taskService = new TaskService(taskRepository);
         this.alertService = new AlertService(database, taskRepository, financeRepository);
@@ -159,6 +161,10 @@ public class AppContext {
 
     public com.pessoal.agenda.repository.TaskSessionRepository taskSessionRepository() {
         return taskSessionRepository;
+    }
+
+    public com.pessoal.agenda.repository.GoogleTasksMappingRepository googleTasksMappingRepository() {
+        return googleTasksMappingRepository;
     }
 
     public StudyAttendanceService studyAttendanceService() {

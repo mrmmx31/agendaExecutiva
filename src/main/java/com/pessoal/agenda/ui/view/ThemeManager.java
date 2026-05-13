@@ -1,8 +1,10 @@
 package com.pessoal.agenda.ui.view;
 
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.stage.Window;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -13,10 +15,14 @@ import java.util.prefs.Preferences;
  *
  * Pattern: Singleton — disponível em toda a aplicação.
  *
- * Uso:
- *   ThemeManager.getInstance().applyTo(scene);   // ao criar uma cena
- *   ThemeManager.getInstance().applyTo(root);    // ao criar um root node sem scene
- *   ThemeManager.getInstance().setTheme(Theme.ESCURO);  // troca o tema globalmente
+ * Uso normal:
+ *   ThemeManager.getInstance().applyTo(scene);
+ *   ThemeManager.getInstance().setTheme(Theme.ESCURO);
+ *
+ * Hook global (chamar UMA VEZ em AgendaApp.start):
+ *   ThemeManager.getInstance().initGlobalWindowHook();
+ *   → após isso, QUALQUER janela/caixa de diálogo que abrir receberá o tema
+ *     automaticamente, sem precisar chamar applyTo() manualmente.
  */
 public class ThemeManager {
 
@@ -51,6 +57,7 @@ public class ThemeManager {
             Collections.synchronizedMap(new WeakHashMap<>());
 
     private final List<Consumer<Theme>> listeners = new ArrayList<>();
+    private boolean globalHookInstalled = false;
 
     // ── Construtor ────────────────────────────────────────────────────────
     private ThemeManager() {
@@ -76,6 +83,25 @@ public class ThemeManager {
         applyToList(root.getStylesheets());
     }
 
+    /**
+     * Instala o hook global: observa Window.getWindows() e aplica o tema
+     * automaticamente a TODA janela que abrir (Alert, Dialog, Stage filhos, etc.).
+     *
+     * Deve ser chamado UMA VEZ, na thread JavaFX, após a aplicação estar iniciada.
+     */
+    public void initGlobalWindowHook() {
+        if (globalHookInstalled) return;
+        globalHookInstalled = true;
+
+        Window.getWindows().addListener((ListChangeListener<Window>) change -> {
+            while (change.next()) {
+                for (Window w : change.getAddedSubList()) {
+                    applyToWindowWhenReady(w);
+                }
+            }
+        });
+    }
+
     /** Troca o tema globalmente, atualizando TODAS as cenas/nós registrados. */
     public void setTheme(Theme theme) {
         if (theme == currentTheme) return;
@@ -95,6 +121,24 @@ public class ThemeManager {
     }
 
     // ── Implementação interna ──────────────────────────────────────────────
+
+    /**
+     * Aplica o tema à janela W assim que a Scene estiver disponível.
+     * Cobre dois casos:
+     *   a) A Scene já existe (Alert/Dialog configurados antes do show)
+     *   b) A Scene ainda não existe (Stage criado mas não exibido)
+     */
+    private void applyToWindowWhenReady(Window w) {
+        Scene scene = w.getScene();
+        if (scene != null) {
+            applyToList(scene.getStylesheets());
+        } else {
+            // Escuta a propriedade cena e aplica quando ela aparecer
+            w.sceneProperty().addListener((obs, old, newScene) -> {
+                if (newScene != null) applyToList(newScene.getStylesheets());
+            });
+        }
+    }
 
     private void applyToList(ObservableList<String> sheets) {
         String appUrl = resolveUrl(APP_CSS);
@@ -118,15 +162,12 @@ public class ThemeManager {
     }
 
     private void updateAllRegistered() {
-        // Atenção: iteramos sobre uma cópia do keySet para evitar ConcurrentModificationException
         List<ObservableList<String>> snapshot;
         synchronized (registered) {
             snapshot = new ArrayList<>(registered.keySet());
         }
         for (ObservableList<String> sheets : snapshot) {
-            // Remove override de tema
             sheets.removeIf(s -> s != null && s.contains("/theme-"));
-            // Adiciona novo override
             if (currentTheme.cssResource != null) {
                 String themeUrl = resolveUrl(currentTheme.cssResource);
                 if (themeUrl != null && !sheets.contains(themeUrl)) {

@@ -101,6 +101,9 @@ public class AgendaApp extends Application {
         Scene scene = new Scene(root, 1260, 820);
         ThemeManager.getInstance().applyTo(scene);
 
+        // Hook global: aplica tema automaticamente a TODA nova janela/diálogo que abrir
+        ThemeManager.getInstance().initGlobalWindowHook();
+
         stage.setTitle("Agenda Científica Pessoal — Planejamento Integrado");
         stage.setScene(scene);
         stage.setOnCloseRequest(e -> {

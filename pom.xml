@@ -78,6 +78,13 @@
                             <noManPages>true</noManPages>
                             <stripDebug>true</stripDebug>
                             <noHeaderFiles>true</noHeaderFiles>
+                            <jvmArgs>
+                                <!-- Silencia warnings de acesso nativo restrito -->
+                                <jvmArg>--enable-native-access=org.xerial.sqlitejdbc</jvmArg>
+                                <jvmArg>--enable-native-access=javafx.graphics</jvmArg>
+                                <jvmArg>--enable-native-access=javafx.media</jvmArg>
+                                <jvmArg>--enable-native-access=ALL-UNNAMED</jvmArg>
+                            </jvmArgs>
                         </configuration>
                     </execution>
                 </executions>

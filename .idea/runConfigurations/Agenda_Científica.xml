@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Agenda Científica" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.pessoal.agenda.Launcher" />
+    <option name="MODULE_NAME" value="com.pessoal.agenda" />
+    <option name="VM_PARAMETERS" value="--enable-native-access=org.xerial.sqlitejdbc --enable-native-access=javafx.graphics --enable-native-access=javafx.media --enable-native-access=ALL-UNNAMED" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
+

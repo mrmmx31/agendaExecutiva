@@ -75,7 +75,7 @@ public class GoogleTasksSyncWindow {
         stage.setTitle("☁  Google Tasks — Sincronização Bidirecional");
         stage.setMinWidth(920);
         stage.setMinHeight(560);
-        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.initModality(Modality.NONE);
 
         VBox root = new VBox(0);
         root.getStyleClass().add("app-root");

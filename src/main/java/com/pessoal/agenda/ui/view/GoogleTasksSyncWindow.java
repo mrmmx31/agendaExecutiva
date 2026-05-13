@@ -150,10 +150,14 @@ public class GoogleTasksSyncWindow {
         exportSelBtn.getStyleClass().add("secondary-button");
         exportSelBtn.setOnAction(e -> exportSelected());
 
+        Button dedupGoogleBtn = new Button("🔍  Remover duplicatas do Google");
+        dedupGoogleBtn.getStyleClass().add("secondary-button");
+        dedupGoogleBtn.setOnAction(e -> removeGoogleDuplicates());
+
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
         HBox bar = new HBox(10, listLabel, listCombo, refreshListsBtn, spacer,
-                importSelBtn, exportSelBtn, new Separator(javafx.geometry.Orientation.VERTICAL),
-                syncBtn);
+                importSelBtn, exportSelBtn, dedupGoogleBtn,
+                new Separator(javafx.geometry.Orientation.VERTICAL), syncBtn);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(10, 16, 10, 16));
         bar.setStyle("-fx-background-color: -t-surface; -fx-border-color: -t-border; -fx-border-width: 0 0 1 0;");
@@ -411,6 +415,68 @@ public class GoogleTasksSyncWindow {
     }
 
     // ── Ações manuais ────────────────────────────────────────────────────────
+
+    private void removeGoogleDuplicates() {
+        TaskList selected = listCombo.getValue();
+        if (selected == null) { setStatus("Selecione uma lista do Google Tasks primeiro."); return; }
+        if (!auth.isAuthorized()) { setStatus("Conecte ao Google primeiro."); return; }
+
+        setStatus("Procurando duplicatas no Google Tasks...");
+        runBackground(
+            () -> gTasks.findGoogleDuplicateGroups(selected.id()),
+            groups -> {
+                if (groups.isEmpty()) {
+                    setStatus("Nenhuma duplicata encontrada no Google Tasks.");
+                    appendLog("🔍 Sem duplicatas no Google Tasks.");
+                    return;
+                }
+                // Monta preview
+                StringBuilder sb = new StringBuilder();
+                int total = 0;
+                for (var g : groups) {
+                    sb.append("📌 \"").append(g.get(0).title()).append("\"\n");
+                    sb.append("   Manter:  ").append(g.get(0).id()).append("\n");
+                    for (int i = 1; i < g.size(); i++) {
+                        sb.append("   Remover: ").append(g.get(i).id())
+                          .append("  (").append(g.get(i).title()).append(")\n");
+                        total++;
+                    }
+                    sb.append("\n");
+                }
+                int totalFinal = total;
+                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                confirm.setTitle("Remover Duplicatas do Google Tasks");
+                confirm.setHeaderText(groups.size() + " título(s) duplicado(s) — "
+                        + totalFinal + " tarefa(s) serão removidas do Google Tasks.");
+                confirm.setContentText("A tarefa mais antiga será mantida em cada grupo.\n\n"
+                        + sb.toString().trim());
+                confirm.getDialogPane().setPrefWidth(500);
+                confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
+                    runBackground(
+                        () -> {
+                            int removed = 0;
+                            for (var g : groups) {
+                                for (int i = 1; i < g.size(); i++) {
+                                    gTasks.deleteTask(selected.id(), g.get(i).id());
+                                    AppContextHolder.get().googleTasksMappingRepository()
+                                            .deleteByGoogleId(selected.id(), g.get(i).id());
+                                    removed++;
+                                }
+                            }
+                            return removed;
+                        },
+                        removed -> {
+                            setStatus("✓ " + removed + " duplicata(s) removida(s) do Google Tasks.");
+                            appendLog("🗑 " + removed + " duplicata(s) removida(s) do Google Tasks.");
+                            loadGoogleTasks();
+                        },
+                        err -> showError("Erro ao remover duplicatas", err.getMessage())
+                    );
+                });
+            },
+            err -> showError("Erro ao buscar duplicatas", err.getMessage())
+        );
+    }
 
     private void importSelected() {
         GTask selected = gTaskList.getSelectionModel().getSelectedItem();

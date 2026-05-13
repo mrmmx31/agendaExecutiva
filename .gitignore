@@ -37,3 +37,7 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Google OAuth — credenciais reais (nunca versionar) ###
+google-credentials.json
+google-tokens.json

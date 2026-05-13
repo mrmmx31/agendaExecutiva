@@ -71,6 +71,24 @@ public class TaskRepository {
         db.execute("DELETE FROM tasks WHERE id=?", id);
     }
 
+    /**
+     * Retorna grupos de tarefas com título duplicado (ignorando maiúsculas/minúsculas e espaços).
+     * Cada lista contém ≥ 2 tarefas com o mesmo título normalizado,
+     * ordenadas por id ASC (a primeira é a "original" a manter).
+     */
+    public List<List<Task>> findDuplicateGroups() {
+        // Busca todas as tarefas, depois agrupa em memória
+        List<Task> all = query("SELECT * FROM tasks ORDER BY id ASC", new Object[0]);
+        java.util.Map<String, List<Task>> byTitle = new java.util.LinkedHashMap<>();
+        for (Task t : all) {
+            String key = t.title().trim().toLowerCase();
+            byTitle.computeIfAbsent(key, k -> new ArrayList<>()).add(t);
+        }
+        return byTitle.values().stream()
+                .filter(group -> group.size() > 1)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     // ── QUERY ─────────────────────────────────────────────────────────────
 
     public Optional<Task> findById(long id) {

@@ -404,6 +404,13 @@ public class AgendaTabController {
             }).show());
         actionsSection.getChildren().addAll(new Separator(), googleTasksBtn);
 
+        // ── Remover duplicatas ─────────────────────────────────────────────
+        Button dedupBtn = new Button("🔍  Localizar e Remover Duplicatas");
+        dedupBtn.getStyleClass().add("secondary-button");
+        dedupBtn.setMaxWidth(Double.MAX_VALUE);
+        dedupBtn.setOnAction(e -> removeDuplicateTasks());
+        actionsSection.getChildren().addAll(new Separator(), dedupBtn);
+
         ListView<String> alertsList = new ListView<>(ctx.alertItems);
         alertsList.getStyleClass().add("clean-list");
         VBox.setVgrow(alertsList, Priority.ALWAYS);
@@ -423,6 +430,58 @@ public class AgendaTabController {
     }
 
     // ── Formulário: submissão / carga / reset ──────────────────────────────
+
+    /** Localiza tarefas duplicadas (mesmo título), exibe prévia e remove as cópias. */
+    private void removeDuplicateTasks() {
+        var groups = AppContextHolder.get().taskRepository().findDuplicateGroups();
+
+        if (groups.isEmpty()) {
+            Alert info = new Alert(Alert.AlertType.INFORMATION);
+            info.setTitle("Sem duplicatas");
+            info.setHeaderText("Nenhuma duplicata encontrada.");
+            info.setContentText("Todas as tarefas têm títulos únicos.");
+            info.showAndWait();
+            return;
+        }
+
+        // Monta preview
+        StringBuilder sb = new StringBuilder();
+        int totalRemover = 0;
+        for (var group : groups) {
+            Task manter = group.get(0);
+            sb.append("📌 \"").append(manter.title()).append("\"\n");
+            sb.append("   Manter:  #").append(manter.id())
+              .append("  (").append(manter.dueDate()).append(")\n");
+            for (int i = 1; i < group.size(); i++) {
+                Task dup = group.get(i);
+                sb.append("   Remover: #").append(dup.id())
+                  .append("  (").append(dup.dueDate()).append(")\n");
+                totalRemover++;
+            }
+            sb.append("\n");
+        }
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Remover Duplicatas");
+        confirm.setHeaderText(groups.size() + " título(s) duplicado(s) — "
+                + totalRemover + " tarefa(s) serão removidas.");
+        confirm.setContentText("A tarefa mais antiga (menor ID) será mantida em cada grupo.\n\n"
+                + "Grupos encontrados:\n\n" + sb.toString().trim());
+        confirm.getDialogPane().setPrefWidth(520);
+
+        confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
+            int removed = 0;
+            for (var group : groups) {
+                for (int i = 1; i < group.size(); i++) {
+                    AppContextHolder.get().taskRepository().deleteById(group.get(i).id());
+                    removed++;
+                }
+            }
+            refresh();
+            ctx.triggerDashboardRefresh();
+            ctx.setStatus("✓ " + removed + " tarefa(s) duplicada(s) removidas.");
+        });
+    }
 
     private void submitForm() {
         if (titleField.getText().isBlank() || startPicker.getValue() == null) {

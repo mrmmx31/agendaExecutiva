@@ -110,8 +110,6 @@ public class TaskChecklistWindow {
         stage.setOnHidden(e -> openWindows.remove(task.id()));
 
         VBox root = new VBox(0);
-        root.getStylesheets().add(
-                getClass().getResource("/com/pessoal/agenda/app.css").toExternalForm());
         root.getStyleClass().add("app-root");
 
         contentArea = new StackPane();
@@ -128,7 +126,9 @@ public class TaskChecklistWindow {
 
         refreshContentArea();
 
-        stage.setScene(new Scene(root, 900, 660));
+        Scene scene = new Scene(root, 900, 660);
+        ThemeManager.getInstance().applyTo(scene);
+        stage.setScene(scene);
         stage.show();
     }
 

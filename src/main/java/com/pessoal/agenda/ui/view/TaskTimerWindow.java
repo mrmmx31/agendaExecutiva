@@ -173,8 +173,7 @@ public class TaskTimerWindow {
         resetBtn.setOnAction(e -> resetCounter());
 
         Scene sc = new Scene(root, 700, 440);
-        var cssUrl = TaskTimerWindow.class.getResource("/com/pessoal/agenda/app.css");
-        if (cssUrl != null) sc.getStylesheets().add(cssUrl.toExternalForm());
+        ThemeManager.getInstance().applyTo(sc);
         stage.setScene(sc);
         stage.setOnHiding(e -> {
             // Remove tickListener e referência da janela

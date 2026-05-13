@@ -1,0 +1,125 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AGENDA CIENTÍFICA — TEMA ESCURO
+   Inspirado em: GitHub Dark / VS Code Dark+
+   ───────────────────────────────────────────────────────────────────────────
+   Este arquivo APENAS redefine os tokens do .root declarados em app.css.
+   Não repete regras de layout — apenas muda as cores.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.root {
+    /* HEADER / BRAND */
+    -t-header-a  : #010b1a;
+    -t-header-b  : #051828;
+    /* -t-accent permanece #00b4d8 — vibra bem em fundos escuros */
+    -t-accent-fg : #58a6ff;
+    -t-accent-lbl: #79c0ff;
+
+    /* FUNDOS */
+    -t-app-bg    : #0d1117;
+    -t-surface   : #161b22;
+    -t-surface-a : #1c2128;
+    -t-surface-b : #1a1f26;
+    -t-surface-c : #21262d;
+    -t-surface-d : #1f2937;
+    -t-hover     : #21262d;
+    -t-selected  : #1f3d65;
+    -t-selected2 : #1c3458;
+
+    /* TEXTO */
+    -t-text      : #e6edf3;
+    -t-text-b    : #c9d1d9;
+    -t-text-s    : #cdd9e5;
+    -t-text-m    : #8b949e;
+    -t-text-m2   : #6e7681;
+    -t-text-inv  : #e6edf3;
+
+    /* COR PRIMÁRIA */
+    -t-pri       : #388bfd;
+    -t-pri-dk    : #1f6feb;
+    -t-pri-lt    : #1c3458;
+    -t-pri-lt2   : #1f3a5c;
+    -t-pri-bd    : #388bfd;
+
+    /* BORDAS */
+    -t-bd        : #30363d;
+    -t-bd-lt     : #21262d;
+    -t-bd-mid    : #30363d;
+    -t-bd-sub    : #2d333b;
+    -t-bd-cal    : #2d333b;
+    -t-bd-list   : #21262d;
+
+    /* ABAS */
+    -t-tab-bg    : #21262d;
+    -t-tab-hdr   : #161b22;
+    -t-tab-sel   : #1c2128;
+    -t-tab-fg    : #8b949e;
+    -t-tab-sfg   : #e6edf3;
+
+    /* INPUT */
+    -t-inp-bg    : #1c2128;
+    -t-inp-bd    : #30363d;
+
+    /* BARRA DE STATUS */
+    -t-sb-bg     : #010b1a;
+    -t-sb-bd     : #21262d;
+    -t-sb-fg     : #58a6ff;
+
+    /* FILTROS */
+    -t-flt-bg    : #1c2128;
+    -t-flt-bd    : #30363d;
+    -t-flt-fg    : #8b949e;
+    -t-flt-sel   : #388bfd;
+    -t-flt-per   : #009688;
+
+    /* PERIGO / ERRO */
+    -t-err       : #f85149;
+    -t-err-dk    : #ff7b72;
+    -t-err-bg    : #2d1b1b;
+    -t-err-hov   : #3d2020;
+
+    /* CALENDÁRIO */
+    -t-cal-bg    : #1c2128;
+    -t-cal-bd    : #2d333b;
+    -t-cal-hdr   : #8b949e;
+    -t-cal-today : #388bfd;
+
+    /* IDEIAS / KANBAN */
+    -t-kan-bg    : #1c2128;
+    -t-ideas-bg  : #0d1117;
+}
+
+/* ── Overrides de cores semânticas para tema escuro ────────────────────── */
+
+/* Badges de estudo (backgrounds escurecem, texto fica mais vibrante) */
+.badge-type                { -fx-background-color: #1c3458; -fx-text-fill: #58a6ff; }
+.badge-status-planejado    { -fx-background-color: #1a1f35; -fx-text-fill: #7986cb; }
+.badge-status-em_andamento { -fx-background-color: #2d2010; -fx-text-fill: #ffb74d; }
+.badge-status-concluido    { -fx-background-color: #0d2b10; -fx-text-fill: #56d364; }
+.badge-status-pausado      { -fx-background-color: #2d1020; -fx-text-fill: #f06292; }
+.badge-status-abandonado   { -fx-background-color: #21262d; -fx-text-fill: #8b949e; }
+
+/* Calendário de frequência (cores escurecem o fundo, texto fica mais forte) */
+.attend-present     { -fx-background-color: #0d2b12; }
+.attend-present .calendar-day-sym  { -fx-text-fill: #56d364; }
+.attend-partial     { -fx-background-color: #2d2810; }
+.attend-partial .calendar-day-sym  { -fx-text-fill: #ffca28; }
+.attend-absent      { -fx-background-color: #2d1010; }
+.attend-absent .calendar-day-sym   { -fx-text-fill: #f85149; }
+.attend-compensated { -fx-background-color: #10243a; }
+.attend-compensated .calendar-day-sym { -fx-text-fill: #58a6ff; }
+.attend-future      { -fx-background-color: #1f1030; }
+.attend-future .calendar-day-sym   { -fx-text-fill: #ce93d8; }
+.attend-none        { -fx-background-color: #21262d; }
+.attend-none .calendar-day-sym     { -fx-text-fill: #484f58; }
+
+/* KPI cores semânticas — mais brilhantes em fundo escuro */
+.kpi-blue  .kpi-value { -fx-text-fill: #58a6ff; }
+.kpi-red   .kpi-value { -fx-text-fill: #f85149; }
+.kpi-green .kpi-value { -fx-text-fill: #56d364; }
+
+/* Timer inline */
+.timer-label-inline {
+    -fx-text-fill: #58a6ff;
+    -fx-background-color: #1c3458;
+    -fx-border-color: #388bfd;
+}
+

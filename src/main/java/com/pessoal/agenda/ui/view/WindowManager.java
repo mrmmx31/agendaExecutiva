@@ -7,6 +7,7 @@ import java.util.Set;
 
 /**
  * Gerencia janelas secundárias abertas para permitir fechamento global.
+ * Ao registrar uma janela, o tema atual é automaticamente aplicado à cena.
  */
 public class WindowManager {
     private static final Set<Stage> openStages = Collections.synchronizedSet(new HashSet<>());
@@ -14,6 +15,10 @@ public class WindowManager {
     public static void register(Stage stage) {
         openStages.add(stage);
         stage.setOnHiding(e -> openStages.remove(stage));
+        // Aplica tema atual à cena da janela (se já houver cena)
+        if (stage.getScene() != null) {
+            ThemeManager.getInstance().applyTo(stage.getScene());
+        }
     }
 
     public static void closeAll() {
@@ -25,4 +30,3 @@ public class WindowManager {
         }
     }
 }
-

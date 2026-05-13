@@ -103,8 +103,6 @@ public class ProjectIdeaDetailWindow {
 
         // ── Layout principal ───────────────────────────────────────────────────
         VBox root = new VBox(0);
-        root.getStylesheets().add(
-                getClass().getResource("/com/pessoal/agenda/app.css").toExternalForm());
         root.getStyleClass().add("app-root");
         root.getChildren().add(buildHeader());
 
@@ -114,7 +112,9 @@ public class ProjectIdeaDetailWindow {
         root.getChildren().add(scroll);
         root.getChildren().add(buildFooter(stage));
 
-        stage.setScene(new Scene(root, 820, 740));
+        Scene scene = new Scene(root, 820, 740);
+        ThemeManager.getInstance().applyTo(scene);
+        stage.setScene(scene);
         stage.show();
     }
 

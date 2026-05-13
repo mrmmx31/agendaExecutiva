@@ -110,8 +110,6 @@ public class ProjectChecklistWindow {
         stage.setOnHidden(e -> openWindows.remove(idea.id()));
 
         VBox root = new VBox(0);
-        root.getStylesheets().add(
-                getClass().getResource("/com/pessoal/agenda/app.css").toExternalForm());
         root.getStyleClass().add("app-root");
 
         contentArea = new StackPane();
@@ -128,7 +126,9 @@ public class ProjectChecklistWindow {
 
         refreshContentArea();
 
-        stage.setScene(new Scene(root, 880, 660));
+        Scene scene = new Scene(root, 880, 660);
+        ThemeManager.getInstance().applyTo(scene);
+        stage.setScene(scene);
         stage.show();
     }
 

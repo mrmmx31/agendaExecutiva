@@ -4,6 +4,7 @@ module com.pessoal.agenda {
     requires javafx.web;
     requires java.sql;
     requires java.desktop;
+    requires java.prefs;
     requires org.xerial.sqlitejdbc;
 
     opens com.pessoal.agenda to javafx.fxml;

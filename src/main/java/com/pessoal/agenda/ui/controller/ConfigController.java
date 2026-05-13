@@ -4,6 +4,7 @@ import com.pessoal.agenda.app.AppContextHolder;
 import com.pessoal.agenda.app.SharedContext;
 import com.pessoal.agenda.model.Category;
 import com.pessoal.agenda.model.CategoryDomain;
+import com.pessoal.agenda.ui.view.ThemeManager;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -14,7 +15,7 @@ import javafx.scene.layout.VBox;
 
 /**
  * Controller da aba de Configurações.
- * Gerencia as categorias de todos os domínios do sistema.
+ * Gerencia as categorias de todos os domínios do sistema e o tema visual.
  */
 public class ConfigController {
 
@@ -53,7 +54,7 @@ public class ConfigController {
                 "As categorias e tipos ficam disponíveis como filtros e opções de seleção nas abas.");
         header.setWrapText(true);
 
-        VBox content = new VBox(14, header, row1, row2, row3);
+        VBox content = new VBox(14, header, buildThemeSection(), row1, row2, row3);
         content.setPadding(new Insets(16));
 
         ScrollPane scroll = new ScrollPane(content);
@@ -61,6 +62,50 @@ public class ConfigController {
         scroll.getStyleClass().add("edge-to-edge");
         tab.setContent(scroll);
         return tab;
+    }
+
+    /** Seção de seleção de tema visual */
+    private VBox buildThemeSection() {
+        Label titleLabel = new Label("🎨  Aparência / Tema Visual");
+        titleLabel.getStyleClass().add("section-title");
+
+        Label desc = new Label(
+                "Escolha o tema visual que será aplicado em toda a aplicação. " +
+                "A preferência é salva automaticamente.");
+        desc.setWrapText(true);
+        desc.setStyle("-fx-font-size: 11.5px;");
+
+        ToggleGroup group = new ToggleGroup();
+
+        ThemeManager.Theme current = ThemeManager.getInstance().getTheme();
+
+        HBox btns = new HBox(10);
+        btns.setAlignment(Pos.CENTER_LEFT);
+
+        for (ThemeManager.Theme theme : ThemeManager.Theme.values()) {
+            ToggleButton btn = new ToggleButton(theme.label);
+            btn.setToggleGroup(group);
+            btn.getStyleClass().add("filter-toggle");
+            btn.setSelected(theme == current);
+            btn.setUserData(theme);
+            btn.setOnAction(e -> {
+                if (btn.isSelected()) {
+                    ThemeManager.getInstance().setTheme(theme);
+                    ctx.setStatus("Tema alterado para: " + theme.label);
+                }
+            });
+            btns.getChildren().add(btn);
+        }
+
+        // Garante que sempre haja um botão selecionado
+        group.selectedToggleProperty().addListener((obs, old, nw) -> {
+            if (nw == null && old != null) old.setSelected(true);
+        });
+
+        VBox section = new VBox(10, titleLabel, desc, btns);
+        section.getStyleClass().addAll("config-section", "config-theme");
+        section.setPadding(new Insets(12, 14, 12, 14));
+        return section;
     }
 
     private VBox buildCategorySection(String title, String styleClass,

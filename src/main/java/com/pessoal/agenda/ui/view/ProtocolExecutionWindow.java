@@ -86,11 +86,7 @@ public class ProtocolExecutionWindow {
         root.getChildren().addAll(buildHeader(), buildCenter());
 
         Scene scene = new Scene(root, 1020, 650);
-        try {
-            scene.getStylesheets().add(
-                getClass().getResource("/com/pessoal/agenda/app.css").toExternalForm());
-        } catch (Exception ignored) {}
-
+        ThemeManager.getInstance().applyTo(scene);
         stage.setScene(scene);
         stage.setOnHidden(e -> {
             openWindows.remove(protocol.id());

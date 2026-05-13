@@ -66,8 +66,7 @@ public class StudyMonitorWindow {
         root.setCenter(buildCenter());
 
         Scene scene = new Scene(root, 980, 720);
-        var css = StudyMonitorWindow.class.getResource("/com/pessoal/agenda/app.css");
-        if (css != null) scene.getStylesheets().add(css.toExternalForm());
+        ThemeManager.getInstance().applyTo(scene);
 
         stage.setScene(scene);
         stage.setOnHiding(e -> { if (onClose != null) onClose.run(); });

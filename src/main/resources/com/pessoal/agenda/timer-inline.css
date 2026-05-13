@@ -2,13 +2,12 @@
 .timer-label-inline {
     -fx-font-family: "JetBrains Mono", monospace;
     -fx-font-size: 12px;
-    -fx-text-fill: #1976d2;
+    -fx-text-fill: -t-pri;
     -fx-padding: 0 6 0 6;
-    -fx-background-color: #e3f2fd;
+    -fx-background-color: -t-pri-lt;
     -fx-background-radius: 6;
     -fx-border-radius: 6;
-    -fx-border-color: #90caf9;
+    -fx-border-color: -t-pri-bd;
     -fx-border-width: 1;
     -fx-alignment: center;
 }
-

@@ -163,8 +163,7 @@ public class SessionHistoryWindow {
         root.setCenter(centerVBox);
 
         Scene sc = new Scene(root);
-        var cssUrl = SessionHistoryWindow.class.getResource("/com/pessoal/agenda/app.css");
-        if (cssUrl != null) sc.getStylesheets().add(cssUrl.toExternalForm());
+        ThemeManager.getInstance().applyTo(sc);
         stage.setScene(sc);
 
         // actions

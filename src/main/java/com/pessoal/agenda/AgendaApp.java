@@ -2,6 +2,7 @@ package com.pessoal.agenda;
 
 import com.pessoal.agenda.app.SharedContext;
 import com.pessoal.agenda.ui.controller.*;
+import com.pessoal.agenda.ui.view.ThemeManager;
 import com.pessoal.agenda.ui.view.WindowManager;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -98,7 +99,7 @@ public class AgendaApp extends Application {
         root.setBottom(buildStatusBar());
 
         Scene scene = new Scene(root, 1260, 820);
-        scene.getStylesheets().add(getClass().getResource("app.css").toExternalForm());
+        ThemeManager.getInstance().applyTo(scene);
 
         stage.setTitle("Agenda Científica Pessoal — Planejamento Integrado");
         stage.setScene(scene);

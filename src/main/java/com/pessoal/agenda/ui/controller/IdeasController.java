@@ -10,7 +10,10 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
 
 import java.time.LocalDate;
@@ -336,11 +339,47 @@ public class IdeasController {
 
         VBox col = new VBox(0, colHeader, cardScroll);
         col.setPrefWidth(200); col.setMinWidth(180); col.setMaxWidth(220);
-        col.setStyle("-fx-background-color: #f7fbff;"
+        String colStyleNormal = "-fx-background-color: #f7fbff;"
                 + " -fx-border-color: #b8cfe8; -fx-border-width: 0 0 0 0;"
                 + " -fx-border-radius: 6; -fx-background-radius: 6;"
-                + " -fx-effect: dropshadow(gaussian, rgba(3,24,62,0.07), 8, 0.2, 0, 2);");
+                + " -fx-effect: dropshadow(gaussian, rgba(3,24,62,0.07), 8, 0.2, 0, 2);";
+        String colStyleOver   = "-fx-background-color: #e8f4ff;"
+                + " -fx-border-color: " + hexColor + "; -fx-border-width: 2;"
+                + " -fx-border-radius: 6; -fx-background-radius: 6;"
+                + " -fx-effect: dropshadow(gaussian, rgba(3,24,62,0.15), 10, 0.3, 0, 2);";
+        col.setStyle(colStyleNormal);
         VBox.setVgrow(col, Priority.ALWAYS);
+
+        // ── Drag-and-Drop: aceitar cards de outras colunas ────────────────
+        col.setOnDragOver(e -> {
+            if (e.getDragboard().hasString()) {
+                e.acceptTransferModes(TransferMode.MOVE);
+            }
+            e.consume();
+        });
+        col.setOnDragEntered(e -> {
+            if (e.getDragboard().hasString()) col.setStyle(colStyleOver);
+            e.consume();
+        });
+        col.setOnDragExited(e -> {
+            col.setStyle(colStyleNormal);
+            e.consume();
+        });
+        col.setOnDragDropped(e -> {
+            Dragboard db = e.getDragboard();
+            boolean ok = false;
+            if (db.hasString()) {
+                try {
+                    long draggedId = Long.parseLong(db.getString());
+                    repo.findById(draggedId).ifPresent(idea -> changeStatus(idea, statusKey));
+                    ok = true;
+                } catch (NumberFormatException ignored) {}
+            }
+            e.setDropCompleted(ok);
+            col.setStyle(colStyleNormal);
+            e.consume();
+        });
+
         return col;
     }
 
@@ -381,6 +420,22 @@ public class IdeasController {
             } else if (e.getButton() == MouseButton.PRIMARY) {
                 sharedContextMenu.hide();
             }
+        });
+
+        // ── Drag-and-Drop: iniciar arraste do card ────────────────────────
+        card.setOnDragDetected(e -> {
+            if (e.getButton() == MouseButton.PRIMARY) {
+                Dragboard db = card.startDragAndDrop(TransferMode.MOVE);
+                ClipboardContent content = new ClipboardContent();
+                content.putString(String.valueOf(idea.id()));
+                db.setContent(content);
+                card.setOpacity(0.5);
+                e.consume();
+            }
+        });
+        card.setOnDragDone(e -> {
+            card.setOpacity(1.0);
+            e.consume();
         });
 
         // Tooltip com descrição

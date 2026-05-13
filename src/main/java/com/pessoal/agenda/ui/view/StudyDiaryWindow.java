@@ -146,8 +146,7 @@ public class StudyDiaryWindow {
         root.setCenter(buildContentArea());
 
         Scene scene = new Scene(root, 1240, 780);
-        var cssUrl = StudyDiaryWindow.class.getResource("/com/pessoal/agenda/app.css");
-        if (cssUrl != null) scene.getStylesheets().add(cssUrl.toExternalForm());
+        ThemeManager.getInstance().applyTo(scene);
 
         stage.setScene(scene);
         stage.setOnHiding(e -> {

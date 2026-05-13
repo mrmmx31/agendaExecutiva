@@ -394,6 +394,16 @@ public class AgendaTabController {
         printBtn.setOnAction(e -> printCurrentView());
         actionsSection.getChildren().add(printBtn);
 
+        // ── Google Tasks ───────────────────────────────────────────────────
+        Button googleTasksBtn = new Button("☁  Google Tasks");
+        googleTasksBtn.getStyleClass().add("secondary-button");
+        googleTasksBtn.setMaxWidth(Double.MAX_VALUE);
+        googleTasksBtn.setOnAction(e ->
+            new com.pessoal.agenda.ui.view.GoogleTasksSyncWindow(() -> {
+                refresh(); ctx.triggerDashboardRefresh();
+            }).show());
+        actionsSection.getChildren().addAll(new Separator(), googleTasksBtn);
+
         ListView<String> alertsList = new ListView<>(ctx.alertItems);
         alertsList.getStyleClass().add("clean-list");
         VBox.setVgrow(alertsList, Priority.ALWAYS);

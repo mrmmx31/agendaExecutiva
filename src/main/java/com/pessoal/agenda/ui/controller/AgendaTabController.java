@@ -166,7 +166,7 @@ public class AgendaTabController {
         mainPanel.setPadding(new Insets(14));
         HBox.setHgrow(mainPanel, Priority.ALWAYS);
 
-        VBox sidePanel = buildSidePanel();
+        ScrollPane sidePanel = buildSidePanel();
         sidePanel.setPrefWidth(370); sidePanel.setMinWidth(340);
 
         HBox content = new HBox(10, mainPanel, sidePanel);
@@ -188,7 +188,7 @@ public class AgendaTabController {
 
     // ── Painel lateral (formulário + ações) ────────────────────────────────
 
-    private VBox buildSidePanel() {
+    private ScrollPane buildSidePanel() {
         titleField = new TextField();
         titleField.getStyleClass().add("input-control");
         titleField.setPromptText("Título da tarefa");
@@ -412,7 +412,14 @@ public class AgendaTabController {
 
         VBox side = new VBox(10, formSection, actionsSection, alertsSection);
         side.setPadding(new Insets(14, 0, 14, 0));
-        return side;
+
+        // Envolve em ScrollPane para permitir rolar quando a janela estiver pequena
+        ScrollPane scroll = new ScrollPane(side);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scroll.getStyleClass().add("edge-to-edge");
+        return scroll;
     }
 
     // ── Formulário: submissão / carga / reset ──────────────────────────────

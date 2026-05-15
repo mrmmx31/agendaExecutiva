@@ -490,10 +490,10 @@ public class ProtocolExecutionWindow {
         List<ProtocolExecutionStep> steps = repo.findExecutionSteps(currentExecution.id());
         long criticalPending = steps.stream().filter(s -> s.critical() && !s.checked()).count();
         if (criticalPending > 0) {
-            Alert warn = new Alert(Alert.AlertType.CONFIRMATION);
-            warn.setTitle("Passos Críticos Pendentes");
-            warn.setHeaderText(criticalPending + " passo(s) CRÍTICO(S) ainda não foram marcados.");
-            warn.setContentText("Deseja concluir mesmo assim?");
+            Alert warn = Dialogs.build(Alert.AlertType.CONFIRMATION,
+                    "Passos Críticos Pendentes",
+                    criticalPending + " passo(s) CRÍTICO(S) ainda não foram marcados.",
+                    "Deseja concluir mesmo assim?");
             Optional<ButtonType> r = warn.showAndWait();
             if (r.isEmpty() || r.get() != ButtonType.OK) return;
         }
@@ -511,16 +511,13 @@ public class ProtocolExecutionWindow {
 
     private void cancelCurrentExecution() {
         if (currentExecution == null) return;
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Cancelar Execução");
-        confirm.setHeaderText("Cancelar a execução em andamento?");
-        confirm.setContentText(
-                "O progresso será perdido. A execução ficará registrada como Cancelada no histórico.");
-        confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
-            repo.cancelExecution(currentExecution.id());
-            currentExecution = null;
-            reloadExecution();
-        });
+        Dialogs.confirm("Cancelar Execução", "Cancelar a execução em andamento?",
+                "O progresso será perdido. A execução ficará registrada como Cancelada no histórico.")
+                .filter(b -> b == ButtonType.OK).ifPresent(b -> {
+                    repo.cancelExecution(currentExecution.id());
+                    currentExecution = null;
+                    reloadExecution();
+                });
     }
 
     private void showHistoryDetail(ProtocolExecution exec) {

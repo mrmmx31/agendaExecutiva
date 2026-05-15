@@ -1,4 +1,5 @@
 package com.pessoal.agenda.ui.controller;
+import com.pessoal.agenda.ui.view.Dialogs;
 
 import com.pessoal.agenda.app.AppContextHolder;
 import com.pessoal.agenda.app.SharedContext;
@@ -141,21 +142,17 @@ public class ConfigController {
         removeBtn.setOnAction(e -> {
             Category sel = listView.getSelectionModel().getSelectedItem();
             if (sel == null) { ctx.setStatus("Selecione uma categoria para remover."); return; }
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-            confirm.setTitle("Confirmar remoção");
-            confirm.setHeaderText("Remover categoria \"" + sel.name() + "\"?");
-            confirm.setContentText(
+            Dialogs.confirm("Confirmar remoção", "Remover categoria \"" + sel.name() + "\"?",
                     "Esta ação remove a categoria permanentemente.\n" +
                     "Os registros vinculados a ela não serão excluídos,\n" +
-                    "mas ficarão sem categoria associada.");
-            confirm.getDialogPane().getStyleClass().add("confirm-dialog");
-            confirm.showAndWait().ifPresent(btn -> {
-                if (btn == ButtonType.OK) {
-                    AppContextHolder.get().categoryService().remove(sel.id());
-                    ctx.refreshCategories();
-                    ctx.setStatus("Categoria \"" + sel.name() + "\" removida.");
-                }
-            });
+                    "mas ficarão sem categoria associada.")
+                    .ifPresent(btn -> {
+                        if (btn == ButtonType.OK) {
+                            AppContextHolder.get().categoryService().remove(sel.id());
+                            ctx.refreshCategories();
+                            ctx.setStatus("Categoria \"" + sel.name() + "\" removida.");
+                        }
+                    });
         });
 
         Label titleLabel = new Label(title);

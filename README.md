@@ -3,18 +3,11 @@ Aplicacao desktop para organizacao pessoal com persistencia local em SQLite.
 ## Modulos entregues no MVP
 - Agenda com tarefas do dia, filtro por mes e marcacao de concluidas
 - Alertas de atrasos (tarefas vencidas e pagamentos vencidos)
-- Dashboard executivo com indicadores de carga, riscos e prazos
 - Checklists de protocolos e acoes
 - Financeiro (orcamentos, pendencias, lancamentos)
 - Vendas pessoais e controle basico de estoque
 - Frequencia de estudos e atividades
 - Banco de ideias para projetos pessoais
-
-## Estrutura visual profissional
-- Cabecalho executivo com acoes rapidas de atualizacao
-- Dashboard com KPIs operacionais (tarefas, atrasos, financeiro, estudos, estoque e ideias)
-- Secoes em formato de cards para reduzir ruido visual e facilitar foco
-- Barra de status para feedback de validacao e confirmacao de acoes
 ## Banco de dados
 - Arquivo local: `~/.agenda-pessoal/agenda.db`
 - Tabelas criadas automaticamente na primeira execucao

@@ -209,3 +209,4 @@ public class TaskRepository {
             statStr  != null ? TaskStatus.valueOf(statStr)   : TaskStatus.PENDENTE);
     }
 }
+

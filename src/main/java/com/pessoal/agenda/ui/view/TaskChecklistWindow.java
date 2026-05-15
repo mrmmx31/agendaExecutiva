@@ -832,16 +832,14 @@ public class TaskChecklistWindow {
 
     private void clearDoneItems() {
         long count = items.stream().filter(it -> it.done).count();
-        if (count == 0) { new Alert(Alert.AlertType.INFORMATION, "Sem itens concluídos para remover.", ButtonType.OK).showAndWait(); return; }
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Limpar Concluídos");
-        confirm.setHeaderText("Remover itens concluídos?");
-        confirm.setContentText(count + " item(ns) serão excluídos permanentemente.");
-        confirm.showAndWait().ifPresent(btn -> {
-            if (btn == ButtonType.OK) {
-                List<MutableItem> done = items.stream().filter(it -> it.done).toList();
-                done.forEach(it -> repo.deleteItem(it.id));
-                items.removeAll(done);
+        if (count == 0) { Dialogs.info("Sem concluídos", "Sem itens concluídos para remover."); return; }
+        Dialogs.confirm("Limpar Concluídos", "Remover itens concluídos?",
+                count + " item(ns) serão excluídos permanentemente.")
+                .ifPresent(btn -> {
+                    if (btn == ButtonType.OK) {
+                        List<MutableItem> done = items.stream().filter(it -> it.done).toList();
+                        done.forEach(it -> repo.deleteItem(it.id));
+                        items.removeAll(done);
                 refreshAll();
                 if (onChanged != null) onChanged.run();
             }

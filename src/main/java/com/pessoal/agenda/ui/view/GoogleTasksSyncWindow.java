@@ -332,11 +332,9 @@ public class GoogleTasksSyncWindow {
     }
 
     private void doDisconnect() {
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Desconectar Google Tasks");
-        confirm.setHeaderText("Deseja desconectar sua conta do Google?");
-        confirm.setContentText("Os tokens de acesso e mapeamentos serão removidos localmente.");
-        confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
+        Dialogs.confirm("Desconectar Google Tasks", "Deseja desconectar sua conta do Google?",
+                "Os tokens de acesso e mapeamentos serão removidos localmente.")
+                .filter(b -> b == ButtonType.OK).ifPresent(b -> {
             try {
                 auth.revoke();
                 gTaskItems.clear();
@@ -444,12 +442,10 @@ public class GoogleTasksSyncWindow {
                     sb.append("\n");
                 }
                 int totalFinal = total;
-                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-                confirm.setTitle("Remover Duplicatas do Google Tasks");
-                confirm.setHeaderText(groups.size() + " título(s) duplicado(s) — "
-                        + totalFinal + " tarefa(s) serão removidas do Google Tasks.");
-                confirm.setContentText("A tarefa mais antiga será mantida em cada grupo.\n\n"
-                        + sb.toString().trim());
+                Alert confirm = Dialogs.build(Alert.AlertType.CONFIRMATION,
+                        "Remover Duplicatas do Google Tasks",
+                        groups.size() + " título(s) duplicado(s) — " + totalFinal + " tarefa(s) serão removidas do Google Tasks.",
+                        "A tarefa mais antiga será mantida em cada grupo.\n\n" + sb.toString().trim());
                 confirm.getDialogPane().setPrefWidth(500);
                 confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
                     runBackground(
@@ -564,11 +560,7 @@ public class GoogleTasksSyncWindow {
 
     private void showError(String title, String msg) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle(title);
-            alert.setHeaderText(title);
-            alert.setContentText(msg != null ? msg : "Erro desconhecido.");
-            alert.showAndWait();
+            Dialogs.error(title, msg != null ? msg : "Erro desconhecido.");
             appendLog("✗ " + title + ": " + msg);
         });
     }

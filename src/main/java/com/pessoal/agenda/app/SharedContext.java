@@ -86,6 +86,7 @@ public class SharedContext {
         }
     }
 
+
     /** Aciona atualização dos indicadores do dashboard. */
     public void triggerDashboardRefresh() {
         if (dashboardRefreshCallback != null) dashboardRefreshCallback.run();

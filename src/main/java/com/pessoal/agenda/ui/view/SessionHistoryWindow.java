@@ -260,11 +260,8 @@ public class SessionHistoryWindow {
         } catch (Throwable ex) {
             ex.printStackTrace();
             // best-effort: show simple alert
-            Platform.runLater(() -> {
-                Alert a = new Alert(Alert.AlertType.ERROR, "Não foi possível exportar CSV: " + ex.getMessage(), ButtonType.OK);
-                a.initOwner(stage);
-                a.showAndWait();
-            });
+            Platform.runLater(() ->
+                Dialogs.error("Erro ao exportar CSV", "Não foi possível exportar CSV: " + ex.getMessage()));
         }
     }
 }

@@ -1,4 +1,5 @@
 package com.pessoal.agenda.ui.controller;
+import com.pessoal.agenda.ui.view.Dialogs;
 
 import com.pessoal.agenda.app.AppContextHolder;
 import com.pessoal.agenda.app.SharedContext;
@@ -627,16 +628,14 @@ public class ChecklistController {
         int active = AppContextHolder.get().protocolRepository().countActiveExecutionsOf(sel.id());
         String extra = active > 0
                 ? "\n⚠ " + active + " execução(ões) ativa(s) serão canceladas!" : "";
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Remover Protocolo Operacional");
-        confirm.setHeaderText("Remover \"" + sel.name() + "\"?");
-        confirm.setContentText(
-                "Todos os passos e o histórico de execuções serão removidos permanentemente." + extra);
-        confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
-            AppContextHolder.get().protocolRepository().deleteProtocol(sel.id());
-            clearForm(); refresh(); ctx.triggerDashboardRefresh();
-            ctx.setStatus("Protocolo \"" + sel.name() + "\" removido.");
-        });
+        Dialogs.confirm("Remover Protocolo Operacional",
+                "Remover \"" + sel.name() + "\"?",
+                "Todos os passos e o histórico de execuções serão removidos permanentemente." + extra)
+                .filter(b -> b == ButtonType.OK).ifPresent(b -> {
+                    AppContextHolder.get().protocolRepository().deleteProtocol(sel.id());
+                    clearForm(); refresh(); ctx.triggerDashboardRefresh();
+                    ctx.setStatus("Protocolo \"" + sel.name() + "\" removido.");
+                });
     }
 
     private void reloadTaskOptions() {

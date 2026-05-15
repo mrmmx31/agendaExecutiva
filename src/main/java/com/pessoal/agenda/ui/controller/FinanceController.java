@@ -1,4 +1,5 @@
 package com.pessoal.agenda.ui.controller;
+import com.pessoal.agenda.ui.view.Dialogs;
 
 import com.pessoal.agenda.DatabaseService;
 import com.pessoal.agenda.app.AppContextHolder;
@@ -363,18 +364,16 @@ public class FinanceController {
         delBtn.setOnAction(e -> {
             FinanceEntry sel = listView.getSelectionModel().getSelectedItem();
             if (sel == null) { ctx.setStatus("Selecione um lançamento."); return; }
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-            confirm.setTitle("Excluir Lançamento");
-            confirm.setHeaderText("Excluir \"" + sel.description() + "\"?");
-            confirm.setContentText("Esta ação não pode ser desfeita.");
-            confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
-                repo().deleteById(sel.id());
-                if (editingId != null && editingId.equals(sel.id())) resetForm();
-                refresh();
-                ctx.triggerDashboardRefresh();
-                ctx.triggerAlertRefresh();
-                ctx.setStatus("Lançamento excluído.");
-            });
+            Dialogs.confirm("Excluir Lançamento", "Excluir \"" + sel.description() + "\"?",
+                    "Esta ação não pode ser desfeita.")
+                    .filter(b -> b == ButtonType.OK).ifPresent(b -> {
+                        repo().deleteById(sel.id());
+                        if (editingId != null && editingId.equals(sel.id())) resetForm();
+                        refresh();
+                        ctx.triggerDashboardRefresh();
+                        ctx.triggerAlertRefresh();
+                        ctx.setStatus("Lançamento excluído.");
+                    });
         });
 
         VBox card = new VBox(6, title, markPaidBtn, editBtn, delBtn);
@@ -604,18 +603,16 @@ public class FinanceController {
         FinanceEntry toDelete = repo().findAll().stream()
                 .filter(e -> e.id() == editingId).findFirst().orElse(null);
         String desc = toDelete != null ? toDelete.description() : "#" + editingId;
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Excluir Lançamento");
-        confirm.setHeaderText("Excluir \"" + desc + "\"?");
-        confirm.setContentText("Esta ação não pode ser desfeita.");
-        confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
-            repo().deleteById(editingId);
-            resetForm();
-            refresh();
-            ctx.triggerDashboardRefresh();
-            ctx.triggerAlertRefresh();
-            ctx.setStatus("Lançamento excluído: " + desc);
-        });
+        Dialogs.confirm("Excluir Lançamento", "Excluir \"" + desc + "\"?",
+                "Esta ação não pode ser desfeita.")
+                .filter(b -> b == ButtonType.OK).ifPresent(b -> {
+                    repo().deleteById(editingId);
+                    resetForm();
+                    refresh();
+                    ctx.triggerDashboardRefresh();
+                    ctx.triggerAlertRefresh();
+                    ctx.setStatus("Lançamento excluído: " + desc);
+                });
     }
 
     // ── Filtros e Refresh ─────────────────────────────────────────────────────

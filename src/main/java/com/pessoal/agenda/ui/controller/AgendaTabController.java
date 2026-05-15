@@ -1,4 +1,5 @@
 package com.pessoal.agenda.ui.controller;
+import com.pessoal.agenda.ui.view.Dialogs;
 
 import com.pessoal.agenda.DatabaseService;
 import com.pessoal.agenda.app.AppContextHolder;
@@ -17,6 +18,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.stage.Modality;
 
 import java.io.File;
 import java.io.IOException;
@@ -164,8 +166,6 @@ public class AgendaTabController {
         VBox mainPanel = new VBox(10, topBar, contentArea);
         VBox.setVgrow(contentArea, Priority.ALWAYS);
         mainPanel.setPadding(new Insets(14));
-        HBox.setHgrow(mainPanel, Priority.ALWAYS);
-
         ScrollPane sidePanel = buildSidePanel();
         sidePanel.setPrefWidth(370); sidePanel.setMinWidth(340);
 
@@ -185,8 +185,6 @@ public class AgendaTabController {
     }
 
     public LocalDate getCurrentDate() { return currentDate; }
-
-    // ── Painel lateral (formulário + ações) ────────────────────────────────
 
     private ScrollPane buildSidePanel() {
         titleField = new TextField();
@@ -338,18 +336,14 @@ public class AgendaTabController {
             DatabaseService.RowItem sel = currentMainListView != null
                     ? currentMainListView.getSelectionModel().getSelectedItem() : null;
             if (sel == null) { ctx.setStatus("Selecione uma tarefa para remover."); return; }
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-            confirm.setTitle("Confirmar remoção");
-            confirm.setHeaderText("Remover tarefa selecionada?");
-            confirm.setContentText("Esta ação é permanente e não pode ser desfeita.");
-            confirm.showAndWait().ifPresent(btn -> {
-                if (btn == ButtonType.OK) {
-                    AppContextHolder.get().taskService().deleteTask(sel.id());
-                    if (editingId != null && editingId == sel.id()) resetForm();
-                    refresh(); ctx.triggerDashboardRefresh();
-                    ctx.setStatus("Tarefa removida.");
-                }
-            });
+            Dialogs.confirm("Confirmar remoção", "Remover tarefa selecionada?",
+                    "Esta ação é permanente e não pode ser desfeita.")
+                    .filter(btn -> btn == ButtonType.OK).ifPresent(btn -> {
+                        AppContextHolder.get().taskService().deleteTask(sel.id());
+                        if (editingId != null && editingId == sel.id()) resetForm();
+                        refresh(); ctx.triggerDashboardRefresh();
+                        ctx.setStatus("Tarefa removida.");
+                    });
         });
 
         VBox actionsSection = new VBox(6, editBtn, doneBtn, deleteBtn);
@@ -394,7 +388,6 @@ public class AgendaTabController {
         printBtn.setOnAction(e -> printCurrentView());
         actionsSection.getChildren().add(printBtn);
 
-        // ── Google Tasks ───────────────────────────────────────────────────
         Button googleTasksBtn = new Button("☁  Google Tasks");
         googleTasksBtn.getStyleClass().add("secondary-button");
         googleTasksBtn.setMaxWidth(Double.MAX_VALUE);
@@ -436,11 +429,7 @@ public class AgendaTabController {
         var groups = AppContextHolder.get().taskRepository().findDuplicateGroups();
 
         if (groups.isEmpty()) {
-            Alert info = new Alert(Alert.AlertType.INFORMATION);
-            info.setTitle("Sem duplicatas");
-            info.setHeaderText("Nenhuma duplicata encontrada.");
-            info.setContentText("Todas as tarefas têm títulos únicos.");
-            info.showAndWait();
+            Dialogs.info("Sem duplicatas", "Todas as tarefas têm títulos únicos.");
             return;
         }
 
@@ -461,12 +450,11 @@ public class AgendaTabController {
             sb.append("\n");
         }
 
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Remover Duplicatas");
-        confirm.setHeaderText(groups.size() + " título(s) duplicado(s) — "
-                + totalRemover + " tarefa(s) serão removidas.");
-        confirm.setContentText("A tarefa mais antiga (menor ID) será mantida em cada grupo.\n\n"
-                + "Grupos encontrados:\n\n" + sb.toString().trim());
+        Alert confirm = Dialogs.build(Alert.AlertType.CONFIRMATION,
+                "Remover Duplicatas",
+                groups.size() + " título(s) duplicado(s) — " + totalRemover + " tarefa(s) serão removidas.",
+                "A tarefa mais antiga (menor ID) será mantida em cada grupo.\n\n"
+                        + "Grupos encontrados:\n\n" + sb.toString().trim());
         confirm.getDialogPane().setPrefWidth(520);
 
         confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
@@ -521,7 +509,6 @@ public class AgendaTabController {
                 ctx.setStatus("Tarefa atualizada: " + titleField.getText().trim());
             }
             resetForm();
-            refresh(); ctx.triggerDashboardRefresh();
         } catch (IllegalArgumentException ex) {
             ctx.setStatus("Erro: " + ex.getMessage());
         }
@@ -597,11 +584,7 @@ public class AgendaTabController {
         list.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         currentMainListView = list;
         list.setOnMouseClicked(e -> {
-            if (e.getButton() == javafx.scene.input.MouseButton.SECONDARY) {
-                DatabaseService.RowItem sel = list.getSelectionModel().getSelectedItem();
-                if (sel != null) showTaskContextMenu(sel, list, e.getScreenX(), e.getScreenY());
-                e.consume();
-            } else if (e.getClickCount() == 2 && e.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+            if (e.getClickCount() == 2) {
                 DatabaseService.RowItem sel = list.getSelectionModel().getSelectedItem();
                 if (sel != null) {
                     AppContextHolder.get().taskService().findById(sel.id()).ifPresent(t ->
@@ -629,11 +612,7 @@ public class AgendaTabController {
             ListView<DatabaseService.RowItem> dayList = new ListView<>(weekDayItems.get(i));
             dayList.getStyleClass().add("clean-list"); VBox.setVgrow(dayList, Priority.ALWAYS);
             dayList.setOnMouseClicked(ev -> {
-                if (ev.getButton() == javafx.scene.input.MouseButton.SECONDARY) {
-                    DatabaseService.RowItem sel = dayList.getSelectionModel().getSelectedItem();
-                    if (sel != null) showTaskContextMenu(sel, dayList, ev.getScreenX(), ev.getScreenY());
-                    ev.consume();
-                } else if (ev.getClickCount() == 2 && ev.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+                if (ev.getClickCount() == 2) {
                     DatabaseService.RowItem sel = dayList.getSelectionModel().getSelectedItem();
                     if (sel != null) {
                         AppContextHolder.get().taskService().findById(sel.id()).ifPresent(t ->
@@ -662,7 +641,6 @@ public class AgendaTabController {
         list.getStyleClass().add("clean-list");
         list.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         currentMainListView = list; VBox.setVgrow(list, Priority.ALWAYS);
-        // Custom cell: mostra controles do timer se for a tarefa ativa
         list.setCellFactory(lv -> new ListCell<>() {
             private final HBox cellBox = new HBox(8);
             private final Label textLabel = new Label();
@@ -743,12 +721,11 @@ public class AgendaTabController {
             }
         });
         list.setOnMouseClicked(e -> {
+            DatabaseService.RowItem sel = list.getSelectionModel().getSelectedItem();
             if (e.getButton() == javafx.scene.input.MouseButton.SECONDARY) {
-                DatabaseService.RowItem sel = list.getSelectionModel().getSelectedItem();
                 if (sel != null) showTaskContextMenu(sel, list, e.getScreenX(), e.getScreenY());
                 e.consume();
             } else if (e.getClickCount() == 2 && e.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
-                DatabaseService.RowItem sel = list.getSelectionModel().getSelectedItem();
                 if (sel != null) {
                     AppContextHolder.get().taskService().findById(sel.id()).ifPresent(task -> {
                         new com.pessoal.agenda.ui.view.TaskTimerWindow(
@@ -911,18 +888,14 @@ public class AgendaTabController {
         MenuItem deleteItem = new MenuItem("✕  Remover tarefa");
         deleteItem.setStyle("-fx-text-fill: #c62828;");
         deleteItem.setOnAction(e -> {
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-            confirm.setTitle("Confirmar remoção");
-            confirm.setHeaderText("Remover tarefa selecionada?");
-            confirm.setContentText("Esta ação é permanente e não pode ser desfeita.");
-            confirm.showAndWait().ifPresent(btn -> {
-                if (btn == ButtonType.OK) {
-                    AppContextHolder.get().taskService().deleteTask(item.id());
-                    if (editingId != null && editingId == item.id()) resetForm();
-                    refresh(); ctx.triggerDashboardRefresh();
-                    ctx.setStatus("Tarefa removida.");
-                }
-            });
+            Dialogs.confirm("Confirmar remoção", "Remover tarefa selecionada?",
+                    "Esta ação é permanente e não pode ser desfeita.")
+                    .filter(btn -> btn == ButtonType.OK).ifPresent(btn -> {
+                        AppContextHolder.get().taskService().deleteTask(item.id());
+                        if (editingId != null && editingId == item.id()) resetForm();
+                        refresh(); ctx.triggerDashboardRefresh();
+                        ctx.setStatus("Tarefa removida.");
+                    });
         });
 
         taskContextMenu.getItems().addAll(editItem, doneItem, timerItem, checklistItem, historyItem, sep, deleteItem);
@@ -1100,9 +1073,7 @@ public class AgendaTabController {
         }
 
         if (tasks.isEmpty()) {
-            new Alert(Alert.AlertType.INFORMATION,
-                    "Não há tarefas no período selecionado para exportar.",
-                    ButtonType.OK).showAndWait();
+            Dialogs.info("Sem tarefas", "Não há tarefas no período selecionado para exportar.");
             return;
         }
 
@@ -1137,10 +1108,7 @@ public class AgendaTabController {
                 ICalendarExporter.export(tasks, dest.toPath());
                 ctx.setStatus("✅ Exportado: " + dest.getName() + " (" + tasks.size() + " tarefa(s))");
 
-                Alert success = new Alert(Alert.AlertType.INFORMATION);
-                success.setTitle("Exportação concluída");
-                success.setHeaderText("Arquivo iCalendar gerado com sucesso!");
-                success.setContentText(
+                Dialogs.info("Exportação concluída",
                         "Arquivo salvo em:\n" + dest.getAbsolutePath() + "\n\n"
                         + "Para importar no Google Calendar:\n"
                         + "  1. Acesse calendar.google.com\n"
@@ -1150,11 +1118,9 @@ public class AgendaTabController {
                         + "  5. Escolha o calendario de destino e confirme\n\n"
                         + "Compativel tambem com Outlook, Apple Calendar\n"
                         + "e qualquer app que suporte iCalendar (RFC 5545).");
-                success.showAndWait();
             } catch (IOException ex) {
                 ctx.setStatus("Erro ao exportar: " + ex.getMessage());
-                new Alert(Alert.AlertType.ERROR,
-                        "Erro ao gerar o arquivo:\n" + ex.getMessage(), ButtonType.OK).showAndWait();
+                Dialogs.error("Erro ao exportar", "Erro ao gerar o arquivo:\n" + ex.getMessage());
             }
         });
     }

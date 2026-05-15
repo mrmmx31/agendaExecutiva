@@ -363,10 +363,10 @@ public class StudyMonitorWindow {
 
         // Se foram detectadas múltiplas ausências, pedir confirmação ao usuário
         if (missing.size() > 1) {
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-            confirm.setTitle("Confirmar registro de ausências");
-            confirm.setHeaderText("Foram detectadas " + missing.size() + " ausências.");
-            confirm.setContentText("Deseja registrar automaticamente estas ausências como compensações?");
+            Alert confirm = Dialogs.build(Alert.AlertType.CONFIRMATION,
+                    "Confirmar registro de ausências",
+                    "Foram detectadas " + missing.size() + " ausências.",
+                    "Deseja registrar automaticamente estas ausências como compensações?");
 
             // lista detalhada (expandable)
             StringBuilder sb = new StringBuilder();
@@ -412,10 +412,7 @@ public class StudyMonitorWindow {
     }
 
     private static void showInfo(String msg) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION);
-        a.setHeaderText(null);
-        a.setContentText(msg);
-        a.showAndWait();
+        Dialogs.info("Monitoramento", msg);
     }
 }
 

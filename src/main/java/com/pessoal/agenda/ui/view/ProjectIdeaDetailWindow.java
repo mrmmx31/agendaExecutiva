@@ -439,17 +439,15 @@ public class ProjectIdeaDetailWindow {
         deleteBtn.setPrefWidth(100);
         deleteBtn.setVisible(idea.id() > 0);
         deleteBtn.setOnAction(e -> {
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                    "Excluir permanentemente esta ideia/projeto?", ButtonType.YES, ButtonType.NO);
-            confirm.setHeaderText("Confirmar exclusão");
-            confirm.showAndWait().ifPresent(b -> {
-                if (b == ButtonType.YES) {
-                    checklistRepo.deleteByIdeaId(idea.id());
-                    repo.deleteById(idea.id());
-                    stage.close();
-                    if (onSaved != null) onSaved.run();
-                }
-            });
+            Dialogs.confirm("Confirmar exclusão", "Excluir permanentemente esta ideia/projeto?")
+                    .ifPresent(b -> {
+                        if (b == ButtonType.OK) {
+                            checklistRepo.deleteByIdeaId(idea.id());
+                            repo.deleteById(idea.id());
+                            stage.close();
+                            if (onSaved != null) onSaved.run();
+                        }
+                    });
         });
 
         Button cancelBtn = new Button("✕  Fechar");
@@ -469,8 +467,7 @@ public class ProjectIdeaDetailWindow {
 
     private boolean saveIdea() {
         if (titleField.getText().isBlank()) {
-            new Alert(Alert.AlertType.WARNING, "O título é obrigatório.", ButtonType.OK)
-                    .showAndWait();
+            Dialogs.warning("Campo obrigatório", "O título é obrigatório.");
             return false;
         }
         String status   = resolveKey(statusCombo);

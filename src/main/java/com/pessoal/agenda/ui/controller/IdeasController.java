@@ -1,4 +1,5 @@
 package com.pessoal.agenda.ui.controller;
+import com.pessoal.agenda.ui.view.Dialogs;
 
 import com.pessoal.agenda.app.AppContextHolder;
 import com.pessoal.agenda.app.SharedContext;
@@ -612,17 +613,15 @@ public class IdeasController {
     }
 
     private void deleteIdeaWithConfirm(ProjectIdea idea) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Confirmar Exclusão");
-        alert.setHeaderText("Excluir ideia/projeto?");
-        alert.setContentText("Deseja realmente excluir \"" + idea.title() + "\"?\nEsta ação não pode ser desfeita.");
-        alert.showAndWait().ifPresent(btn -> {
-            if (btn == ButtonType.OK) {
-                repo.deleteById(idea.id());
-                refreshView();
-                ctx.triggerDashboardRefresh();
-            }
-        });
+        Dialogs.confirm("Confirmar Exclusão", "Excluir ideia/projeto?",
+                "Deseja realmente excluir \"" + idea.title() + "\"?\nEsta ação não pode ser desfeita.")
+                .ifPresent(btn -> {
+                    if (btn == ButtonType.OK) {
+                        repo.deleteById(idea.id());
+                        refreshView();
+                        ctx.triggerDashboardRefresh();
+                    }
+                });
     }
 
     private void changeStatus(ProjectIdea idea, String newStatus) {

@@ -1,4 +1,5 @@
 package com.pessoal.agenda.ui.controller;
+import com.pessoal.agenda.ui.view.Dialogs;
 
 import com.pessoal.agenda.DatabaseService;
 import com.pessoal.agenda.app.AppContextHolder;
@@ -395,10 +396,8 @@ public class SalesController {
         delBtn.setOnAction(e -> {
             SaleEntry sel = salesListView.getSelectionModel().getSelectedItem();
             if (sel == null) { ctx.setStatus("Selecione uma venda."); return; }
-            new Alert(Alert.AlertType.CONFIRMATION,
-                    "Excluir venda de \"" + sel.productName() + "\"?",
-                    ButtonType.OK, ButtonType.CANCEL)
-                    .showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
+            Dialogs.confirm("Excluir Venda", "Excluir venda de \"" + sel.productName() + "\"?")
+                    .filter(b -> b == ButtonType.OK).ifPresent(b -> {
                         salesRepo().deleteById(sel.id());
                         if (editingSaleId != null && editingSaleId.equals(sel.id())) resetSaleForm();
                         refresh();
@@ -636,10 +635,8 @@ public class SalesController {
         delBtn.setOnAction(e -> {
             InventoryItem sel = catalogListView.getSelectionModel().getSelectedItem();
             if (sel == null) { ctx.setStatus("Selecione um item."); return; }
-            new Alert(Alert.AlertType.CONFIRMATION,
-                    "Excluir \"" + sel.productName() + "\" do catálogo?",
-                    ButtonType.OK, ButtonType.CANCEL)
-                    .showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
+            Dialogs.confirm("Excluir Item", "Excluir \"" + sel.productName() + "\" do catálogo?")
+                    .filter(b -> b == ButtonType.OK).ifPresent(b -> {
                         inventoryRepo().deleteById(sel.id());
                         if (editingItemId != null && editingItemId.equals(sel.id())) resetCatalogForm();
                         refreshCatalog();
@@ -818,8 +815,8 @@ public class SalesController {
 
     private void deleteSaleFromForm() {
         if (editingSaleId == null) return;
-        new Alert(Alert.AlertType.CONFIRMATION, "Excluir esta venda?", ButtonType.OK, ButtonType.CANCEL)
-                .showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
+        Dialogs.confirm("Excluir Venda", "Excluir esta venda?")
+                .filter(b -> b == ButtonType.OK).ifPresent(b -> {
                     salesRepo().deleteById(editingSaleId);
                     resetSaleForm();
                     refresh();
@@ -903,9 +900,8 @@ public class SalesController {
 
     private void deleteCatalogItemFromForm() {
         if (editingItemId == null) return;
-        new Alert(Alert.AlertType.CONFIRMATION, "Excluir este item do catálogo?",
-                ButtonType.OK, ButtonType.CANCEL)
-                .showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
+        Dialogs.confirm("Excluir Item", "Excluir este item do catálogo?")
+                .filter(b -> b == ButtonType.OK).ifPresent(b -> {
                     inventoryRepo().deleteById(editingItemId);
                     resetCatalogForm();
                     refreshCatalog();

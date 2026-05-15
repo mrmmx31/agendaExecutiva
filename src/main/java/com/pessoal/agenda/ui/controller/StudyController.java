@@ -1,4 +1,5 @@
 package com.pessoal.agenda.ui.controller;
+import com.pessoal.agenda.ui.view.Dialogs;
 
 import com.pessoal.agenda.app.AppContextHolder;
 import com.pessoal.agenda.app.SharedContext;
@@ -11,6 +12,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.Modality;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -606,17 +608,14 @@ public class StudyController {
     private void removeSelectedPlan() {
         StudyPlan sel = planListView.getSelectionModel().getSelectedItem();
         if (sel == null) { ctx.setStatus("Selecione um plano para remover."); return; }
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Remover plano de estudo");
-        confirm.setHeaderText("Remover \"" + sel.title() + "\"?");
-        confirm.setContentText(
+        Dialogs.confirm("Remover plano de estudo", "Remover \"" + sel.title() + "\"?",
                 "Todas as entradas do Diário Científico associadas a este plano\n" +
-                "serão removidas permanentemente. Ação irreversível.");
-        confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
-            AppContextHolder.get().studyPlanRepository().deleteById(sel.id());
-            clearForm(); refresh(); ctx.triggerDashboardRefresh();
-            ctx.setStatus("Plano \"" + sel.title() + "\" removido.");
-        });
+                "serão removidas permanentemente. Ação irreversível.")
+                .filter(b -> b == ButtonType.OK).ifPresent(b -> {
+                    AppContextHolder.get().studyPlanRepository().deleteById(sel.id());
+                    clearForm(); refresh(); ctx.triggerDashboardRefresh();
+                    ctx.setStatus("Plano \"" + sel.title() + "\" removido.");
+                });
     }
 
     private void saveSchedule(long planId) {

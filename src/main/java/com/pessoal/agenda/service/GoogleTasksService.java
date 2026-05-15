@@ -156,23 +156,6 @@ public class GoogleTasksService {
     }
 
     /**
-     * Retorna grupos de tarefas do Google com título duplicado.
-     * Cada lista tem ≥ 2 itens; o primeiro é o "original" (mais antigo na lista).
-     */
-    public List<List<GTask>> findGoogleDuplicateGroups(String taskListId)
-            throws IOException, InterruptedException {
-        List<GTask> all = listTasks(taskListId, true);
-        Map<String, List<GTask>> byTitle = new java.util.LinkedHashMap<>();
-        for (GTask t : all) {
-            String key = t.title() != null ? t.title().trim().toLowerCase() : "";
-            byTitle.computeIfAbsent(key, k -> new ArrayList<>()).add(t);
-        }
-        return byTitle.values().stream()
-                .filter(g -> g.size() > 1)
-                .collect(Collectors.toList());
-    }
-
-    /**
      * Atualiza o título e notas de uma tarefa.
      */
     public void updateTask(String taskListId, String taskId,
@@ -186,13 +169,15 @@ public class GoogleTasksService {
     // ── Sync Bidirecional ────────────────────────────────────────────────────
 
     /**
-     * Executa sincronização bidirecional completa.
+     * Executa sincronização bidirecional completa entre uma lista do Google Tasks
+     * e as tarefas locais.
      *
-     * Regras anti-duplicata:
-     *  - Antes de criar localmente, verifica se já existe local com mesmo título → mapeia ao invés de criar
-     *  - Antes de criar no Google, verifica se já existe Google task com mesmo título → mapeia ao invés de criar
-     *  - Concluída em qualquer lado → conclui nos dois
-     *  - Texto local → atualiza no Google (local é fonte de verdade para texto)
+     * Regras:
+     *  - Google task sem mapeamento → cria localmente + salva mapeamento
+     *  - Local task sem mapeamento  → cria no Google + salva mapeamento
+     *  - Concluída no Google e não localmente → conclui localmente
+     *  - Concluída localmente e não no Google → conclui no Google
+     *  - Título/notas locais → atualiza no Google (local é fonte de verdade para texto)
      */
     public SyncResult syncBidirectional(String googleListId,
                                         TaskRepository taskRepo,
@@ -202,82 +187,59 @@ public class GoogleTasksService {
         List<String> log = new ArrayList<>();
         int createdLocal = 0, createdGoogle = 0, completedLocal = 0, completedGoogle = 0, errors = 0;
 
-        // Busca todos os dados de ambos os lados
+        // Busca todos os dados
         List<GTask> googleTasks = listTasks(googleListId, true);
         List<com.pessoal.agenda.model.Task> localTasks = taskRepo.findOpenTasks();
 
-        // Índices por título normalizado para casamento anti-duplicata
-        Map<String, com.pessoal.agenda.model.Task> localByTitle = localTasks.stream()
-                .collect(Collectors.toMap(
-                        t -> t.title().trim().toLowerCase(),
-                        t -> t,
-                        (a, b) -> a)); // em caso de empate, fica o de menor id (list está ordenada por id)
-
-        Map<String, GTask> googleByTitle = googleTasks.stream()
-                .collect(Collectors.toMap(
-                        g -> g.title() != null ? g.title().trim().toLowerCase() : "",
-                        g -> g,
-                        (a, b) -> a));
-
-        // Índice Google por ID
+        // Indexa as tarefas do Google por ID
         Map<String, GTask> googleById = googleTasks.stream()
-                .collect(Collectors.toMap(GTask::id, g -> g));
+                .collect(Collectors.toMap(GTask::id, t -> t));
 
         // ── PASSO 1: para cada tarefa do Google ──────────────────────────────
         for (GTask gt : googleTasks) {
-            if (gt.title() == null || gt.title().isBlank()) continue;
             try {
                 Optional<TaskMapping> mapping = mappingRepo.findByGoogleId(googleListId, gt.id());
 
                 if (mapping.isEmpty()) {
-                    String titleKey = gt.title().trim().toLowerCase();
-
-                    // Verifica se já existe local com mesmo título → mapeia sem criar
-                    com.pessoal.agenda.model.Task existing = localByTitle.get(titleKey);
-                    if (existing != null && mappingRepo.findByLocalId(existing.id()).isEmpty()) {
-                        mappingRepo.upsert(existing.id(), googleListId, gt.id());
-                        log.add("🔗 Mapeado (título igual): \"" + gt.title() + "\"");
-                        // Aplica status de conclusão se necessário
-                        if (gt.completed() && !existing.done()) {
-                            taskRepo.markDone(existing.id());
+                    // Nova no Google → cria localmente
+                    LocalDate due = gt.dueDate() != null ? gt.dueDate() : LocalDate.now();
+                    taskRepo.save(gt.title(),
+                            gt.notes() != null && !gt.notes().isBlank() ? gt.notes() : null,
+                            due, "Google Tasks");
+                    // Recupera o ID recém-inserido
+                    List<com.pessoal.agenda.model.Task> all = taskRepo.findOpenTasks();
+                    com.pessoal.agenda.model.Task created = all.stream()
+                            .filter(t -> t.title().equals(gt.title()))
+                            .reduce((a, b) -> b) // pega o mais recente
+                            .orElse(null);
+                    if (created != null) {
+                        mappingRepo.upsert(created.id(), googleListId, gt.id());
+                        if (gt.completed()) {
+                            taskRepo.markDone(created.id());
                             completedLocal++;
                         }
-                    } else {
-                        // Cria localmente
-                        LocalDate due = gt.dueDate() != null ? gt.dueDate() : LocalDate.now();
-                        taskRepo.save(gt.title(),
-                                gt.notes() != null && !gt.notes().isBlank() ? gt.notes() : null,
-                                due, "Google Tasks");
-                        // Recupera o ID recém-inserido pelo título + data
-                        com.pessoal.agenda.model.Task created = taskRepo.findOpenTasks().stream()
-                                .filter(t -> t.title().equalsIgnoreCase(gt.title()))
-                                .reduce((a, b) -> b) // mais recente
-                                .orElse(null);
-                        if (created != null) {
-                            mappingRepo.upsert(created.id(), googleListId, gt.id());
-                            if (gt.completed()) {
-                                taskRepo.markDone(created.id());
-                                completedLocal++;
-                            }
-                        }
-                        createdLocal++;
-                        log.add("⬇ Criado local: \"" + gt.title() + "\"");
                     }
+                    createdLocal++;
+                    log.add("⬇ Criado local: " + gt.title());
                 } else {
-                    // Mapeamento existe → sincroniza status e texto
+                    // Mapeamento existe → sincroniza status de conclusão
                     long localId = mapping.get().localTaskId();
                     com.pessoal.agenda.model.Task local = taskRepo.findById(localId).orElse(null);
+
                     if (local != null) {
+                        // Google concluiu → conclui localmente
                         if (gt.completed() && !local.done()) {
                             taskRepo.markDone(localId);
                             completedLocal++;
-                            log.add("✓ Concluído local (veio do Google): \"" + gt.title() + "\"");
+                            log.add("✓ Concluído local (Google): " + gt.title());
                         }
+                        // Local concluiu → conclui no Google
                         if (local.done() && !gt.completed()) {
                             completeTask(googleListId, gt.id());
                             completedGoogle++;
-                            log.add("✓ Concluído Google (veio do local): \"" + local.title() + "\"");
+                            log.add("✓ Concluído Google (local): " + local.title());
                         }
+                        // Atualiza texto no Google com dados locais (local é fonte de verdade)
                         if (!local.done() && !gt.completed()) {
                             updateTask(googleListId, gt.id(),
                                     local.title(), local.notes(), local.dueDate());
@@ -287,42 +249,26 @@ public class GoogleTasksService {
                 }
             } catch (Exception e) {
                 errors++;
-                log.add("✗ Erro em \"" + gt.title() + "\": " + e.getMessage());
+                log.add("✗ Erro em '" + gt.title() + "': " + e.getMessage());
             }
         }
 
-        // ── PASSO 2: tarefas locais sem mapeamento → cria no Google ──────────
-        // Recarrega para incluir as criadas no passo 1
-        List<com.pessoal.agenda.model.Task> localAfterStep1 = taskRepo.findOpenTasks();
-        for (com.pessoal.agenda.model.Task local : localAfterStep1) {
-            if (local.done()) continue;
+        // ── PASSO 2: para cada tarefa local sem mapeamento → cria no Google ──
+        for (com.pessoal.agenda.model.Task local : localTasks) {
+            if (local.done()) continue; // não exporta tarefas já concluídas
             try {
-                if (mappingRepo.findByLocalId(local.id()).isPresent()) continue; // já mapeada
-
-                String titleKey = local.title().trim().toLowerCase();
-
-                // Verifica se já existe Google task com mesmo título → mapeia sem criar
-                GTask existingGoogle = googleByTitle.get(titleKey);
-                if (existingGoogle != null && mappingRepo.findByGoogleId(googleListId, existingGoogle.id()).isEmpty()) {
-                    mappingRepo.upsert(local.id(), googleListId, existingGoogle.id());
-                    log.add("🔗 Mapeado bidirecional: \"" + local.title() + "\"");
-                    if (local.done() && !existingGoogle.completed()) {
-                        completeTask(googleListId, existingGoogle.id());
-                        completedGoogle++;
-                    }
-                } else {
-                    // Cria no Google
+                if (mappingRepo.findByLocalId(local.id()).isEmpty()) {
                     String gId = createTask(googleListId, local.title(),
                             local.notes(), local.dueDate());
                     if (gId != null) {
                         mappingRepo.upsert(local.id(), googleListId, gId);
                         createdGoogle++;
-                        log.add("⬆ Criado Google: \"" + local.title() + "\"");
+                        log.add("⬆ Criado Google: " + local.title());
                     }
                 }
             } catch (Exception e) {
                 errors++;
-                log.add("✗ Erro ao exportar \"" + local.title() + "\": " + e.getMessage());
+                log.add("✗ Erro ao exportar '" + local.title() + "': " + e.getMessage());
             }
         }
 
@@ -385,6 +331,22 @@ public class GoogleTasksService {
         }
     }
 
+    /** Agrupa tarefas não concluídas com o mesmo título (normalizado).
+     *  Retorna apenas grupos com 2+ tarefas. O primeiro elemento é o mais antigo. */
+    public List<List<GTask>> findGoogleDuplicateGroups(String taskListId) throws IOException, InterruptedException {
+        List<GTask> all = listTasks(taskListId, false);
+        Map<String, List<GTask>> byTitle = new java.util.LinkedHashMap<>();
+        for (GTask t : all) {
+            String key = t.title() == null ? "" : t.title().trim().toLowerCase();
+            byTitle.computeIfAbsent(key, k -> new ArrayList<>()).add(t);
+        }
+        List<List<GTask>> result = new ArrayList<>();
+        for (List<GTask> group : byTitle.values()) {
+            if (group.size() > 1) result.add(group);
+        }
+        return result;
+    }
+
     private static String buildTaskJson(String title, String notes, String due, boolean completed) {
         StringBuilder sb = new StringBuilder("{");
         sb.append("\"title\":\"").append(escapeJson(title != null ? title : "")).append("\"");
@@ -410,7 +372,3 @@ public class GoogleTasksService {
         return URLEncoder.encode(s, StandardCharsets.UTF_8);
     }
 }
-
-
-
-

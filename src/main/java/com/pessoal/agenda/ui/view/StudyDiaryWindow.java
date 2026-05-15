@@ -297,15 +297,13 @@ public class StudyDiaryWindow {
         removeBtn.setOnAction(e -> {
             StudyEntry sel = indexListView.getSelectionModel().getSelectedItem();
             if (sel == null) return;
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-            confirm.setTitle("Remover entrada");
-            confirm.setHeaderText("Remover esta entrada do diário?");
-            confirm.setContentText("\"" + (sel.hasTitle() ? sel.entryTitle() : "entrada") + "\" — ação permanente.");
-            confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
-                entryRepo.deleteById(sel.id());
-                loadEntries(); clearEntryForm();
-                if (refreshCallback != null) refreshCallback.run();
-            });
+            Dialogs.confirm("Remover entrada", "Remover esta entrada do diário?",
+                    "\"" + (sel.hasTitle() ? sel.entryTitle() : "entrada") + "\" — ação permanente.")
+                    .filter(b -> b == ButtonType.OK).ifPresent(b -> {
+                        entryRepo.deleteById(sel.id());
+                        loadEntries(); clearEntryForm();
+                        if (refreshCallback != null) refreshCallback.run();
+                    });
         });
 
         VBox panel = new VBox(8, title, indexListView, newBtn, removeBtn);

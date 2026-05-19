@@ -90,6 +90,14 @@
     /* ── IDEIAS / KANBAN ─────────────────────────────────── */
     -t-kan-bg    : #f3f7fb;
     -t-ideas-bg  : #edf1f8;
+
+    /* ── SEMÂNTICAS ──────────────────────────────────────────── */
+    -t-success   : #1b5e20;
+    -t-success-bg: #e8f5e9;
+    -t-warn      : #e65100;
+    -t-warn-bg   : #fff3e0;
+    -t-purple    : #7b1fa2;
+    -t-purple-bg : #f3e5f5;
 }
 
 .app-root { -fx-background-color: -t-app-bg; }
@@ -530,7 +538,6 @@
 
 /* ── Ideias e Projetos — Kanban & Cards ─────────────────────────────────── */
 .ideas-kanban-scroll { -fx-background-color: -t-ideas-bg; -fx-border-color: transparent; }
-.ideas-kanban-scroll > .viewport { -fx-background-color: -t-ideas-bg; }
 .idea-card {
     -fx-background-color: -t-surface;
     -fx-background-radius: 6; -fx-border-radius: 6;
@@ -554,3 +561,140 @@
     -fx-padding: 6 10 6 10; -fx-background-radius: 6 6 0 0;
 }
 .kanban-col-body { -fx-background-color: -t-kan-bg; -fx-border-radius: 0 0 6 6; -fx-background-radius: 0 0 6 6; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTROLES NATIVOS — THEMING GLOBAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ScrollPane viewport background */
+.scroll-pane .scroll-bar { -fx-background-color: -t-surface-c; }
+.scroll-pane .scroll-bar .thumb { -fx-background-color: -t-bd-mid; -fx-background-radius: 4; }
+.scroll-pane .scroll-bar .thumb:hover { -fx-background-color: -t-text-m; }
+/* Viewports opacos apenas em scrollpanes sem classe especial */
+.scroll-pane > .viewport             { -fx-background-color: -t-app-bg; }
+.edge-to-edge > .viewport            { -fx-background-color: transparent; }
+.ideas-kanban-scroll > .viewport     { -fx-background-color: -t-ideas-bg; }
+
+/* Dialog / Alert */
+.dialog-pane {
+    -fx-background-color: -t-surface;
+    -fx-border-color: -t-bd;
+    -fx-border-width: 1;
+}
+.dialog-pane .header-panel {
+    -fx-background-color: -t-header-a;
+}
+.dialog-pane .header-panel .label {
+    -fx-text-fill: -t-text-inv;
+    -fx-font-weight: 700;
+    -fx-font-size: 13px;
+}
+.dialog-pane .content.label { -fx-text-fill: -t-text-s; -fx-font-size: 12.5px; }
+.dialog-pane .label        { -fx-text-fill: -t-text; }
+.dialog-pane .button-bar   { -fx-background-color: -t-surface-a; }
+.dialog-pane .button-bar .button {
+    -fx-background-color: -t-pri-lt;
+    -fx-text-fill: -t-pri;
+    -fx-border-color: -t-pri-bd;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-font-weight: 600;
+}
+.dialog-pane .button-bar .button:hover { -fx-background-color: -t-pri-lt2; }
+.dialog-pane .button-bar .button:default {
+    -fx-background-color: -t-pri;
+    -fx-text-fill: -t-text-inv;
+    -fx-border-color: -t-pri-dk;
+}
+.dialog-pane .button-bar .button:default:hover { -fx-background-color: -t-pri-dk; }
+
+/* ComboBox & ChoiceBox */
+.combo-box-popup .list-view  { -fx-background-color: -t-surface; -fx-border-color: -t-bd; }
+.combo-box-popup .list-cell  {
+    -fx-background-color: -t-surface;
+    -fx-text-fill: -t-text;
+    -fx-padding: 5 10 5 10;
+}
+.combo-box-popup .list-cell:hover    { -fx-background-color: -t-hover; }
+.combo-box-popup .list-cell:selected { -fx-background-color: -t-selected; -fx-text-fill: -t-text-b; }
+.combo-box .list-cell { -fx-text-fill: -t-text; -fx-background-color: transparent; }
+.combo-box .arrow-button { -fx-background-color: transparent; }
+.combo-box .arrow { -fx-background-color: -t-text-m; }
+
+/* DatePicker */
+.date-picker-popup { -fx-background-color: -t-surface; -fx-border-color: -t-bd; }
+.date-picker-popup .month-year-pane { -fx-background-color: -t-surface-a; }
+.date-picker-popup .day-name-cell, .date-picker-popup .week-number-cell {
+    -fx-text-fill: -t-text-m; -fx-font-weight: 700;
+}
+.date-picker-popup .day-cell { -fx-background-color: transparent; -fx-text-fill: -t-text; }
+.date-picker-popup .day-cell:hover { -fx-background-color: -t-hover; }
+.date-picker-popup .today .day-cell-label { -fx-text-fill: -t-pri; -fx-font-weight: 700; }
+.date-picker-popup .selected .day-cell-label { -fx-text-fill: -t-text-inv; }
+.date-picker-popup .selected { -fx-background-color: -t-pri; }
+.date-picker .arrow-button { -fx-background-color: transparent; }
+.date-picker .arrow-button .arrow { -fx-background-color: -t-text-m; }
+
+/* TextField e TextArea */
+.text-field, .text-area {
+    -fx-background-color: -t-inp-bg;
+    -fx-border-color: -t-inp-bd;
+    -fx-text-fill: -t-text;
+    -fx-prompt-text-fill: -t-text-m2;
+}
+.text-field:focused, .text-area:focused {
+    -fx-border-color: -t-pri;
+    -fx-background-color: -t-surface;
+}
+.text-area .content { -fx-background-color: -t-inp-bg; }
+.text-area:focused .content { -fx-background-color: -t-surface; }
+
+/* Tooltip */
+.tooltip {
+    -fx-background-color: -t-surface-c;
+    -fx-text-fill: -t-text;
+    -fx-border-color: -t-bd;
+    -fx-border-width: 1;
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-font-size: 11.5px;
+}
+
+/* CheckBox */
+.check-box .box { -fx-background-color: -t-inp-bg; -fx-border-color: -t-inp-bd; -fx-border-radius: 3; -fx-background-radius: 3; }
+.check-box:selected .box { -fx-background-color: -t-pri; -fx-border-color: -t-pri; }
+.check-box .mark { -fx-background-color: -t-text-inv; }
+.check-box .label { -fx-text-fill: -t-text; }
+
+/* ── Classes utilitárias de texto (theme-aware) ─────────────────────────── */
+.t-hint     { -fx-font-size: 10.5px; -fx-text-fill: -t-text-m2; -fx-font-style: italic; }
+.t-muted    { -fx-font-size: 11px;   -fx-text-fill: -t-text-m;  -fx-font-weight: 600; }
+.t-muted-md { -fx-font-size: 11.5px; -fx-text-fill: -t-text-m;  -fx-font-weight: 600; }
+.t-heading  { -fx-font-size: 12.5px; -fx-text-fill: -t-text-b;  -fx-font-weight: 700; }
+.t-heading-sm{ -fx-font-size:12px;   -fx-text-fill: -t-text-b;  -fx-font-weight: 700; }
+.t-heading-lg{ -fx-font-size:13px;   -fx-text-fill: -t-text-b;  -fx-font-weight: 700; }
+.t-primary  { -fx-text-fill: -t-pri; -fx-font-weight: 700; }
+.t-danger   { -fx-text-fill: -t-err; }
+.t-success  { -fx-text-fill: -t-success; }
+.t-warn     { -fx-text-fill: -t-warn; }
+.t-done     { -fx-text-fill: -t-text-m2; -fx-strikethrough: true;  -fx-font-size: 12px; }
+.t-undone   { -fx-text-fill: -t-text;    -fx-strikethrough: false; -fx-font-size: 12px; }
+
+/* ── Classes utilitárias de painel (theme-aware) ────────────────────────── */
+.panel-alt   { -fx-background-color: -t-surface-a; -fx-border-color: -t-bd; -fx-background-radius: 5; -fx-border-radius: 5; }
+.panel-muted { -fx-background-color: -t-surface-c; }
+.panel-footer{ -fx-background-color: -t-surface-d; -fx-border-color: -t-bd; -fx-border-width: 1 0 0 0; }
+.panel-danger{ -fx-background-color: -t-err-bg; -fx-border-color: -t-err-dk; -fx-background-radius: 5; -fx-border-radius: 5; }
+.row-done-bg { -fx-background-color: -t-surface-a; -fx-border-color: -t-bd-lt; -fx-border-width: 0 0 0 3; -fx-background-radius: 4; -fx-border-radius: 4; }
+.row-plain   { -fx-background-color: -t-surface;   -fx-border-color: -t-bd-lt; -fx-border-width: 0 0 1 0; }
+.row-stripe  { -fx-background-color: -t-surface-c; -fx-border-color: -t-bd-lt; -fx-border-width: 0 0 1 0; }
+.border-bottom{ -fx-border-color: transparent transparent -t-bd-lt transparent; -fx-border-width: 0 0 1 0; }
+
+/* ── Status financeiro / de tarefa ──────────────────────────────────────── */
+.status-paid    { -fx-background-color: -t-success-bg; -fx-text-fill: -t-success; -fx-background-radius: 10; -fx-padding: 2 8 2 8; }
+.status-overdue { -fx-background-color: -t-err-bg;     -fx-text-fill: -t-err;     -fx-background-radius: 10; -fx-padding: 2 8 2 8; }
+.status-pending { -fx-background-color: -t-warn-bg;    -fx-text-fill: -t-warn;    -fx-background-radius: 10; -fx-padding: 2 8 2 8; }
+.card-done      { -fx-background-color: -t-success-bg; -fx-border-color: -t-success-bg; -fx-border-radius: 5; -fx-background-radius: 5; }
+.card-danger    { -fx-background-color: -t-err-bg;     -fx-border-color: -t-err-dk; -fx-border-radius: 5;    -fx-background-radius: 5; }
+
+

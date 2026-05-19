@@ -161,7 +161,7 @@ public class FinanceController {
 
     private static Label filterLabel(String text) {
         Label l = new Label(text);
-        l.setStyle("-fx-font-weight: 600; -fx-text-fill: #1e3a5f; -fx-font-size: 12px;");
+        l.setStyle("-fx-font-weight: 600; -fx-text-fill: -t-text-s; -fx-font-size: 12px;");
         l.setMinWidth(40);
         return l;
     }
@@ -224,7 +224,7 @@ public class FinanceController {
                 (obs, old, sel) -> updateActionBtns(sel));
 
         Label hint = new Label("Clique duplo para editar  ·  Selecione para ações rápidas");
-        hint.setStyle("-fx-font-size: 10.5px; -fx-text-fill: #7a9bbf; -fx-padding: 4 0 0 6;"
+        hint.setStyle("-fx-font-size: 10.5px; -fx-text-fill: -t-text-m2; -fx-padding: 4 0 0 6;"
                 + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
         VBox panel = new VBox(0, listView, hint);
@@ -421,7 +421,7 @@ public class FinanceController {
 
         if (overdue.isEmpty()) {
             Label ok = new Label("✅  Nenhuma pendência urgente no momento.");
-            ok.setStyle("-fx-font-size: 11.5px; -fx-text-fill: #1b5e20;"
+            ok.setStyle("-fx-font-size: 11.5px; -fx-text-fill: -t-success;"
                     + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
             urgentBox.getChildren().add(ok);
             return;
@@ -432,17 +432,17 @@ public class FinanceController {
             String dayStr = days == 1 ? "1 dia" : days + " dias";
 
             Label descLbl = new Label(e.description());
-            descLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #b71c1c;");
+            descLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: -t-err;");
             descLbl.setWrapText(false);
             HBox.setHgrow(descLbl, Priority.ALWAYS);
 
             Label amtLbl = new Label(formatBrl(e.amount()));
-            amtLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 800; -fx-text-fill: #b71c1c;"
+            amtLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 800; -fx-text-fill: -t-err;"
                     + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
             Label ageLbl = new Label("Venceu há " + dayStr
                     + "  ·  " + e.dueDate().format(DATE_FMT));
-            ageLbl.setStyle("-fx-font-size: 10.5px; -fx-text-fill: #c62828;"
+            ageLbl.setStyle("-fx-font-size: 10.5px; -fx-text-fill: -t-err-dk;"
                     + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
             Button payBtn = new Button("✓ Pagar");
@@ -462,8 +462,8 @@ public class FinanceController {
 
             VBox entryBox = new VBox(2, topRow, ageLbl);
             entryBox.setPadding(new Insets(6, 8, 6, 8));
-            entryBox.setStyle("-fx-background-color: #fff5f5; -fx-background-radius: 6;"
-                    + " -fx-border-color: #ffcdd2; -fx-border-radius: 6;");
+            entryBox.setStyle("-fx-background-color: -t-err-bg; -fx-background-radius: 6;"
+                    + " -fx-border-color: -t-err-dk; -fx-border-radius: 6;");
             urgentBox.getChildren().add(entryBox);
         }
     }
@@ -494,13 +494,13 @@ public class FinanceController {
             statusBadge.setStyle("-fx-padding: 2 8 2 8; -fx-background-radius: 10;"
                     + " -fx-font-size: 9.5px; -fx-font-weight: 700;"
                     + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;"
-                    + (entry.paid()  ? " -fx-background-color: #e8f5e9; -fx-text-fill: #1b5e20;"
-                    : overdue        ? " -fx-background-color: #ffebee; -fx-text-fill: #b71c1c;"
-                    :                  " -fx-background-color: #fff3e0; -fx-text-fill: #e65100;"));
+                    + (entry.paid()  ? " -fx-background-color: -t-success-bg; -fx-text-fill: -t-success;"
+                    : overdue        ? " -fx-background-color: -t-err-bg; -fx-text-fill: -t-err;"
+                    :                  " -fx-background-color: -t-warn-bg; -fx-text-fill: -t-warn;"));
 
             // Description
             Label descLbl = new Label(entry.description());
-            descLbl.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #0d1b2a;"
+            descLbl.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: -t-text;"
                     + (entry.paid() ? " -fx-opacity: 0.52; -fx-strikethrough: true;" : ""));
             descLbl.setWrapText(false);
             HBox.setHgrow(descLbl, Priority.ALWAYS);
@@ -508,14 +508,14 @@ public class FinanceController {
             // Due date
             Label dateLbl = new Label(entry.dueDate() != null ? entry.dueDate().format(DATE_FMT) : "—");
             dateLbl.setStyle("-fx-font-size: 11px; -fx-font-family: 'JetBrains Mono','Consolas',monospace;"
-                    + " -fx-text-fill: " + (overdue && !entry.paid() ? "#c62828;" : "#5a7a9e;"));
+                    + " -fx-text-fill: " + (overdue && !entry.paid() ? "-t-err-dk;" : "-t-text-m;"));
 
             // Amount
             Label amtLbl = new Label(formatBrl(entry.amount()));
             amtLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 800;"
                     + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;"
                     + " -fx-text-fill: "
-                    + (entry.paid() ? "#1b5e20;" : overdue ? "#b71c1c;" : "#1e3a5f;"));
+                    + (entry.paid() ? "-t-success;" : overdue ? "-t-err;" : "-t-text-s;"));
 
             HBox row = new HBox(8, typeBadge, descLbl, dateLbl, statusBadge, amtLbl);
             row.setAlignment(Pos.CENTER_LEFT);
@@ -524,12 +524,12 @@ public class FinanceController {
         }
 
         private String typeStyle(String type) {
-            if (type == null) return " -fx-background-color: #f5f5f5; -fx-text-fill: #757575;";
+            if (type == null) return " -fx-background-color: -t-surface-c; -fx-text-fill: -t-text-m;";
             return switch (type.toLowerCase()) {
-                case "pagamento"    -> " -fx-background-color: #fff3e0; -fx-text-fill: #e65100;";
-                case "recebimento"  -> " -fx-background-color: #e0f7f4; -fx-text-fill: #006d5b;";
-                case "orçamento"    -> " -fx-background-color: #e8eaf6; -fx-text-fill: #283593;";
-                default             -> " -fx-background-color: #e8f5e9; -fx-text-fill: #1b5e20;";
+                case "pagamento"    -> " -fx-background-color: -t-warn-bg; -fx-text-fill: -t-warn;";
+                case "recebimento"  -> " -fx-background-color: -t-pri-lt;    -fx-text-fill: -t-pri;";
+                case "orçamento"    -> " -fx-background-color: -t-surface-d; -fx-text-fill: -t-text-s;";
+                default             -> " -fx-background-color: -t-success-bg; -fx-text-fill: -t-success;";
             };
         }
     }
@@ -673,7 +673,7 @@ public class FinanceController {
             kpiSaldoLbl.setText(formatBrl(saldo));
             // Colorir saldo: verde se positivo, vermelho se negativo
             kpiSaldoLbl.setStyle(kpiSaldoLbl.getStyle()
-                    + (saldo >= 0 ? " -fx-text-fill: #1b5e20;" : " -fx-text-fill: #b71c1c;"));
+                    + (saldo >= 0 ? " -fx-text-fill: -t-success;" : " -fx-text-fill: -t-err;"));
         }
         if (kpiVencidoLbl  != null) kpiVencidoLbl.setText(String.valueOf(vencido));
         if (kpiReceberLbl  != null) kpiReceberLbl.setText(String.valueOf(aReceber));
@@ -687,13 +687,13 @@ public class FinanceController {
 
     private static VBox fieldRow(String labelText, javafx.scene.Node control) {
         Label lbl = new Label(labelText);
-        lbl.setStyle("-fx-font-weight: 600; -fx-font-size: 11.5px; -fx-text-fill: #1e3a5f;");
+        lbl.setStyle("-fx-font-weight: 600; -fx-font-size: 11.5px; -fx-text-fill: -t-text-s;");
         return new VBox(3, lbl, control);
     }
 
     private static Label fieldLabel(String text) {
         Label l = new Label(text);
-        l.setStyle("-fx-font-weight: 600; -fx-font-size: 11.5px; -fx-text-fill: #1e3a5f;");
+        l.setStyle("-fx-font-weight: 600; -fx-font-size: 11.5px; -fx-text-fill: -t-text-s;");
         return l;
     }
 

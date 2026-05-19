@@ -85,6 +85,14 @@
     /* IDEIAS / KANBAN */
     -t-kan-bg    : #1c2128;
     -t-ideas-bg  : #0d1117;
+
+    /* SEMÂNTICAS */
+    -t-success   : #56d364;
+    -t-success-bg: #0d2b12;
+    -t-warn      : #ffb74d;
+    -t-warn-bg   : #2d2010;
+    -t-purple    : #ce93d8;
+    -t-purple-bg : #1f1030;
 }
 
 /* ── Overrides de cores semânticas para tema escuro ────────────────────── */
@@ -123,3 +131,61 @@
     -fx-border-color: #388bfd;
 }
 
+/* ── Controles nativos — sobrescritas para tema escuro ─────────────────── */
+.scroll-pane > .viewport { -fx-background-color: -t-app-bg; }
+
+.dialog-pane { -fx-background-color: -t-surface; -fx-border-color: -t-bd; }
+.dialog-pane .button-bar { -fx-background-color: -t-surface-a; }
+.dialog-pane .button-bar .button {
+    -fx-background-color: -t-surface-c;
+    -fx-text-fill: -t-text;
+    -fx-border-color: -t-bd;
+}
+.dialog-pane .button-bar .button:default {
+    -fx-background-color: -t-pri;
+    -fx-text-fill: -t-text-inv;
+    -fx-border-color: -t-pri-dk;
+}
+
+.combo-box-popup .list-view  { -fx-background-color: -t-surface; -fx-border-color: -t-bd; }
+.combo-box-popup .list-cell  { -fx-background-color: -t-surface; -fx-text-fill: -t-text; }
+.combo-box-popup .list-cell:hover    { -fx-background-color: -t-hover; }
+.combo-box-popup .list-cell:selected { -fx-background-color: -t-selected; -fx-text-fill: -t-text-b; }
+.combo-box .list-cell { -fx-text-fill: -t-text; -fx-background-color: transparent; }
+.combo-box .arrow { -fx-background-color: -t-text-m; }
+
+.date-picker-popup { -fx-background-color: -t-surface; -fx-border-color: -t-bd; }
+.date-picker-popup .month-year-pane { -fx-background-color: -t-surface-a; }
+.date-picker-popup .day-name-cell { -fx-text-fill: -t-text-m; }
+.date-picker-popup .day-cell { -fx-text-fill: -t-text; }
+.date-picker-popup .day-cell:hover { -fx-background-color: -t-hover; }
+.date-picker-popup .selected { -fx-background-color: -t-pri; }
+
+.text-field, .text-area {
+    -fx-background-color: -t-inp-bg;
+    -fx-border-color: -t-inp-bd;
+    -fx-text-fill: -t-text;
+    -fx-prompt-text-fill: -t-text-m2;
+}
+.text-field:focused, .text-area:focused {
+    -fx-border-color: -t-pri;
+    -fx-background-color: -t-surface;
+}
+.text-area .content { -fx-background-color: -t-inp-bg; }
+.text-area:focused .content { -fx-background-color: -t-surface; }
+
+.tooltip {
+    -fx-background-color: -t-surface-c;
+    -fx-text-fill: -t-text;
+    -fx-border-color: -t-bd;
+}
+
+.check-box .box { -fx-background-color: -t-inp-bg; -fx-border-color: -t-bd-mid; }
+.check-box:selected .box { -fx-background-color: -t-pri; -fx-border-color: -t-pri; }
+.check-box .label { -fx-text-fill: -t-text; }
+
+/* ── Utilitários semânticos — sobrescritas escuras ──────────────────────── */
+.t-success { -fx-text-fill: -t-success; }
+.t-warn    { -fx-text-fill: -t-warn; }
+.panel-footer { -fx-background-color: -t-surface-d; -fx-border-color: -t-bd; }
+.row-done-bg  { -fx-background-color: #0d2b12; -fx-border-color: #1a3a20; }

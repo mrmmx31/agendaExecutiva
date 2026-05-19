@@ -57,7 +57,7 @@ public class PrintPreviewWindow {
         // ── Toolbar ───────────────────────────────────────────────────────
         Button printBtn = new Button("🖨  Imprimir");
         printBtn.setStyle(
-                "-fx-background-color: #1e3a5f; -fx-text-fill: white; -fx-font-weight: bold;"
+                "-fx-background-color: -t-text-s; -fx-text-fill: -t-surface; -fx-font-weight: bold;"
                 + " -fx-font-size: 12px; -fx-padding: 7 16 7 16; -fx-background-radius: 5;"
                 + " -fx-cursor: hand;");
         printBtn.setOnAction(e -> triggerPrint());
@@ -85,13 +85,13 @@ public class PrintPreviewWindow {
 
         Button closeBtn = new Button("✕  Fechar");
         closeBtn.setStyle(
-                "-fx-background-color: #607d8b; -fx-text-fill: white;"
+                "-fx-background-color: -t-text-m; -fx-text-fill: -t-surface;"
                 + " -fx-font-size: 11px; -fx-padding: 6 12 6 12; -fx-background-radius: 5;"
                 + " -fx-cursor: hand;");
         closeBtn.setOnAction(e -> stage.close());
 
         Label hint = new Label("Dica: alterne Colorido/Mono antes de imprimir.");
-        hint.setStyle("-fx-font-size: 9.5px; -fx-text-fill: #7a9abc; -fx-font-style: italic;");
+        hint.setStyle("-fx-font-size: 9.5px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -101,8 +101,8 @@ public class PrintPreviewWindow {
         toolbar.setAlignment(Pos.CENTER_LEFT);
         toolbar.setPadding(new Insets(10, 14, 10, 14));
         toolbar.setStyle(
-                "-fx-background-color: #f0f4f8;"
-                + " -fx-border-color: #ccd9e8; -fx-border-width: 0 0 1 0;");
+                "-fx-background-color: -t-surface-d;"
+                + " -fx-border-color: -t-bd; -fx-border-width: 0 0 1 0;");
 
         // ── Layout ────────────────────────────────────────────────────────
         BorderPane root = new BorderPane();

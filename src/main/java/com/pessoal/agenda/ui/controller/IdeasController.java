@@ -39,13 +39,13 @@ public class IdeasController {
 
     // ── Status pipeline (em ordem de kanban) ─────────────────────────────────
     private static final String[][] STATUS_DEF = {
-        {"nova",         "Nova",          "#1565c0"},
-        {"em_validacao", "Em Validação",  "#7b1fa2"},
-        {"prototipagem", "Prototipagem",  "#e65100"},
-        {"em_execucao",  "Em Execução",   "#1b5e20"},
-        {"pausada",      "Pausada",       "#546e7a"},
-        {"concluida",    "Concluída",     "#2e7d32"},
-        {"abandonada",   "Abandonada",    "#b71c1c"},
+        {"nova",         "Nova",          "-t-pri"},
+        {"em_validacao", "Em Validação",  "-t-purple"},
+        {"prototipagem", "Prototipagem",  "-t-warn"},
+        {"em_execucao",  "Em Execução",   "-t-success"},
+        {"pausada",      "Pausada",       "-t-text-m"},
+        {"concluida",    "Concluída",     "-t-success"},
+        {"abandonada",   "Abandonada",    "-t-err"},
     };
 
     private final SharedContext ctx;
@@ -247,7 +247,7 @@ public class IdeasController {
         if (ideas.isEmpty()) {
             Label empty = new Label("Nenhuma ideia encontrada com os filtros aplicados.");
             empty.getStyleClass().add("empty-state-label");
-            empty.setStyle("-fx-font-size: 14px; -fx-text-fill: #7a9abc; -fx-padding: 40;");
+            empty.setStyle("-fx-font-size: 14px; -fx-text-fill: -t-text-m2; -fx-padding: 40;");
             VBox box = new VBox(empty); box.setAlignment(Pos.CENTER);
             return box;
         }
@@ -301,14 +301,14 @@ public class IdeasController {
     private VBox buildKanbanColumn(String statusKey, String statusLabel, String hexColor, List<ProjectIdea> ideas) {
         Label headerLabel = new Label(statusLabel + "  (" + ideas.size() + ")");
         headerLabel.setStyle(
-                "-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: white;"
+                "-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: -t-surface;"
                 + " -fx-padding: 6 10 6 10; -fx-background-radius: 6 6 0 0;"
                 + " -fx-background-color: " + hexColor + ";");
         headerLabel.setMaxWidth(Double.MAX_VALUE);
 
         // Botão + rápido
         Button addBtn = new Button("+");
-        addBtn.setStyle("-fx-background-color: rgba(255,255,255,0.3); -fx-text-fill: white;"
+        addBtn.setStyle("-fx-background-color: rgba(255,255,255,0.3); -fx-text-fill: -t-surface;"
                 + " -fx-background-radius: 4; -fx-font-weight: bold; -fx-font-size: 14; -fx-cursor: hand;"
                 + " -fx-padding: 1 7 1 7;");
         addBtn.setOnAction(e -> {
@@ -328,23 +328,23 @@ public class IdeasController {
         }
         if (ideas.isEmpty()) {
             Label empty = new Label("Sem ideias");
-            empty.setStyle("-fx-text-fill: #aabbcc; -fx-font-size: 11px; -fx-padding: 12;");
+            empty.setStyle("-fx-text-fill: -t-text-m2; -fx-font-size: 11px; -fx-padding: 12;");
             cards.getChildren().add(empty);
         }
 
         ScrollPane cardScroll = new ScrollPane(cards);
         cardScroll.setFitToWidth(true);
         cardScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        cardScroll.setStyle("-fx-background-color: #f7fbff; -fx-border-color: transparent;");
+        cardScroll.setStyle("-fx-background-color: -t-surface-a; -fx-border-color: transparent;");
         VBox.setVgrow(cardScroll, Priority.ALWAYS);
 
         VBox col = new VBox(0, colHeader, cardScroll);
         col.setPrefWidth(200); col.setMinWidth(180); col.setMaxWidth(220);
-        String colStyleNormal = "-fx-background-color: #f7fbff;"
-                + " -fx-border-color: #b8cfe8; -fx-border-width: 0 0 0 0;"
+        String colStyleNormal = "-fx-background-color: -t-surface-a;"
+                + " -fx-border-color: -t-bd; -fx-border-width: 0 0 0 0;"
                 + " -fx-border-radius: 6; -fx-background-radius: 6;"
                 + " -fx-effect: dropshadow(gaussian, rgba(3,24,62,0.07), 8, 0.2, 0, 2);";
-        String colStyleOver   = "-fx-background-color: #e8f4ff;"
+        String colStyleOver   = "-fx-background-color: -t-hover;"
                 + " -fx-border-color: " + hexColor + "; -fx-border-width: 2;"
                 + " -fx-border-radius: 6; -fx-background-radius: 6;"
                 + " -fx-effect: dropshadow(gaussian, rgba(3,24,62,0.15), 10, 0.3, 0, 2);";
@@ -386,11 +386,11 @@ public class IdeasController {
 
     private VBox buildKanbanCard(ProjectIdea idea, String accentColor) {
         Label titleLbl = new Label(idea.title());
-        titleLbl.setStyle("-fx-font-weight: 700; -fx-font-size: 12px; -fx-text-fill: #0d1b2a; -fx-wrap-text: true;");
+        titleLbl.setStyle("-fx-font-weight: 700; -fx-font-size: 12px; -fx-text-fill: -t-text; -fx-wrap-text: true;");
         titleLbl.setMaxWidth(Double.MAX_VALUE); titleLbl.setWrapText(true);
 
         Label typeLbl = new Label(idea.typeLabel());
-        typeLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #5a7a9e;");
+        typeLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m;");
 
         Label prioLbl = new Label(idea.priorityLabel());
         prioLbl.setStyle("-fx-font-size: 10px;");
@@ -398,14 +398,14 @@ public class IdeasController {
         HBox chips = new HBox(4, typeLbl, prioLbl);
 
         Label feasLbl = new Label("Viab: " + idea.feasibilityDots());
-        feasLbl.setStyle("-fx-font-size: 10px; -fx-font-family: monospace; -fx-text-fill: #1565c0;");
+        feasLbl.setStyle("-fx-font-size: 10px; -fx-font-family: monospace; -fx-text-fill: -t-pri;");
 
         Label impactLbl = new Label(idea.impactLabel());
-        impactLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #7b1fa2;");
+        impactLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-purple;");
 
         VBox card = new VBox(4, titleLbl, chips, new HBox(8, feasLbl, impactLbl));
         card.setStyle(
-                "-fx-background-color: white; -fx-background-radius: 5;"
+                "-fx-background-color: -t-surface; -fx-background-radius: 5;"
                 + " -fx-border-color: " + accentColor + ";"
                 + " -fx-border-width: 0 0 0 3; -fx-border-radius: 5;"
                 + " -fx-padding: 8 10 8 10;"
@@ -660,7 +660,7 @@ public class IdeasController {
             String key = sd[0]; String label = sd[1];
             MenuItem si = new MenuItem(label);
             if (normalizeStatus(idea.status()).equals(key)) {
-                si.setStyle("-fx-font-weight: bold; -fx-text-fill: #1565c0;");
+                si.setStyle("-fx-font-weight: bold; -fx-text-fill: -t-pri;");
             }
             si.setOnAction(e -> changeStatus(idea, key));
             statusMenu.getItems().add(si);
@@ -669,7 +669,7 @@ public class IdeasController {
         SeparatorMenuItem sep = new SeparatorMenuItem();
 
         MenuItem deleteItem = new MenuItem("🗑  Excluir");
-        deleteItem.setStyle("-fx-text-fill: #c62828;");
+        deleteItem.setStyle("-fx-text-fill: -t-err-dk;");
         deleteItem.setOnAction(e -> deleteIdeaWithConfirm(idea));
 
         sharedContextMenu.getItems().addAll(editItem, checklistItem, dupItem, statusMenu, sep, deleteItem);
@@ -704,20 +704,20 @@ public class IdeasController {
             if (empty || idea == null) { setGraphic(null); setText(null); return; }
 
             // Faixa lateral colorida por status
-            String accentHex = "#1565c0";
+            String accentHex = "-t-pri";
             for (String[] sd : STATUS_DEF) {
                 if (normalizeStatus(idea.status()).equals(sd[0])) { accentHex = sd[2]; break; }
             }
 
             // Linha 1: título + badges
             Label titleLbl = new Label(idea.title());
-            titleLbl.setStyle("-fx-font-weight: 700; -fx-font-size: 13px; -fx-text-fill: #0d1b2a;");
+            titleLbl.setStyle("-fx-font-weight: 700; -fx-font-size: 13px; -fx-text-fill: -t-text;");
             titleLbl.setWrapText(false);
 
             Label statusBadge  = badge(idea.statusLabel(),  accentHex, "white");
-            Label priorityBadge= badge(idea.priorityLabel(), "#eef4fc","#1565c0");
-            Label typeBadge    = badge(idea.typeLabel(),     "#f3eeff","#7b1fa2");
-            Label impactBadge  = badge(idea.impactLabel(),   "#fff4ec","#e65100");
+            Label priorityBadge= badge(idea.priorityLabel(), "#eef4fc","-t-pri");
+            Label typeBadge    = badge(idea.typeLabel(),     "#f3eeff","-t-purple");
+            Label impactBadge  = badge(idea.impactLabel(),   "#fff4ec","-t-warn");
 
             Region hSpacer = new Region(); HBox.setHgrow(hSpacer, Priority.ALWAYS);
             HBox row1 = new HBox(8, titleLbl, hSpacer, statusBadge, priorityBadge, typeBadge, impactBadge);
@@ -725,12 +725,12 @@ public class IdeasController {
 
             // Linha 2: viabilidade + horas + datas + keywords
             Label feasLbl = new Label("Viab: " + idea.feasibilityDots());
-            feasLbl.setStyle("-fx-font-family: monospace; -fx-font-size: 11px; -fx-text-fill: #1565c0;");
+            feasLbl.setStyle("-fx-font-family: monospace; -fx-font-size: 11px; -fx-text-fill: -t-pri;");
 
             Label hoursLbl = new Label();
             if (idea.estimatedHours() > 0)
                 hoursLbl.setText("⏱ " + idea.estimatedHours() + "h estimadas");
-            hoursLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #546e7a;");
+            hoursLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: -t-text-m;");
 
             Label dateLbl = new Label();
             if (idea.targetDate() != null) {
@@ -740,13 +740,13 @@ public class IdeasController {
                                : days == 0 ? " ⏰ hoje"
                                : " · " + days + "d restantes";
                 dateLbl.setText("📅 " + dateStr + dayInfo);
-                dateLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: " + (days < 0 ? "#b71c1c" : "#2e7d32") + ";");
+                dateLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: " + (days < 0 ? "-t-err" : "-t-success") + ";");
             }
 
             Label kwLbl = new Label();
             if (idea.keywords() != null && !idea.keywords().isBlank())
                 kwLbl.setText("🏷 " + idea.keywords());
-            kwLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #7a9abc;");
+            kwLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2;");
 
             HBox row2 = new HBox(12, feasLbl, hoursLbl, dateLbl, kwLbl);
             row2.setAlignment(Pos.CENTER_LEFT);
@@ -755,7 +755,7 @@ public class IdeasController {
             Label descLbl = new Label();
             if (idea.description() != null && !idea.description().isBlank())
                 descLbl.setText(truncate(idea.description().replace("\n", " "), 140));
-            descLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #5a7a9e;");
+            descLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: -t-text-m;");
             descLbl.setWrapText(false);
 
             VBox textBox = new VBox(3, row1, row2, descLbl);

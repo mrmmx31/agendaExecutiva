@@ -185,7 +185,7 @@ public class GoogleTasksSyncWindow {
                 if (empty || t == null) { setGraphic(null); setText(null); return; }
                 Label icon = new Label(t.completed() ? "✓" : "○");
                 icon.setStyle("-fx-font-size:14px; -fx-text-fill:"
-                        + (t.completed() ? "#27ae60;" : "-t-text;"));
+                        + (t.completed() ? "-t-success;" : "-t-text;"));
                 Label titleLbl = new Label(t.title() != null ? t.title() : "(sem título)");
                 titleLbl.getStyleClass().add("study-plan-detail");
                 if (t.completed()) titleLbl.setStyle("-fx-opacity:0.5;-fx-strikethrough:true;");
@@ -228,7 +228,7 @@ public class GoogleTasksSyncWindow {
                 if (empty || t == null) { setGraphic(null); setText(null); return; }
                 Label icon = new Label(t.done() ? "✓" : "○");
                 icon.setStyle("-fx-font-size:14px;-fx-text-fill:"
-                        + (t.done() ? "#27ae60;" : "-t-text;"));
+                        + (t.done() ? "-t-success;" : "-t-text;"));
                 Label titleLbl = new Label(t.title());
                 titleLbl.getStyleClass().add("study-plan-detail");
                 if (t.done()) titleLbl.setStyle("-fx-opacity:0.5;-fx-strikethrough:true;");
@@ -351,10 +351,10 @@ public class GoogleTasksSyncWindow {
     private void updateConnectionLabel() {
         if (auth.isAuthorized()) {
             connectionLabel.setText("● Conectado");
-            connectionLabel.setStyle("-fx-text-fill: #27ae60; -fx-font-weight: 700;");
+            connectionLabel.setStyle("-fx-text-fill: -t-success; -fx-font-weight: 700;");
         } else {
             connectionLabel.setText("● Desconectado");
-            connectionLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: 700;");
+            connectionLabel.setStyle("-fx-text-fill: -t-err; -fx-font-weight: 700;");
         }
     }
 

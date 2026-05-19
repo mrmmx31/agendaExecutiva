@@ -32,10 +32,10 @@ public class TaskChecklistWindow {
 
     // ── Colunas do Kanban ─────────────────────────────────────────────────────
     private static final String[][] KANBAN_COLS = {
-        {"backlog",      "📋  Backlog",       "#546e7a"},
-        {"em_andamento", "⚡  Em Andamento",  "#1565c0"},
-        {"em_revisao",   "🔬  Em Revisão",    "#7b1fa2"},
-        {"concluido",    "✅  Concluído",      "#2e7d32"},
+        {"backlog",      "📋  Backlog",       "-t-text-m"},
+        {"em_andamento", "⚡  Em Andamento",  "-t-pri"},
+        {"em_revisao",   "🔬  Em Revisão",    "-t-purple"},
+        {"concluido",    "✅  Concluído",      "-t-success"},
     };
 
     // ── Prevenção de janela duplicada ─────────────────────────────────────────
@@ -143,7 +143,7 @@ public class TaskChecklistWindow {
 
     private HBox buildHeader() {
         Label icon = new Label("☑");
-        icon.setStyle("-fx-font-size: 28px; -fx-text-fill: #00b4d8;");
+        icon.setStyle("-fx-font-size: 28px; -fx-text-fill: -t-accent;");
 
         Label title = new Label("Checklist da Tarefa");
         title.getStyleClass().add("page-title");
@@ -160,7 +160,7 @@ public class TaskChecklistWindow {
         String statusLabel = task.status() != null ? task.status().label() : "—";
         Label statusBadge = new Label(statusLabel);
         statusBadge.setStyle(
-                "-fx-background-color: #1565c0; -fx-text-fill: white;"
+                "-fx-background-color: -t-pri; -fx-text-fill: -t-surface;"
                 + " -fx-font-size: 11px; -fx-font-weight: 700;"
                 + " -fx-padding: 4 10 4 10; -fx-background-radius: 12;");
 
@@ -206,13 +206,13 @@ public class TaskChecklistWindow {
         progressBar.setPrefHeight(14);
 
         progressLabel = new Label("0 de 0 itens concluídos");
-        progressLabel.setStyle("-fx-font-size: 11.5px; -fx-text-fill: #5a7a9e;"
+        progressLabel.setStyle("-fx-font-size: 11.5px; -fx-text-fill: -t-text-m;"
                 + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
         VBox section = new VBox(6, progressBar, progressLabel);
         section.setPadding(new Insets(8, 14, 8, 14));
-        section.setStyle("-fx-background-color: white;"
-                + " -fx-border-color: transparent transparent #dce8f5 transparent;"
+        section.setStyle("-fx-background-color: -t-surface;"
+                + " -fx-border-color: transparent transparent -t-bd-lt transparent;"
                 + " -fx-border-width: 0 0 1 0;");
         return section;
     }
@@ -279,8 +279,8 @@ public class TaskChecklistWindow {
                 checkAllBtn, uncheckAllBtn, clearDoneBtn, printBtn, addBtn);
         bar.setPadding(new Insets(8, 14, 8, 14));
         bar.setAlignment(Pos.CENTER_LEFT);
-        bar.setStyle("-fx-background-color: #f2f7fc;"
-                + " -fx-border-color: transparent transparent #dce8f5 transparent;"
+        bar.setStyle("-fx-background-color: -t-surface-a;"
+                + " -fx-border-color: transparent transparent -t-bd-lt transparent;"
                 + " -fx-border-width: 0 0 1 0;");
         return bar;
     }
@@ -422,7 +422,7 @@ public class TaskChecklistWindow {
         sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         sp.getStyleClass().add("edge-to-edge");
-        sp.setStyle("-fx-background-color: #f7fbff;");
+        sp.setStyle("-fx-background-color: -t-surface-a;");
 
         refreshItemsUI();
         return sp;
@@ -445,7 +445,7 @@ public class TaskChecklistWindow {
                 case DONE    -> "Nenhum item concluído ainda.";
                 default      -> "Nenhum item no checklist.\nUse o botão ＋ Novo Item para adicionar.";
             });
-            empty.setStyle("-fx-text-fill: #9eafc0; -fx-font-size: 12px; -fx-padding: 30 20 30 20;");
+            empty.setStyle("-fx-text-fill: -t-text-m2; -fx-font-size: 12px; -fx-padding: 30 20 30 20;");
             empty.setWrapText(true); empty.setMaxWidth(Double.MAX_VALUE);
             empty.setAlignment(Pos.CENTER);
             itemsBox.getChildren().add(empty);
@@ -462,7 +462,7 @@ public class TaskChecklistWindow {
         int globalIdx = items.indexOf(item) + 1;
         Label numLbl = new Label(String.format("%02d", globalIdx));
         numLbl.setStyle("-fx-font-family:'JetBrains Mono','Consolas',monospace;"
-                + " -fx-font-size:10px; -fx-text-fill:#9eafc0; -fx-min-width:24px;");
+                + " -fx-font-size:10px; -fx-text-fill:-t-text-m2; -fx-min-width:24px;");
 
         Label textLbl = new Label(item.text);
         textLbl.setWrapText(true); textLbl.setMaxWidth(Double.MAX_VALUE);
@@ -483,19 +483,19 @@ public class TaskChecklistWindow {
 
         Button editBtn = new Button("✏");
         editBtn.setTooltip(new Tooltip("Editar (duplo clique)"));
-        editBtn.setStyle("-fx-background-color:transparent; -fx-text-fill:#5a7a9e;"
+        editBtn.setStyle("-fx-background-color:transparent; -fx-text-fill:-t-text-m;"
                 + " -fx-font-size:12px; -fx-cursor:hand; -fx-padding:2 6 2 6; -fx-background-radius:4;");
         editBtn.setOnAction(e -> enterEditMode(textLbl, editField, item, editBtn));
 
         Button delBtn = new Button("✕");
         delBtn.setTooltip(new Tooltip("Excluir item"));
-        delBtn.setStyle("-fx-background-color:transparent; -fx-text-fill:#9eafc0;"
+        delBtn.setStyle("-fx-background-color:transparent; -fx-text-fill:-t-text-m2;"
                 + " -fx-font-size:12px; -fx-cursor:hand; -fx-padding:2 6 2 6; -fx-background-radius:4;");
         delBtn.setOnMouseEntered(e -> delBtn.setStyle(
-                "-fx-background-color:#fdecea; -fx-text-fill:#c62828;"
+                "-fx-background-color:-t-err-bg; -fx-text-fill:-t-err-dk;"
                 + " -fx-font-size:12px; -fx-cursor:hand; -fx-padding:2 6 2 6; -fx-background-radius:4;"));
         delBtn.setOnMouseExited(e -> delBtn.setStyle(
-                "-fx-background-color:transparent; -fx-text-fill:#9eafc0;"
+                "-fx-background-color:transparent; -fx-text-fill:-t-text-m2;"
                 + " -fx-font-size:12px; -fx-cursor:hand; -fx-padding:2 6 2 6; -fx-background-radius:4;"));
         delBtn.setOnAction(e -> deleteItem(item));
 
@@ -524,13 +524,13 @@ public class TaskChecklistWindow {
         row.setAlignment(Pos.CENTER_LEFT);
         row.setPadding(new Insets(9, 12, 9, 14));
 
-        String baseColor = index % 2 == 0 ? "#ffffff" : "#f7fbff";
+        String baseColor = index % 2 == 0 ? "#ffffff" : "-t-surface-a";
         row.setStyle("-fx-background-color:" + baseColor
-                + "; -fx-border-color:transparent transparent #e8f0fa transparent; -fx-border-width:0 0 1 0;");
-        row.setOnMouseEntered(e -> row.setStyle("-fx-background-color:#eef6ff;"
-                + " -fx-border-color:transparent transparent #e8f0fa transparent; -fx-border-width:0 0 1 0;"));
+                + "; -fx-border-color:transparent transparent -t-bd-lt transparent; -fx-border-width:0 0 1 0;");
+        row.setOnMouseEntered(e -> row.setStyle("-fx-background-color:-t-hover;"
+                + " -fx-border-color:transparent transparent -t-bd-lt transparent; -fx-border-width:0 0 1 0;"));
         row.setOnMouseExited(e  -> row.setStyle("-fx-background-color:" + baseColor
-                + "; -fx-border-color:transparent transparent #e8f0fa transparent; -fx-border-width:0 0 1 0;"));
+                + "; -fx-border-color:transparent transparent -t-bd-lt transparent; -fx-border-width:0 0 1 0;"));
 
         Region stripe = new Region();
         stripe.setMinWidth(4); stripe.setMaxWidth(4);
@@ -581,13 +581,13 @@ public class TaskChecklistWindow {
         String key = colDef[0], label = colDef[1].replace("  ", " ").trim(), color = colDef[2];
 
         Label headerLbl = new Label(label + "  (" + colItems.size() + ")");
-        headerLbl.setStyle("-fx-font-size:12px; -fx-font-weight:700; -fx-text-fill:white;"
+        headerLbl.setStyle("-fx-font-size:12px; -fx-font-weight:700; -fx-text-fill:-t-surface;"
                 + " -fx-padding:6 10 6 10; -fx-background-radius:6 6 0 0;"
                 + " -fx-background-color:" + color + ";");
         headerLbl.setMaxWidth(Double.MAX_VALUE);
 
         Button addColBtn = new Button("+");
-        addColBtn.setStyle("-fx-background-color:rgba(255,255,255,0.3); -fx-text-fill:white;"
+        addColBtn.setStyle("-fx-background-color:rgba(255,255,255,0.3); -fx-text-fill:-t-surface;"
                 + " -fx-background-radius:4; -fx-font-weight:bold; -fx-font-size:14; -fx-cursor:hand;"
                 + " -fx-padding:1 7 1 7;");
         addColBtn.setTooltip(new Tooltip("Adicionar item nesta coluna"));
@@ -602,7 +602,7 @@ public class TaskChecklistWindow {
         cards.setPadding(new Insets(8));
         if (colItems.isEmpty()) {
             Label empty = new Label("Sem itens");
-            empty.setStyle("-fx-text-fill:#aabbcc; -fx-font-size:11px; -fx-padding:12;");
+            empty.setStyle("-fx-text-fill:-t-text-m2; -fx-font-size:11px; -fx-padding:12;");
             cards.getChildren().add(empty);
         } else {
             for (MutableItem it : colItems) cards.getChildren().add(buildKanbanCard(it, color));
@@ -611,13 +611,13 @@ public class TaskChecklistWindow {
         ScrollPane cardScroll = new ScrollPane(cards);
         cardScroll.setFitToWidth(true);
         cardScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        cardScroll.setStyle("-fx-background-color:#f7fbff; -fx-border-color:transparent;");
+        cardScroll.setStyle("-fx-background-color:-t-surface-a; -fx-border-color:transparent;");
         VBox.setVgrow(cardScroll, Priority.ALWAYS);
 
         VBox col = new VBox(0, colHeader, cardScroll);
         col.setPrefWidth(210); col.setMinWidth(190); col.setMaxWidth(240);
-        col.setStyle("-fx-background-color:#f7fbff;"
-                + " -fx-border-color:#b8cfe8; -fx-border-radius:6; -fx-background-radius:6;"
+        col.setStyle("-fx-background-color:-t-surface-a;"
+                + " -fx-border-color:-t-bd; -fx-border-radius:6; -fx-background-radius:6;"
                 + " -fx-effect:dropshadow(gaussian,rgba(3,24,62,0.07),8,0.2,0,2);");
         VBox.setVgrow(col, Priority.ALWAYS);
         return col;
@@ -626,13 +626,13 @@ public class TaskChecklistWindow {
     private VBox buildKanbanCard(MutableItem item, String accentColor) {
         Label numLbl = new Label(String.format("#%02d", items.indexOf(item) + 1));
         numLbl.setStyle("-fx-font-family:'JetBrains Mono','Consolas',monospace;"
-                + " -fx-font-size:9px; -fx-text-fill:#9eafc0;");
+                + " -fx-font-size:9px; -fx-text-fill:-t-text-m2;");
 
         Label textLbl = new Label(item.text);
         textLbl.setWrapText(true); textLbl.setMaxWidth(Double.MAX_VALUE);
         textLbl.setStyle((item.done
-                ? "-fx-text-fill:#9eafc0; -fx-strikethrough:true;"
-                : "-fx-text-fill:#0d1b2a;") + " -fx-font-size:12px; -fx-wrap-text:true;");
+                ? "-fx-text-fill:-t-text-m2; -fx-strikethrough:true;"
+                : "-fx-text-fill:-t-text;") + " -fx-font-size:12px; -fx-wrap-text:true;");
 
         HBox topRow = new HBox(4, numLbl);
         topRow.setAlignment(Pos.CENTER_LEFT);
@@ -653,18 +653,18 @@ public class TaskChecklistWindow {
         topRow.getChildren().addAll(spacer, cbBtn);
 
         VBox card = new VBox(4, topRow, textLbl);
-        card.setStyle("-fx-background-color:white; -fx-background-radius:5;"
+        card.setStyle("-fx-background-color:-t-surface; -fx-background-radius:5;"
                 + " -fx-border-color:" + accentColor + "; -fx-border-width:0 0 0 3;"
                 + " -fx-border-radius:5; -fx-padding:8 10 8 10; -fx-cursor:hand;"
                 + " -fx-effect:dropshadow(gaussian,rgba(0,0,0,0.06),4,0.2,0,1);");
 
         card.setOnMouseEntered(e -> card.setStyle(
-                "-fx-background-color:#f0f7ff; -fx-background-radius:5;"
+                "-fx-background-color:-t-surface-a; -fx-background-radius:5;"
                 + " -fx-border-color:" + accentColor + "; -fx-border-width:0 0 0 3;"
                 + " -fx-border-radius:5; -fx-padding:8 10 8 10; -fx-cursor:hand;"
                 + " -fx-effect:dropshadow(gaussian,rgba(0,0,0,0.12),6,0.3,0,2);"));
         card.setOnMouseExited(e -> card.setStyle(
-                "-fx-background-color:white; -fx-background-radius:5;"
+                "-fx-background-color:-t-surface; -fx-background-radius:5;"
                 + " -fx-border-color:" + accentColor + "; -fx-border-width:0 0 0 3;"
                 + " -fx-border-radius:5; -fx-padding:8 10 8 10; -fx-cursor:hand;"
                 + " -fx-effect:dropshadow(gaussian,rgba(0,0,0,0.06),4,0.2,0,1);"));
@@ -785,7 +785,7 @@ public class TaskChecklistWindow {
         for (String[] c : KANBAN_COLS) {
             String cKey = c[0], cLabel = c[1].replace("  ", " ").trim();
             MenuItem mi = new MenuItem(cLabel);
-            if (cKey.equals(item.kanbanColumn)) mi.setStyle("-fx-font-weight:bold; -fx-text-fill:#1565c0;");
+            if (cKey.equals(item.kanbanColumn)) mi.setStyle("-fx-font-weight:bold; -fx-text-fill:-t-pri;");
             mi.setOnAction(e -> moveItemToColumn(item, cKey));
             moveMenu.getItems().add(mi);
         }
@@ -793,7 +793,7 @@ public class TaskChecklistWindow {
         SeparatorMenuItem sep = new SeparatorMenuItem();
 
         MenuItem deleteItem = new MenuItem("🗑  Excluir Item");
-        deleteItem.setStyle("-fx-text-fill:#c62828;");
+        deleteItem.setStyle("-fx-text-fill:-t-err-dk;");
         deleteItem.setOnAction(e -> deleteItem(item));
 
         itemContextMenu.getItems().addAll(copyItem, editItem, toggleItem, moveMenu, sep, deleteItem);
@@ -866,9 +866,9 @@ public class TaskChecklistWindow {
 
         if (progressBar != null) {
             progressBar.setProgress(pct);
-            String accent = pct == 1.0 ? "#1b5e20" : pct >= 0.7 ? "#2e7d32" : pct >= 0.4 ? "#f57f17" : "#c62828";
+            String accent = pct == 1.0 ? "-t-success" : pct >= 0.7 ? "-t-success" : pct >= 0.4 ? "#f57f17" : "-t-err-dk";
             progressBar.setStyle("-fx-accent:" + accent
-                    + "; -fx-background-color:#d6e4f5; -fx-background-radius:7; -fx-border-radius:7;");
+                    + "; -fx-background-color:-t-bd-lt; -fx-background-radius:7; -fx-border-radius:7;");
         }
         if (progressLabel != null) progressLabel.setText(
                 done + " de " + total + " itens concluídos"
@@ -879,7 +879,7 @@ public class TaskChecklistWindow {
 
     private HBox buildFooter(Stage stage) {
         Label hint = new Label("💡  Duplo clique para editar  ·  Botão direito para mais opções  ·  ⬛ Kanban mostra colunas de progresso");
-        hint.setStyle("-fx-font-size:11px; -fx-text-fill:#7a9abc;"
+        hint.setStyle("-fx-font-size:11px; -fx-text-fill:-t-text-m2;"
                 + " -fx-font-family:'JetBrains Mono','Consolas',monospace;");
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -892,7 +892,7 @@ public class TaskChecklistWindow {
         closeBtn.setOnAction(e -> stage.close());
         HBox footer = new HBox(12, hint, spacer, printBtn, closeBtn);
         footer.setPadding(new Insets(10, 18, 10, 18)); footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-background-color:#edf1f8; -fx-border-color:#b8cfe8; -fx-border-width:1 0 0 0;");
+        footer.setStyle("-fx-background-color:-t-surface-d; -fx-border-color:-t-bd; -fx-border-width:1 0 0 0;");
         return footer;
     }
 
@@ -904,15 +904,15 @@ public class TaskChecklistWindow {
     }
     private String columnColor(String key) {
         for (String[] c : KANBAN_COLS) if (c[0].equals(key)) return c[2];
-        return "#546e7a";
+        return "-t-text-m";
     }
 
     // ── Helpers visuais ───────────────────────────────────────────────────────
 
     private void applyDoneStyle(Label lbl, boolean done) {
         lbl.setStyle(done
-                ? "-fx-text-fill:#9eafc0; -fx-strikethrough:true;  -fx-font-size:12px;"
-                : "-fx-text-fill:#0d1b2a; -fx-strikethrough:false; -fx-font-size:12px;");
+                ? "-fx-text-fill:-t-text-m2; -fx-strikethrough:true;  -fx-font-size:12px;"
+                : "-fx-text-fill:-t-text; -fx-strikethrough:false; -fx-font-size:12px;");
     }
 
     private void copyToClipboard(String text) {

@@ -97,10 +97,10 @@ public class DashboardController {
         });
 
         Label upcomingHint = new Label("💡 Duplo clique para navegar à aba correspondente");
-        upcomingHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #8aaccc; -fx-font-style: italic;");
+        upcomingHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
 
         Label alertsHint = new Label("💡 Duplo clique para navegar à aba correspondente");
-        alertsHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #8aaccc; -fx-font-style: italic;");
+        alertsHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
 
         VBox upcomingBox = UIHelper.createCardSection("Próximos prazos críticos",
                 new VBox(4,

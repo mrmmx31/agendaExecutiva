@@ -363,7 +363,7 @@ public final class PrintReportService {
         List<KanbanCol> cols = List.of(
                 new KanbanCol("backlog",      "Backlog",         "#546e7a"),
                 new KanbanCol("em_andamento", "Em Andamento",    "#1565c0"),
-                new KanbanCol("em_revisao",   "Em Revis&atilde;o", "#7b1fa2"),
+                new KanbanCol("em_revisao",   "Em Revis&atilde;o", "-t-purple"),
                 new KanbanCol("concluido",    "Conclu&iacute;do", "#2e7d32"));
 
         for (KanbanCol col : cols) {
@@ -492,7 +492,7 @@ public final class PrintReportService {
         List<KanbanCol> cols = List.of(
                 new KanbanCol("backlog",      "Backlog",           "#546e7a"),
                 new KanbanCol("em_andamento", "Em Andamento",      "#1565c0"),
-                new KanbanCol("em_revisao",   "Em Revis&atilde;o", "#7b1fa2"),
+                new KanbanCol("em_revisao",   "Em Revis&atilde;o", "-t-purple"),
                 new KanbanCol("concluido",    "Conclu&iacute;do",  "#2e7d32"));
 
         for (KanbanCol col : cols) {
@@ -722,7 +722,7 @@ public final class PrintReportService {
             "body.color-mode .badge-pending { background:#e65100; color:white; padding:2px 6px; border-radius:4px; font-size:9pt; font-weight:bold; }" +
             "body.color-mode .badge-nova     { background:#1565c0; color:white; padding:2px 6px; border-radius:4px; font-size:9pt; }" +
             "body.color-mode .badge-execucao { background:#1b5e20; color:white; padding:2px 6px; border-radius:4px; font-size:9pt; }" +
-            "body.color-mode .badge-validacao{ background:#7b1fa2; color:white; padding:2px 6px; border-radius:4px; font-size:9pt; }" +
+            "body.color-mode .badge-validacao{ background:-t-purple; color:white; padding:2px 6px; border-radius:4px; font-size:9pt; }" +
             "body.color-mode .badge-proto    { background:#0277bd; color:white; padding:2px 6px; border-radius:4px; font-size:9pt; }" +
             "body.color-mode .badge-pausada  { background:#546e7a; color:white; padding:2px 6px; border-radius:4px; font-size:9pt; }" +
             "body.color-mode .badge-concluida{ background:#2e7d32; color:white; padding:2px 6px; border-radius:4px; font-size:9pt; }" +

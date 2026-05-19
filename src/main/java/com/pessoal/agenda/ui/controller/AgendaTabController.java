@@ -165,12 +165,20 @@ public class AgendaTabController {
 
         VBox mainPanel = new VBox(10, topBar, contentArea);
         VBox.setVgrow(contentArea, Priority.ALWAYS);
+        mainPanel.setMaxWidth(Double.MAX_VALUE);
+        mainPanel.setMaxHeight(Double.MAX_VALUE);
         mainPanel.setPadding(new Insets(14));
         ScrollPane sidePanel = buildSidePanel();
-        sidePanel.setPrefWidth(370); sidePanel.setMinWidth(340);
+        sidePanel.setPrefWidth(370);
+        sidePanel.setMinWidth(340);
+        sidePanel.setMaxWidth(430);
+        sidePanel.setMaxHeight(Double.MAX_VALUE);
 
         HBox content = new HBox(10, mainPanel, sidePanel);
-        content.setPadding(new Insets(0, 14, 14, 0));
+        HBox.setHgrow(mainPanel, Priority.ALWAYS);
+        content.setFillHeight(true);
+        content.setMaxHeight(Double.MAX_VALUE);
+        content.setPadding(new Insets(0));
         tab.setContent(content);
 
         refreshCurrentView();
@@ -411,11 +419,13 @@ public class AgendaTabController {
         VBox.setVgrow(alertsSection, Priority.ALWAYS);
 
         VBox side = new VBox(10, formSection, actionsSection, alertsSection);
-        side.setPadding(new Insets(14, 0, 14, 0));
+        side.setFillWidth(true);
+        side.setPadding(new Insets(10, 0, 10, 0));
 
         // Envolve em ScrollPane para permitir rolar quando a janela estiver pequena
         ScrollPane scroll = new ScrollPane(side);
         scroll.setFitToWidth(true);
+        scroll.setFitToHeight(false);
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scroll.getStyleClass().add("edge-to-edge");
@@ -751,7 +761,7 @@ public class AgendaTabController {
             Label countLabel = new Label(String.valueOf(s.total())); countLabel.getStyleClass().add("year-month-count");
             Label openLabel  = new Label(s.open() == 0 ? "Sem pendências" : s.open() + " abertas");
             openLabel.getStyleClass().add("year-month-open");
-            if (s.open() > 0) openLabel.setStyle("-fx-text-fill: #dc2626;");
+            if (s.open() > 0) openLabel.setStyle("-fx-text-fill: -t-err;");
             VBox card = new VBox(4, nameLabel, countLabel, openLabel);
             card.getStyleClass().add("year-month-card");
             int m = s.month();
@@ -886,7 +896,7 @@ public class AgendaTabController {
         SeparatorMenuItem sep = new SeparatorMenuItem();
 
         MenuItem deleteItem = new MenuItem("✕  Remover tarefa");
-        deleteItem.setStyle("-fx-text-fill: #c62828;");
+        deleteItem.setStyle("-fx-text-fill: -t-err-dk;");
         deleteItem.setOnAction(e -> {
             Dialogs.confirm("Confirmar remoção", "Remover tarefa selecionada?",
                     "Esta ação é permanente e não pode ser desfeita.")

@@ -326,8 +326,8 @@ public class ChecklistController {
         // ── Cabeçalho do formulário ───────────────────────────────────────
         formModeLabel = new Label("📋 Novo Protocolo Operacional");
         formModeLabel.setStyle(
-                "-fx-font-size: 14px; -fx-font-weight: 800; -fx-text-fill: #03183e;"
-                + " -fx-border-color: transparent transparent #d6e4f5 transparent;"
+                "-fx-font-size: 14px; -fx-font-weight: 800; -fx-text-fill: -t-text-b;"
+                + " -fx-border-color: transparent transparent -t-bd-lt transparent;"
                 + " -fx-border-width: 0 0 1 0; -fx-padding: 0 0 8 0;");
         formModeLabel.setWrapText(true);
         formModeLabel.setMaxWidth(Double.MAX_VALUE);
@@ -426,8 +426,8 @@ public class ChecklistController {
         stepsScroll.setFitToWidth(true);
         stepsScroll.setPrefHeight(200);
         stepsScroll.setMaxHeight(350);
-        stepsScroll.setStyle("-fx-background-color: #f8fafc;"
-                + " -fx-border-color: #dce8f5; -fx-border-radius: 5;");
+        stepsScroll.setStyle("-fx-background-color: -t-surface-a;"
+                + " -fx-border-color: -t-bd-lt; -fx-border-radius: 5;");
 
         VBox stepsCard = buildSectionCardWithAction("⚙ Passos do Protocolo", addStepBtn, stepsScroll);
 
@@ -451,7 +451,7 @@ public class ChecklistController {
                 UIHelper.createSpacer(), executeBtn);
         btnRow.setAlignment(Pos.CENTER_LEFT);
         btnRow.setPadding(new Insets(8, 0, 0, 0));
-        btnRow.setStyle("-fx-border-color: #d6e4f5; -fx-border-width: 1 0 0 0;");
+        btnRow.setStyle("-fx-border-color: -t-bd-lt; -fx-border-width: 1 0 0 0;");
 
         VBox panel = new VBox(12, formModeLabel, definitionCard, stepsCard, btnRow);
         panel.setPadding(new Insets(14));
@@ -465,7 +465,7 @@ public class ChecklistController {
 
         Label orderLbl = new Label(order + ".");
         orderLbl.setStyle("-fx-font-weight: 700; -fx-font-size: 12px;"
-                + " -fx-text-fill: #5a7a9e; -fx-min-width: 26px;");
+                + " -fx-text-fill: -t-text-m; -fx-min-width: 26px;");
 
         TextField stepField = new TextField(existing != null ? existing.stepText() : "");
         stepField.getStyleClass().add("input-control");
@@ -474,7 +474,7 @@ public class ChecklistController {
 
         CheckBox criticalCb = new CheckBox("⚠ Crítico");
         criticalCb.setSelected(existing != null && existing.critical());
-        criticalCb.setStyle("-fx-font-size: 11px; -fx-text-fill: #b71c1c;");
+        criticalCb.setStyle("-fx-font-size: 11px; -fx-text-fill: -t-err;");
         criticalCb.setTooltip(new Tooltip("Passo obrigatório — bloqueia conclusão se não marcado"));
 
         Button upBtn   = new Button("▲"); upBtn.getStyleClass().add("icon-button");
@@ -487,8 +487,8 @@ public class ChecklistController {
         HBox row = new HBox(6, orderLbl, stepField, criticalCb, upBtn, downBtn, delBtn);
         row.setAlignment(Pos.CENTER_LEFT);
         row.setPadding(new Insets(3, 4, 3, 6));
-        row.setStyle("-fx-background-color: white; -fx-background-radius: 4;"
-                + " -fx-border-color: #e8eef4; -fx-border-radius: 4;"
+        row.setStyle("-fx-background-color: -t-surface; -fx-background-radius: 4;"
+                + " -fx-border-color: -t-bd-lt; -fx-border-radius: 4;"
                 + " -fx-border-width: 1;");
 
         StepRow sr = new StepRow(existing != null ? existing.id() : null, stepField, criticalCb, row);
@@ -758,7 +758,7 @@ public class ChecklistController {
     /** Controle com rótulo acima (coluna). */
     private static VBox labeledControl(String label, Node control) {
         Label lbl = new Label(label);
-        lbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #5a7a9e; -fx-font-weight: 600;");
+        lbl.setStyle("-fx-font-size: 11px; -fx-text-fill: -t-text-m; -fx-font-weight: 600;");
         lbl.setMinWidth(Region.USE_PREF_SIZE);
         VBox box = new VBox(3, lbl, control);
         HBox.setHgrow(box, Priority.ALWAYS);
@@ -768,7 +768,7 @@ public class ChecklistController {
     /** Linha rótulo (esq.) + controle (dir., expande). */
     private static HBox fieldRow(String label, Node control) {
         Label lbl = new Label(label);
-        lbl.setStyle("-fx-font-size: 11.5px; -fx-text-fill: #5a7a9e; -fx-font-weight: 600;");
+        lbl.setStyle("-fx-font-size: 11.5px; -fx-text-fill: -t-text-m; -fx-font-weight: 600;");
         lbl.setMinWidth(160);
         HBox row = new HBox(10, lbl, control);
         row.setAlignment(Pos.TOP_LEFT);
@@ -779,7 +779,7 @@ public class ChecklistController {
     /** Linha com rótulo curto + controle sem expansão. */
     private static HBox namedRow(String label, Node control) {
         Label lbl = new Label(label);
-        lbl.setStyle("-fx-font-size: 11.5px; -fx-text-fill: #5a7a9e; -fx-font-weight: 600;");
+        lbl.setStyle("-fx-font-size: 11.5px; -fx-text-fill: -t-text-m; -fx-font-weight: 600;");
         lbl.setMinWidth(160);
         HBox row = new HBox(10, lbl, control);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -789,9 +789,9 @@ public class ChecklistController {
     /** Card de seção estilo científico com múltiplos conteúdos. */
     private static VBox buildSectionCard(String title, Node... content) {
         Label hdr = new Label(title);
-        hdr.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #03183e;"
+        hdr.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: -t-text-b;"
                 + " -fx-padding: 0 0 6 0;"
-                + " -fx-border-color: transparent transparent #d6e4f5 transparent;"
+                + " -fx-border-color: transparent transparent -t-bd-lt transparent;"
                 + " -fx-border-width: 0 0 1 0;");
         hdr.setMaxWidth(Double.MAX_VALUE);
         VBox card = new VBox(10, hdr);
@@ -804,13 +804,13 @@ public class ChecklistController {
     /** Card de seção com botão de ação no cabeçalho. */
     private static VBox buildSectionCardWithAction(String title, Button action, Node... content) {
         Label hdr = new Label(title);
-        hdr.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #03183e;");
+        hdr.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: -t-text-b;");
         hdr.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(hdr, Priority.ALWAYS);
         HBox headerRow = new HBox(8, hdr, action);
         headerRow.setAlignment(Pos.CENTER_LEFT);
         headerRow.setStyle("-fx-padding: 0 0 6 0;"
-                + " -fx-border-color: transparent transparent #d6e4f5 transparent;"
+                + " -fx-border-color: transparent transparent -t-bd-lt transparent;"
                 + " -fx-border-width: 0 0 1 0;");
         VBox card = new VBox(10, headerRow);
         card.getChildren().addAll(content);

@@ -198,7 +198,7 @@ public class SalesController {
                 (obs, old, sel) -> updateSaleActionBtns(sel));
 
         Label hint = new Label("Clique duplo para editar  ·  Selecione para ações rápidas");
-        hint.setStyle("-fx-font-size: 10.5px; -fx-text-fill: #7a9bbf; -fx-padding: 4 0 0 6;"
+        hint.setStyle("-fx-font-size: 10.5px; -fx-text-fill: -t-text-m2; -fx-padding: 4 0 0 6;"
                 + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
         VBox panel = new VBox(0, salesListView, hint);
@@ -279,7 +279,7 @@ public class SalesController {
         HBox qtyPriceRow = new HBox(8, qtyBox, priceBox);
 
         saleTotalPreview = new Label("Total: —");
-        saleTotalPreview.setStyle("-fx-font-size: 13px; -fx-font-weight: 800; -fx-text-fill: #1565c0;"
+        saleTotalPreview.setStyle("-fx-font-size: 13px; -fx-font-weight: 800; -fx-text-fill: -t-pri;"
                 + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
         // Cliente
@@ -472,7 +472,7 @@ public class SalesController {
                 (obs, old, sel) -> updateCatalogActionBtns(sel));
 
         Label hint = new Label("Clique duplo para editar  ·  Selecione para ações rápidas");
-        hint.setStyle("-fx-font-size: 10.5px; -fx-text-fill: #7a9bbf; -fx-padding: 4 0 0 6;"
+        hint.setStyle("-fx-font-size: 10.5px; -fx-text-fill: -t-text-m2; -fx-padding: 4 0 0 6;"
                 + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
         VBox panel = new VBox(0, catalogListView, hint);
@@ -601,7 +601,7 @@ public class SalesController {
 
         // Ajuste de estoque (apenas materiais)
         Label adjTitle = new Label("Ajustar estoque de material:");
-        adjTitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #1e3a5f; -fx-font-weight: 600; -fx-padding: 6 0 0 0;");
+        adjTitle.setStyle("-fx-font-size: 11px; -fx-text-fill: -t-text-s; -fx-font-weight: 600; -fx-padding: 6 0 0 0;");
 
         adjustQtyField = new TextField();
         adjustQtyField.getStyleClass().add("input-control");
@@ -713,25 +713,25 @@ public class SalesController {
 
         if (low.isEmpty()) {
             Label ok = new Label("✅  Todos os materiais com estoque adequado.");
-            ok.setStyle("-fx-font-size: 11.5px; -fx-text-fill: #1b5e20;"
+            ok.setStyle("-fx-font-size: 11.5px; -fx-text-fill: -t-success;"
                     + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
             lowStockBox.getChildren().add(ok);
             return;
         }
         for (InventoryItem item : low) {
             Label nameLbl = new Label(item.productName());
-            nameLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #b71c1c;");
+            nameLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: -t-err;");
             HBox.setHgrow(nameLbl, Priority.ALWAYS);
 
             Label stockLbl = new Label(item.quantity() + " un.  (mín: " + item.minimumQuantity() + ")");
-            stockLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #c62828;"
+            stockLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: -t-err-dk;"
                     + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
             HBox row = new HBox(8, nameLbl, stockLbl);
             row.setAlignment(Pos.CENTER_LEFT);
             row.setPadding(new Insets(5, 8, 5, 8));
-            row.setStyle("-fx-background-color: #fff5f5; -fx-background-radius: 5;"
-                    + " -fx-border-color: #ffcdd2; -fx-border-radius: 5;");
+            row.setStyle("-fx-background-color: -t-err-bg; -fx-background-radius: 5;"
+                    + " -fx-border-color: -t-err-dk; -fx-border-radius: 5;");
             lowStockBox.getChildren().add(row);
         }
     }
@@ -980,29 +980,29 @@ public class SalesController {
                     svc ? "#e0f7f4:#006d5b" : "#e8eaf6:#283593");
 
             Label statusBadge = badge(pend ? "A RECEBER" : "RECEBIDO",
-                    pend ? "#fff3e0:#e65100" : "#e8f5e9:#1b5e20");
+                    pend ? "-t-warn-bg:-t-warn" : "-t-success-bg:-t-success");
 
             Label nameLbl = new Label(e.productName());
-            nameLbl.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #0d1b2a;");
+            nameLbl.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: -t-text;");
             nameLbl.setWrapText(false);
 
             Label subLbl = new Label(
                     (e.clientName() != null && !e.clientName().isBlank() ? e.clientName() : "")
                     + "  " + e.quantity() + " × " + formatBrl(e.unitPrice()));
-            subLbl.setStyle("-fx-font-size: 10.5px; -fx-text-fill: #5a7a9e;"
+            subLbl.setStyle("-fx-font-size: 10.5px; -fx-text-fill: -t-text-m;"
                     + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
             VBox nameBox = new VBox(1, nameLbl, subLbl);
             HBox.setHgrow(nameBox, Priority.ALWAYS);
 
             Label dateLbl = new Label(e.saleDate() != null ? e.saleDate().format(DATE_FMT) : "—");
-            dateLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #5a7a9e;"
+            dateLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: -t-text-m;"
                     + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
             Label totalLbl = new Label(formatBrl(e.total()));
             totalLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 800;"
                     + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;"
-                    + " -fx-text-fill: " + (pend ? "#e65100;" : "#1b5e20;"));
+                    + " -fx-text-fill: " + (pend ? "-t-warn;" : "-t-success;"));
 
             HBox row = new HBox(8, typeBadge, nameBox, dateLbl, statusBadge, totalLbl);
             row.setAlignment(Pos.CENTER_LEFT);
@@ -1023,10 +1023,10 @@ public class SalesController {
                     svc ? "#e0f7f4:#006d5b" : "#e8eaf6:#283593");
 
             Label nameLbl = new Label(item.productName());
-            nameLbl.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #0d1b2a;");
+            nameLbl.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: -t-text;");
 
             Label catLbl = new Label(item.category() != null ? item.category() : "");
-            catLbl.setStyle("-fx-font-size: 10.5px; -fx-text-fill: #5a7a9e;"
+            catLbl.setStyle("-fx-font-size: 10.5px; -fx-text-fill: -t-text-m;"
                     + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
 
             VBox nameBox = new VBox(1, nameLbl, catLbl);
@@ -1037,20 +1037,20 @@ public class SalesController {
                 stockLbl = new Label(item.quantity() + " un.");
                 stockLbl.setStyle("-fx-font-size: 11.5px; -fx-font-weight: 700;"
                         + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;"
-                        + " -fx-text-fill: " + (lowStock ? "#b71c1c;" : "#1e3a5f;"));
+                        + " -fx-text-fill: " + (lowStock ? "-t-err;" : "-t-text-s;"));
             } else {
                 stockLbl = new Label("∞");
-                stockLbl.setStyle("-fx-font-size: 13px; -fx-text-fill: #5a7a9e;");
+                stockLbl.setStyle("-fx-font-size: 13px; -fx-text-fill: -t-text-m;");
             }
 
             Label stockBadge = svc ? new Label() :
                     badge(lowStock ? "BAIXO" : "OK",
-                            lowStock ? "#ffebee:#b71c1c" : "#e8f5e9:#1b5e20");
+                            lowStock ? "-t-err-bg:-t-err" : "-t-success-bg:-t-success");
 
             Label priceLbl = new Label(formatBrl(item.unitPrice()));
             priceLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 800;"
                     + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;"
-                    + " -fx-text-fill: #1565c0;");
+                    + " -fx-text-fill: -t-pri;");
 
             HBox row = new HBox(8, typeBadge, nameBox, stockLbl, stockBadge, priceLbl);
             row.setAlignment(Pos.CENTER_LEFT);
@@ -1086,13 +1086,13 @@ public class SalesController {
 
     private static VBox fieldRow(String labelText, javafx.scene.Node control) {
         Label lbl = new Label(labelText);
-        lbl.setStyle("-fx-font-weight: 600; -fx-font-size: 11.5px; -fx-text-fill: #1e3a5f;");
+        lbl.setStyle("-fx-font-weight: 600; -fx-font-size: 11.5px; -fx-text-fill: -t-text-s;");
         return new VBox(3, lbl, control);
     }
 
     private static Label fieldLabel(String text) {
         Label l = new Label(text);
-        l.setStyle("-fx-font-weight: 600; -fx-font-size: 11.5px; -fx-text-fill: #1e3a5f;");
+        l.setStyle("-fx-font-weight: 600; -fx-font-size: 11.5px; -fx-text-fill: -t-text-s;");
         return l;
     }
 

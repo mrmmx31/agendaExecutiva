@@ -265,21 +265,21 @@ public class ProjectIdeaDetailWindow {
 
         checklistProgressLabel = new Label();
         checklistProgressLabel.setStyle(
-                "-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #2e7d32;"
-                + " -fx-background-color: #e8f5e9; -fx-padding: 3 10 3 10;"
+                "-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: -t-success;"
+                + " -fx-background-color: -t-success-bg; -fx-padding: 3 10 3 10;"
                 + " -fx-background-radius: 12;");
         updateChecklistProgress();
         checklistProgressLabel.setVisible("checklist".equals(nextActionsMode));
 
         Label sectionTitle = new Label("✅ Próximas Ações");
-        sectionTitle.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #03183e;");
+        sectionTitle.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: -t-text-b;");
         Region hSpacer = new Region(); HBox.setHgrow(hSpacer, Priority.ALWAYS);
 
         HBox headerRow = new HBox(6, sectionTitle, hSpacer,
                 checklistProgressLabel, new HBox(2, textBtn, checklistBtn));
         headerRow.setAlignment(Pos.CENTER_LEFT);
         headerRow.setStyle("-fx-padding: 0 0 8 0;"
-                + " -fx-border-color: transparent transparent #d6e4f5 transparent;"
+                + " -fx-border-color: transparent transparent -t-bd-lt transparent;"
                 + " -fx-border-width: 0 0 1 0;");
 
         // ── modo texto ────────────────────────────────────────────────────
@@ -297,7 +297,7 @@ public class ProjectIdeaDetailWindow {
         itemsScroll.setFitToWidth(true);
         itemsScroll.setPrefHeight(200); itemsScroll.setMaxHeight(350);
         itemsScroll.setStyle("-fx-background-color: transparent;"
-                + " -fx-border-color: #dce8f5; -fx-border-radius: 5; -fx-background-radius: 5;");
+                + " -fx-border-color: -t-bd-lt; -fx-border-radius: 5; -fx-background-radius: 5;");
 
         TextField newItemField = new TextField();
         newItemField.setPromptText("Descreva a próxima ação e pressione Enter...");
@@ -327,7 +327,7 @@ public class ProjectIdeaDetailWindow {
 
         HBox addRow = new HBox(6, newItemField, addItemBtn);
         addRow.setAlignment(Pos.CENTER_LEFT);
-        addRow.setStyle("-fx-padding: 8 0 0 0; -fx-border-color: #d6e4f5; -fx-border-width: 1 0 0 0;");
+        addRow.setStyle("-fx-padding: 8 0 0 0; -fx-border-color: -t-bd-lt; -fx-border-width: 1 0 0 0;");
 
         checklistPane = new VBox(6, itemsScroll, addRow);
         checklistPane.setVisible("checklist".equals(nextActionsMode));
@@ -366,7 +366,7 @@ public class ProjectIdeaDetailWindow {
 
         if (snapshot.isEmpty()) {
             Label empty = new Label("Nenhuma ação adicionada. Use o campo abaixo para adicionar.");
-            empty.setStyle("-fx-text-fill: #9eafc0; -fx-font-size: 11px; -fx-padding: 10 8 10 8;");
+            empty.setStyle("-fx-text-fill: -t-text-m2; -fx-font-size: 11px; -fx-padding: 10 8 10 8;");
             checklistItemsBox.getChildren().add(empty);
             return;
         }
@@ -391,7 +391,7 @@ public class ProjectIdeaDetailWindow {
             });
 
             Button delBtn = new Button("✕");
-            delBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #b71c1c;"
+            delBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: -t-err;"
                     + " -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 2 6 2 6;"
                     + " -fx-background-radius: 4;");
             delBtn.setOnAction(e -> {
@@ -404,7 +404,7 @@ public class ProjectIdeaDetailWindow {
             HBox row = new HBox(8, cb, textLbl, delBtn);
             row.setAlignment(Pos.CENTER_LEFT);
             row.setPadding(new Insets(5, 8, 5, 10));
-            row.setStyle("-fx-background-color: " + (i % 2 == 0 ? "#f8fafc" : "white")
+            row.setStyle("-fx-background-color: " + (i % 2 == 0 ? "-t-surface-a" : "white")
                     + "; -fx-background-radius: 4;");
             checklistItemsBox.getChildren().add(row);
         }
@@ -412,8 +412,8 @@ public class ProjectIdeaDetailWindow {
 
     private void applyDoneStyle(Label lbl, boolean done) {
         lbl.setStyle(done
-                ? "-fx-text-fill: #9eafc0; -fx-strikethrough: true;  -fx-font-size: 12px;"
-                : "-fx-text-fill: #0d1b2a; -fx-strikethrough: false; -fx-font-size: 12px;");
+                ? "-fx-text-fill: -t-text-m2; -fx-strikethrough: true;  -fx-font-size: 12px;"
+                : "-fx-text-fill: -t-text; -fx-strikethrough: false; -fx-font-size: 12px;");
     }
 
     private void updateChecklistProgress() {
@@ -458,8 +458,8 @@ public class ProjectIdeaDetailWindow {
         HBox footer = new HBox(10, deleteBtn, spacer, cancelBtn, saveBtn);
         footer.setPadding(new Insets(10, 18, 10, 18));
         footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-background-color: #edf1f8;"
-                + " -fx-border-color: #b8cfe8; -fx-border-width: 1 0 0 0;");
+        footer.setStyle("-fx-background-color: -t-surface-d;"
+                + " -fx-border-color: -t-bd; -fx-border-width: 1 0 0 0;");
         return footer;
     }
 
@@ -535,7 +535,7 @@ public class ProjectIdeaDetailWindow {
     private VBox labeledControl(String label, javafx.scene.Node control) {
         Label lbl = new Label(label);
         lbl.getStyleClass().add("form-label");
-        lbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #5a7a9e; -fx-font-weight: 600;");
+        lbl.setStyle("-fx-font-size: 11px; -fx-text-fill: -t-text-m; -fx-font-weight: 600;");
         VBox box = new VBox(3, lbl, control);
         HBox.setHgrow(box, Priority.ALWAYS);
         return box;
@@ -543,7 +543,7 @@ public class ProjectIdeaDetailWindow {
 
     private HBox fieldRow(String label, javafx.scene.Node control) {
         Label lbl = new Label(label);
-        lbl.setStyle("-fx-font-size: 11.5px; -fx-text-fill: #5a7a9e;"
+        lbl.setStyle("-fx-font-size: 11.5px; -fx-text-fill: -t-text-m;"
                 + " -fx-font-weight: 600; -fx-min-width: 120px;");
         HBox row = new HBox(10, lbl, control);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -554,9 +554,9 @@ public class ProjectIdeaDetailWindow {
     private VBox sectionCard(String title, javafx.scene.Node content) {
         Label hdr = new Label(title);
         hdr.getStyleClass().add("section-title");
-        hdr.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #03183e;"
+        hdr.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: -t-text-b;"
                 + " -fx-padding: 0 0 6 0;"
-                + " -fx-border-color: transparent transparent #d6e4f5 transparent;"
+                + " -fx-border-color: transparent transparent -t-bd-lt transparent;"
                 + " -fx-border-width: 0 0 1 0;");
         VBox card = new VBox(8, hdr, content);
         card.getStyleClass().add("section-card");

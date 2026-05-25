@@ -108,7 +108,9 @@ jobs:
             --icon packaging/icon.png \
             --dest dist \
             --java-options "--add-opens=javafx.base/com.sun.javafx.property=com.pessoal.agenda" \
-            --java-options "-Dfile.encoding=UTF-8"
+            --java-options "-Dfile.encoding=UTF-8" \
+            --java-options "-Dhttps.protocols=TLSv1.2,TLSv1.3" \
+            --java-options "-Djdk.tls.client.protocols=TLSv1.2,TLSv1.3"
 
       - name: Upload artifact (.deb)
         uses: actions/upload-artifact@v4
@@ -211,7 +213,9 @@ jobs:
             --icon packaging\icon.ico `
             --dest dist `
             --java-options "--add-opens=javafx.base/com.sun.javafx.property=com.pessoal.agenda" `
-            --java-options "-Dfile.encoding=UTF-8"
+            --java-options "-Dfile.encoding=UTF-8" `
+            --java-options "-Dhttps.protocols=TLSv1.2,TLSv1.3" `
+            --java-options "-Djdk.tls.client.protocols=TLSv1.2,TLSv1.3"
 
       - name: Upload artifact (.exe)
         uses: actions/upload-artifact@v4
@@ -273,4 +277,6 @@ jobs:
           files: release/*
           draft: false
           prerelease: false
+
+
 

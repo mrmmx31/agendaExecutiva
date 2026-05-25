@@ -9,6 +9,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.time.Instant;
 import java.util.function.Consumer;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
 
 /**
  * Gerencia a autenticação OAuth 2.0 com o Google (fluxo Desktop App).
@@ -277,7 +279,15 @@ public class GoogleAuthService {
 
     /** HTTP POST com Content-Type: application/x-www-form-urlencoded */
     private static String post(String url, String body) throws IOException, InterruptedException {
-        HttpClient client = HttpClient.newHttpClient();
+        // Forçar TLS 1.2/1.3 explicitamente — no Windows a JVM pode negociar TLS 1.0/1.1
+        // que o Google rejeita com handshake_failure. No Linux funciona por padrão.
+        SSLParameters sslParams = new SSLParameters();
+        sslParams.setProtocols(new String[]{"TLSv1.2", "TLSv1.3"});
+
+        HttpClient client = HttpClient.newBuilder()
+                .sslParameters(sslParams)
+                .build();
+
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header("Content-Type", "application/x-www-form-urlencoded")

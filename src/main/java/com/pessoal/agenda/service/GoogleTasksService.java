@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import javax.net.ssl.SSLParameters;
 
 /**
  * Integração com o Google Tasks REST API v1.
@@ -31,7 +32,13 @@ public class GoogleTasksService {
 
     public GoogleTasksService() {
         this.auth = GoogleAuthService.getInstance();
-        this.http = HttpClient.newHttpClient();
+        // Forçar TLS 1.2/1.3 — no Windows a JVM pode negociar TLS 1.0/1.1
+        // que o Google rejeita com handshake_failure
+        SSLParameters sslParams = new SSLParameters();
+        sslParams.setProtocols(new String[]{"TLSv1.2", "TLSv1.3"});
+        this.http = HttpClient.newBuilder()
+                .sslParameters(sslParams)
+                .build();
     }
 
     // ── Modelos ──────────────────────────────────────────────────────────────

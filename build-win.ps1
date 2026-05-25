@@ -273,7 +273,9 @@ $jpackageArgs = @(
     "--dest",          $DIST_DIR,
     "--java-options",  "--add-opens=javafx.base/com.sun.javafx.property=com.pessoal.agenda",
     "--java-options",  "-Dfile.encoding=UTF-8",
-    "--java-options",  "-Djava.net.useSystemProxies=true"
+    "--java-options",  "-Djava.net.useSystemProxies=true",
+    "--java-options",  "-Dhttps.protocols=TLSv1.2,TLSv1.3",
+    "--java-options",  "-Djdk.tls.client.protocols=TLSv1.2,TLSv1.3"
 )
 
 if ($icoPath -and (Test-Path $icoPath)) {
@@ -322,4 +324,5 @@ if ($outFile) {
     Write-Host "❌  Arquivo .$Type não encontrado em $DIST_DIR" -ForegroundColor Red
     exit 1
 }
+
 

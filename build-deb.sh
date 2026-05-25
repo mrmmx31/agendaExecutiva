@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  build-deb.sh — Gera pacote .deb da Agenda Científica
+#  build-deb.sh — Gera pacote .deb da Agenda Científica (Linux)
 # =============================================================================
 # Pré-requisitos (todos já presentes no sistema):
 #   • JDK 24 com jmods  (~/.jdks/openjdk-24.0.2+12-54)
 #   • fakeroot + dpkg-deb          (jpackage usa para criar .deb)
 #   • python3 + Pillow              (geração do ícone)
 #   • Maven Wrapper (./mvnw)
+#
+# Para gerar instalador Windows (.exe):
+#   → Use build-win.ps1 em uma máquina Windows (necessita JDK 21+)
+#   → OU faça push de uma tag (ex: git tag v1.0.0 && git push --tags)
+#      para acionar o GitHub Actions que gera ambos (.deb + .exe) em CI.
+#
+# O usuário final NÃO precisa instalar Java — o JRE é embutido pelo jpackage.
 # =============================================================================
 set -euo pipefail
 

@@ -1,0 +1,276 @@
+# =============================================================================
+#  build-packages.yml — CI que gera pacotes para Linux (.deb) e Windows (.exe)
+# =============================================================================
+# Disparado manualmente (workflow_dispatch) ou em tags de release (v*.*.*)
+#
+# Resultado: os instaladores ficam disponíveis como GitHub Artifacts por 30 dias
+# e como assets de Release (quando disparado por tag).
+# =============================================================================
+
+name: Build Packages
+
+on:
+  workflow_dispatch:           # botão "Run workflow" manual na aba Actions
+  push:
+    tags:
+      - 'v*.*.*'               # ex: v1.0.0 → cria Release automático
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 1: Pacote Linux (.deb)  — roda em Ubuntu
+  # ──────────────────────────────────────────────────────────────────────────
+  build-deb:
+    name: 📦 Linux (.deb)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (com jmods)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
+
+      - name: Instalar dependências do sistema
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y fakeroot dpkg python3 python3-pip
+          pip3 install Pillow --quiet
+
+      - name: Build Maven
+        run: ./mvnw clean package -DskipTests -q
+
+      - name: Gerar ícone
+        run: |
+          mkdir -p packaging
+          python3 - <<'PYEOF'
+          import sys, math, os
+          try:
+              from PIL import Image, ImageDraw, ImageFont
+          except ImportError:
+              import subprocess; subprocess.check_call([sys.executable,'-m','pip','install','Pillow','--quiet'])
+              from PIL import Image, ImageDraw, ImageFont
+          SZ=512; img=Image.new("RGBA",(SZ,SZ),(0,0,0,0)); d=ImageDraw.Draw(img)
+          for i in range(40,0,-1):
+              r=int(i/40*15); g=int(i/40*32); b=int(i/40*55); margin=(40-i)*5
+              d.ellipse([margin,margin,SZ-margin,SZ-margin],fill=(r,g,b,255))
+          d.ellipse([6,6,SZ-6,SZ-6],outline=(100,160,240,200),width=4)
+          try:
+              fh=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",36)
+          except:
+              fh=ImageFont.load_default()
+          CX,CY,CW,CH=68,90,376,310
+          d.rounded_rectangle([CX,CY,CX+CW,CY+CH],radius=16,fill=(20,42,80,240),outline=(80,130,220,180),width=2)
+          d.rounded_rectangle([CX,CY,CX+CW,CY+56],radius=16,fill=(60,110,200,255))
+          d.text((CX+CW//2,CY+28),"AGENDA",anchor="mm",fill=(240,248,255,255),font=fh)
+          img.save("packaging/icon.png")
+          print("Icone salvo: packaging/icon.png")
+          PYEOF
+
+      - name: Coletar JARs JavaFX (Linux)
+        run: |
+          rm -rf target/jpackage-input && mkdir -p target/jpackage-input
+          cp target/agenda-1.0-SNAPSHOT.jar target/jpackage-input/
+          M2="${HOME}/.m2/repository/org/openjfx"
+          VER="21.0.6"
+          for mod in javafx-base javafx-graphics javafx-controls javafx-fxml javafx-web javafx-media javafx-swing; do
+            jar="${M2}/${mod}/${VER}/${mod}-${VER}-linux.jar"
+            if [[ -f "$jar" ]]; then cp "$jar" target/jpackage-input/
+            else ./mvnw dependency:get -Dartifact="org.openjfx:${mod}:${VER}:jar:linux" \
+                       -Ddest="target/jpackage-input/${mod}-${VER}-linux.jar" -q || true
+            fi
+          done
+          cp "${HOME}/.m2/repository/org/xerial/sqlite-jdbc/3.49.1.0/sqlite-jdbc-3.49.1.0.jar" target/jpackage-input/ || true
+
+      - name: jpackage → .deb
+        run: |
+          mkdir -p dist
+          jpackage \
+            --type deb \
+            --name agenda-cientifica \
+            --app-version 1.0.0 \
+            --vendor Pessoal \
+            --description "Agenda Científica Pessoal" \
+            --linux-app-category Science \
+            --linux-shortcut \
+            --linux-menu-group "Science;Education;" \
+            --module-path target/jpackage-input \
+            --module com.pessoal.agenda/com.pessoal.agenda.Launcher \
+            --icon packaging/icon.png \
+            --dest dist \
+            --java-options "--add-opens=javafx.base/com.sun.javafx.property=com.pessoal.agenda" \
+            --java-options "-Dfile.encoding=UTF-8"
+
+      - name: Upload artifact (.deb)
+        uses: actions/upload-artifact@v4
+        with:
+          name: agenda-cientifica-linux-deb
+          path: dist/*.deb
+          retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 2: Instalador Windows (.exe)  — roda em Windows Server
+  # ──────────────────────────────────────────────────────────────────────────
+  build-exe:
+    name: 🪟 Windows (.exe)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (com jmods)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar Pillow
+        run: pip install Pillow --quiet
+
+      - name: Build Maven
+        run: ./mvnw.cmd clean package -DskipTests -q
+
+      - name: Gerar ícone .ico
+        shell: python
+        run: |
+          from PIL import Image, ImageDraw
+          import os, math
+          SZ=512; img=Image.new("RGBA",(SZ,SZ),(0,0,0,0)); d=ImageDraw.Draw(img)
+          for i in range(40,0,-1):
+              r=int(i/40*15); g=int(i/40*32); b=int(i/40*55); margin=(40-i)*5
+              d.ellipse([margin,margin,SZ-margin,SZ-margin],fill=(r,g,b,255))
+          d.ellipse([6,6,SZ-6,SZ-6],outline=(100,160,240,200),width=4)
+          CX,CY,CW,CH=68,90,376,310
+          d.rounded_rectangle([CX,CY,CX+CW,CY+CH],radius=16,fill=(20,42,80,240),outline=(80,130,220,180),width=2)
+          d.rounded_rectangle([CX,CY,CX+CW,CY+56],radius=16,fill=(60,110,200,255))
+          os.makedirs("packaging", exist_ok=True)
+          base=img.convert("RGBA")
+          sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)]
+          imgs=[base.copy().resize(s) for s in sizes]
+          imgs[0].save("packaging/icon.ico",format="ICO",sizes=sizes,append_images=imgs[1:])
+          print("ICO gerado: packaging/icon.ico")
+
+      - name: Coletar JARs JavaFX (Windows)
+        shell: pwsh
+        run: |
+          $m2="${env:USERPROFILE}\.m2\repository\org\openjfx"
+          $ver="21.0.6"
+          Remove-Item -Recurse -Force target\jpackage-input -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force target\jpackage-input | Out-Null
+          Copy-Item target\agenda-1.0-SNAPSHOT.jar target\jpackage-input\
+          foreach ($mod in @("javafx-base","javafx-graphics","javafx-controls","javafx-fxml","javafx-web","javafx-media","javafx-swing")) {
+            $jar = "$m2\$mod\$ver\$mod-$ver-win.jar"
+            if (Test-Path $jar) { Copy-Item $jar target\jpackage-input\ }
+            else {
+              .\mvnw.cmd dependency:get "-Dartifact=org.openjfx:${mod}:${ver}:jar:win" `
+                         "-Ddest=target\jpackage-input\$mod-$ver-win.jar" -q
+            }
+          }
+          $sqlite="${env:USERPROFILE}\.m2\repository\org\xerial\sqlite-jdbc\3.49.1.0\sqlite-jdbc-3.49.1.0.jar"
+          if (Test-Path $sqlite) { Copy-Item $sqlite target\jpackage-input\ }
+
+      - name: jpackage → .exe
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          jpackage `
+            --type exe `
+            --name agenda-cientifica `
+            --app-version 1.0.0 `
+            --vendor Pessoal `
+            --description "Agenda Científica Pessoal" `
+            --win-dir-chooser `
+            --win-menu `
+            --win-shortcut `
+            --win-menu-group "Agenda Científica" `
+            --win-upgrade-uuid "a4b2c3d4-e5f6-7890-abcd-ef1234567890" `
+            --module-path target\jpackage-input `
+            --module com.pessoal.agenda/com.pessoal.agenda.Launcher `
+            --icon packaging\icon.ico `
+            --dest dist `
+            --java-options "--add-opens=javafx.base/com.sun.javafx.property=com.pessoal.agenda" `
+            --java-options "-Dfile.encoding=UTF-8"
+
+      - name: Upload artifact (.exe)
+        uses: actions/upload-artifact@v4
+        with:
+          name: agenda-cientifica-windows-exe
+          path: dist/*.exe
+          retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 3: Criar GitHub Release com ambos os instaladores (apenas em tags)
+  # ──────────────────────────────────────────────────────────────────────────
+  release:
+    name: 🚀 Criar Release
+    needs: [build-deb, build-exe]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Baixar .deb
+        uses: actions/download-artifact@v4
+        with:
+          name: agenda-cientifica-linux-deb
+          path: release/
+
+      - name: Baixar .exe
+        uses: actions/download-artifact@v4
+        with:
+          name: agenda-cientifica-windows-exe
+          path: release/
+
+      - name: Criar Release no GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Agenda Científica ${{ github.ref_name }}"
+          body: |
+            ## 📦 Instaladores
+
+            | Plataforma | Arquivo | Requisitos no usuário final |
+            |---|---|---|
+            | 🐧 Linux (Debian/Ubuntu) | `.deb` | Nenhum — apenas `sudo dpkg -i *.deb` |
+            | 🪟 Windows 10/11 | `.exe` | **Nenhum** — JRE embutido no instalador |
+
+            ### Como instalar
+
+            **Linux:**
+            ```bash
+            sudo dpkg -i agenda-cientifica_1.0.0_amd64.deb
+            ```
+
+            **Windows:**
+            Execute o arquivo `agenda-cientifica-1.0.0.exe` e siga o assistente.
+            O app será instalado em `%LOCALAPPDATA%\agenda-cientifica`.
+
+            ---
+            > ℹ️ O usuário final **não precisa instalar Java**. O runtime está embutido.
+          files: release/*
+          draft: false
+          prerelease: false
+

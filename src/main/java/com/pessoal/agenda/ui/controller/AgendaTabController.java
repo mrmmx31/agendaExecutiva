@@ -15,6 +15,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -41,6 +42,7 @@ import java.util.Locale;
 public class AgendaTabController {
 
     private enum AgendaView { DIA, SEMANA, MES, ANO }
+    private enum FormMode { PREVIEW, CREATE, EDIT }
 
     private final SharedContext   ctx;
     private final DatabaseService db;
@@ -83,6 +85,7 @@ public class AgendaTabController {
     private Label            endDateLabel;
     private Label            daysLabel;
     private HBox             daysBox;
+    private FormMode         formMode        = FormMode.PREVIEW;
 
     public AgendaTabController(SharedContext ctx, DatabaseService db) {
         this.ctx = ctx;
@@ -298,15 +301,15 @@ public class AgendaTabController {
         GridPane.setHgrow(daysBox,       Priority.ALWAYS);
         GridPane.setHgrow(notesArea,     Priority.ALWAYS);
 
-        formModeLabel = new Label("Nova tarefa");
+        formModeLabel = new Label("Selecione uma tarefa para pré-visualizar");
         formModeLabel.getStyleClass().add("section-title");
 
-        submitBtn = new Button("+ Adicionar tarefa");
+        submitBtn = new Button("Nova tarefa");
         submitBtn.getStyleClass().add("primary-button");
         submitBtn.setMaxWidth(Double.MAX_VALUE);
-        submitBtn.setOnAction(e -> submitForm());
+        submitBtn.setOnAction(e -> onPrimaryFormAction());
 
-        cancelEditBtn = new Button("Cancelar edição");
+        cancelEditBtn = new Button("Cancelar (Esc)");
         cancelEditBtn.getStyleClass().add("secondary-button");
         cancelEditBtn.setMaxWidth(Double.MAX_VALUE);
         cancelEditBtn.setOnAction(e -> resetForm());
@@ -429,6 +432,13 @@ public class AgendaTabController {
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scroll.getStyleClass().add("edge-to-edge");
+        scroll.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, ev -> {
+            if (ev.getCode() == KeyCode.ESCAPE) {
+                resetForm();
+                ev.consume();
+            }
+        });
+        resetForm();
         return scroll;
     }
 
@@ -481,6 +491,14 @@ public class AgendaTabController {
         });
     }
 
+    private void onPrimaryFormAction() {
+        if (formMode == FormMode.PREVIEW) {
+            enterCreateMode();
+            return;
+        }
+        submitForm();
+    }
+
     private void submitForm() {
         if (titleField.getText().isBlank() || startPicker.getValue() == null) {
             ctx.setStatus("Informe título e data de início."); return;
@@ -527,15 +545,15 @@ public class AgendaTabController {
         }
     }
 
-    private void loadTaskIntoForm(Task t) {
-        editingId = t.id();
+    private void fillFormFromTask(Task t) {
         titleField.setText(t.title());
         notesArea.setText(t.notes() != null ? t.notes() : "");
         startPicker.setValue(t.dueDate());
         startTimeField.setText(t.startTime() != null ? t.startTime() : "");
         endTimeField.setText(t.endTime()   != null ? t.endTime()   : "");
-        if (t.category() != null && ctx.taskCatNames.contains(t.category()))
+        if (t.category() != null && ctx.taskCatNames.contains(t.category())) {
             catCombo.setValue(t.category());
+        }
         priorityCombo.setValue(t.priority() != null ? t.priority().label() : TaskPriority.NORMAL.label());
         statusCombo.setValue(t.status() != null ? t.status().label() : TaskStatus.PENDENTE.label());
         ScheduleType sched = t.scheduleType() != null ? t.scheduleType() : ScheduleType.SINGLE;
@@ -544,27 +562,97 @@ public class AgendaTabController {
             case WEEKLY -> "Dias da semana";
             default     -> "Dia único";
         });
-        if (t.endDate() != null) endDatePicker.setValue(t.endDate());
+        endDatePicker.setValue(t.endDate() != null ? t.endDate() : LocalDate.now().plusDays(7));
         if (t.recurrenceDays() != null && !t.recurrenceDays().isBlank()) {
             String[] active = t.recurrenceDays().split(",");
             for (int i = 0; i < 7; i++) {
                 final String di = String.valueOf(i);
                 dayChecks[i].setSelected(java.util.Arrays.stream(active).anyMatch(di::equals));
             }
+        } else {
+            for (int i = 0; i < 7; i++) dayChecks[i].setSelected(i >= 1 && i <= 5);
         }
         boolean hasEnd = sched == ScheduleType.RANGE || sched == ScheduleType.WEEKLY;
         UIHelper.setConditionalVisible(endDateLabel,  hasEnd);
         UIHelper.setConditionalVisible(endDatePicker, hasEnd);
         UIHelper.setConditionalVisible(daysLabel,     sched == ScheduleType.WEEKLY);
         UIHelper.setConditionalVisible(daysBox,       sched == ScheduleType.WEEKLY);
+    }
+
+    private void loadTaskIntoForm(Task t) {
+        editingId = t.id();
+        fillFormFromTask(t);
+        formMode = FormMode.EDIT;
+        setFormEditable(true);
         formModeLabel.setText("Editando: \"" + t.title() + "\"");
         submitBtn.setText("Salvar alterações");
         UIHelper.setConditionalVisible(cancelEditBtn, true);
         ctx.setStatus("Formulário preenchido — edite os campos e salve.");
     }
 
+    private void loadTaskPreview(Task t) {
+        editingId = null;
+        fillFormFromTask(t);
+        formMode = FormMode.PREVIEW;
+        setFormEditable(false);
+        formModeLabel.setText("Pré-visualização: \"" + t.title() + "\"");
+        submitBtn.setText("Nova tarefa");
+        UIHelper.setConditionalVisible(cancelEditBtn, false);
+    }
+
+    private void enterCreateMode() {
+        editingId = null;
+        formMode = FormMode.CREATE;
+        setFormEditable(true);
+        titleField.clear();
+        notesArea.clear();
+        startPicker.setValue(LocalDate.now());
+        startTimeField.clear();
+        endTimeField.clear();
+        catCombo.setValue(ctx.taskCatNames.isEmpty() ? "Geral" : ctx.taskCatNames.get(0));
+        priorityCombo.setValue(TaskPriority.NORMAL.label());
+        statusCombo.setValue(TaskStatus.PENDENTE.label());
+        scheduleCombo.setValue("Dia único");
+        endDatePicker.setValue(LocalDate.now().plusDays(7));
+        UIHelper.setConditionalVisible(endDateLabel, false);
+        UIHelper.setConditionalVisible(endDatePicker, false);
+        UIHelper.setConditionalVisible(daysLabel, false);
+        UIHelper.setConditionalVisible(daysBox, false);
+        for (int i = 0; i < 7; i++) dayChecks[i].setSelected(i >= 1 && i <= 5);
+        formModeLabel.setText("Nova tarefa");
+        submitBtn.setText("+ Adicionar tarefa");
+        UIHelper.setConditionalVisible(cancelEditBtn, true);
+        ctx.setStatus("Modo nova tarefa ativo.");
+    }
+
+    private void setFormEditable(boolean editable) {
+        titleField.setDisable(!editable);
+        catCombo.setDisable(!editable);
+        priorityCombo.setDisable(!editable);
+        statusCombo.setDisable(!editable);
+        startPicker.setDisable(!editable);
+        startTimeField.setDisable(!editable);
+        endTimeField.setDisable(!editable);
+        scheduleCombo.setDisable(!editable);
+        endDatePicker.setDisable(!editable);
+        notesArea.setDisable(!editable);
+        for (CheckBox check : dayChecks) check.setDisable(!editable);
+    }
+
+    private void previewSelectedItem(DatabaseService.RowItem sel) {
+        if (sel == null) {
+            if (formMode == FormMode.PREVIEW) {
+                formModeLabel.setText("Selecione uma tarefa para pré-visualizar");
+                submitBtn.setText("Nova tarefa");
+            }
+            return;
+        }
+        AppContextHolder.get().taskService().findById(sel.id()).ifPresent(this::loadTaskPreview);
+    }
+
     private void resetForm() {
         editingId = null;
+        formMode = FormMode.PREVIEW;
         titleField.clear(); notesArea.clear();
         startPicker.setValue(LocalDate.now());
         startTimeField.clear(); endTimeField.clear();
@@ -572,13 +660,15 @@ public class AgendaTabController {
         priorityCombo.setValue(TaskPriority.NORMAL.label());
         statusCombo.setValue(TaskStatus.PENDENTE.label());
         scheduleCombo.setValue("Dia único");
+        endDatePicker.setValue(LocalDate.now().plusDays(7));
         UIHelper.setConditionalVisible(endDateLabel,  false);
         UIHelper.setConditionalVisible(endDatePicker, false);
         UIHelper.setConditionalVisible(daysLabel,     false);
         UIHelper.setConditionalVisible(daysBox,       false);
         for (int i = 0; i < 7; i++) dayChecks[i].setSelected(i >= 1 && i <= 5);
-        formModeLabel.setText("Nova tarefa");
-        submitBtn.setText("+ Adicionar tarefa");
+        setFormEditable(false);
+        formModeLabel.setText("Selecione uma tarefa para pré-visualizar");
+        submitBtn.setText("Nova tarefa");
         UIHelper.setConditionalVisible(cancelEditBtn, false);
     }
 
@@ -596,6 +686,10 @@ public class AgendaTabController {
         list.getStyleClass().add("clean-list");
         list.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         currentMainListView = list;
+        list.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            currentMainListView = list;
+            if (formMode != FormMode.EDIT && formMode != FormMode.CREATE) previewSelectedItem(n);
+        });
         list.setOnMouseClicked(e -> {
             if (e.getClickCount() == 2) {
                 DatabaseService.RowItem sel = list.getSelectionModel().getSelectedItem();
@@ -634,7 +728,10 @@ public class AgendaTabController {
                 }
             });
             dayList.getSelectionModel().selectedItemProperty().addListener(
-                    (obs, o, n) -> { if (n != null) currentMainListView = dayList; });
+                    (obs, o, n) -> {
+                        currentMainListView = dayList;
+                        if (formMode != FormMode.EDIT && formMode != FormMode.CREATE) previewSelectedItem(n);
+                    });
             VBox col = new VBox(6, header, dayList);
             col.getStyleClass().add("day-column");
             if (isToday) col.getStyleClass().add("day-column-today");
@@ -654,6 +751,10 @@ public class AgendaTabController {
         list.getStyleClass().add("clean-list");
         list.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         currentMainListView = list; VBox.setVgrow(list, Priority.ALWAYS);
+        list.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            currentMainListView = list;
+            if (formMode != FormMode.EDIT && formMode != FormMode.CREATE) previewSelectedItem(n);
+        });
         list.setCellFactory(lv -> new ListCell<>() {
             private final HBox cellBox = new HBox(8);
             private final Label textLabel = new Label();

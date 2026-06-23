@@ -9,13 +9,11 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.Tab;
 import javafx.scene.control.Tooltip;
 import com.pessoal.agenda.service.PendencyNotificationService;
-import javafx.scene.paint.Color;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.Separator;
-import java.time.temporal.ChronoUnit;
 
 import java.time.YearMonth;
 import java.util.function.IntConsumer;
@@ -180,7 +178,8 @@ public class DashboardController {
 
     public void refreshKpis(YearMonth month) {
         ctx.openTasksValue.setText(String.valueOf(db.countOpenTasks()));
-        ctx.overdueTasksValue.setText(String.valueOf(db.countOverdueTasks()));
+        int overdueCount = db.countOverdueTasks();
+        ctx.overdueTasksValue.setText(String.valueOf(overdueCount));
         ctx.pendingPaymentsValue.setText(String.valueOf(db.countPendingPayments()));
         ctx.pendingAmountValue.setText("R$ %.2f".formatted(db.sumPendingPayments()));
         ctx.checklistPendingValue.setText(String.valueOf(db.countPendingChecklistItems()));
@@ -192,6 +191,11 @@ public class DashboardController {
         // ── TDAH: Tarefas de hoje + Protocolos vencendo ────────────────────
         updateTodayTasks();
         updateExpiringProtocols();
+
+        boolean hasAlertState = overdueCount > 0
+                || !ctx.todayTaskItems.isEmpty()
+                || !ctx.expiringProtocolItems.isEmpty();
+        PendencyNotificationService.getInstance().setHasAlerts(hasAlertState);
     }
 
     private void updateTodayTasks() {
@@ -204,8 +208,6 @@ public class DashboardController {
                 count++;
             }
             ctx.tasksDueCountLabel.setText(String.valueOf(count));
-            // Sinaliza ao notification service que há alertas se houver tarefas
-            PendencyNotificationService.getInstance().setHasAlerts(count > 0);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

@@ -8,15 +8,23 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [Não lançado]
 
 ### Adicionado
-- `PendencyNotificationService`: serviço background que verifica pendências a cada 5 minutos e emite beep do sistema
+- `PendencyNotificationService`: serviço background que verifica pendências a cada 5 minutos e toca `sounds/reminder.wav` (com fallback para beep)
 - Dashboard: cards "📋 Tarefas de HOJE" e "⚠️ Protocolos Vencendo" com destaque visual para apoio a TDAH
 - `SharedContext`: novos campos `todayTaskItems`, `expiringProtocolItems`, `tasksDueCountLabel`, `protocolsExpiringCountLabel`
 - `DashboardController`: métodos `updateTodayTasks()` e `updateExpiringProtocols()` chamados a cada refresh
+- `AgendaApp`: atalho global `Ctrl/Cmd+S` para "lembrar-me agora" (força check imediato de pendências)
+- `AgendaApp`: atalho alternativo `Ctrl/Cmd+Shift+S` para evitar conflito com hábito de salvar
+- Barra de status: badge de alerta com animação piscante quando há pendências críticas
+- Novo recurso de áudio: `src/main/resources/sounds/reminder.wav`
+- Popover no clique do badge da barra de status com breakdown `A/H/P` e ação rápida "Lembrar agora"
 
 ### Corrigido
 - `AgendaTabController.submitForm()`: adicionado `refreshCurrentView()` e `triggerDashboardRefresh()` após salvar tarefa — lista agora atualiza imediatamente sem trocar de aba
 - `theme-dark.css`: cobertura completa do popup do `DatePicker` em modo escuro (botões de navegação de mês, labels, células de dias, dias adjacentes, hoje e selecionado)
 - `app.css` / `theme-dark.css`: seleção de linhas em `ListView` e `TableView` agora visível em linhas pares e ímpares (`:filled:selected:odd` / `:filled:selected:even`)
+- Badge da barra de status agora usa a mesma base visível da dashboard (Atrasos + Hoje + Protocolos) e mostra breakdown `A/H/P`
+- Tooltip no badge de status detalha o significado de `A/H/P` e mostra os totais atuais
+- `Agenda e Prioridades`: painel de formulário agora é preview-first; seleção da lista carrega pré-visualização read-only, edição só via botão `Editar selecionada`, `Esc` cancela edição/criação, e ação primária alterna entre `Nova tarefa` e `+ Adicionar tarefa`
 
 ---
 
@@ -44,4 +52,8 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - Recorrência de tarefas: `SINGLE`, `RANGE`, `WEEKLY`
 - Sistema de timer de sessões por tarefa
 - Impressão de relatórios
+
+
+
+
 

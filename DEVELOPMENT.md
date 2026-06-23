@@ -198,11 +198,18 @@ AppContextHolder.get().categoryService()         // CategoryService
 
 Singleton que verifica pendências periodicamente:
 
+- Tenta tocar `src/main/resources/sounds/reminder.wav`
+- Se o arquivo falhar ou não existir, usa beep do sistema como fallback
+
 ```java
 // Iniciar (geralmente em AgendaApp.start())
 PendencyNotificationService.getInstance().start(
     5 * 60 * 1000,   // intervalo: 5 minutos
-    () -> ctx.triggerDashboardRefresh()
+    () -> {
+        refreshAlertsAndUpcoming();
+        refreshDashboardKpis();
+        updateCriticalBadge();
+    }
 );
 
 // Sinalizar que há alertas (chamado por DashboardController após refresh)
@@ -211,6 +218,23 @@ PendencyNotificationService.getInstance().setHasAlerts(count > 0);
 // Parar (ao fechar a aplicação)
 PendencyNotificationService.getInstance().stop();
 ```
+
+### Barra de status — badge crítico
+
+- Label secundário na barra de status: `statusAlertBadge`
+- Estados visuais:
+  - `status-alert-ok` (sem pendências críticas)
+  - `status-alert-critical` (com pendências críticas)
+- Em estado crítico, animação de piscar via `Timeline` para chamar atenção
+
+### Atalho de lembrete manual
+
+- Atalho global: `Ctrl+S` (Linux/Windows) / `Cmd+S` (macOS)
+- Implementação via `KeyCodeCombination(KeyCode.S, KeyCombination.SHORTCUT_DOWN)`
+- Ação:
+  1. Atualiza alertas e KPIs
+  2. Força `PendencyNotificationService.forceCheck()`
+  3. Exibe status textual de lembrete manual
 
 ---
 
@@ -224,4 +248,5 @@ PendencyNotificationService.getInstance().stop();
 | Cores em Java | Usar `setStyle("-fx-text-fill: -t-token;")` em vez de `#hex` |
 | Diálogos | Sempre usar `Dialogs.*` (nunca `new Alert()`) para garantir `Modality.NONE` |
 | Refresh após salvar | Sempre chamar `refreshCurrentView()` e `ctx.triggerDashboardRefresh()` |
+
 

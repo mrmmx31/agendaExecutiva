@@ -387,6 +387,24 @@
     -fx-font-size: 11.5px;
     -fx-font-family: "JetBrains Mono", "Consolas", monospace;
 }
+.status-alert-badge {
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+.status-alert-ok {
+    -fx-background-color: -t-success-bg;
+    -fx-border-color: -t-success;
+    -fx-text-fill: -t-success;
+}
+.status-alert-critical {
+    -fx-background-color: -t-err-bg;
+    -fx-border-color: -t-err-dk;
+    -fx-text-fill: -t-err;
+}
 
 /* ── Grid de formulário ─────────────────────────────────────────────────── */
 .form-grid { -fx-padding: 4 0 4 0; }

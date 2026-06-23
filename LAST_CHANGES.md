@@ -3,13 +3,13 @@
 > Gerado automaticamente pelo git hook `post-commit`.
 > Não editar manualmente — será sobrescrito no próximo commit.
 
-## Commit: `096d3270`
+## Commit: `5acbc9f5`
 
 | Campo | Valor |
 |---|---|
-| Hash completo | `096d327097154570d42c3998bc273659b2bc50c1` |
-| Mensagem | feat(dashboard): suporte TDAH — tarefas de hoje, protocolos vencendo e notificações periódicas - DashboardController: cards 'Tarefas de HOJE' e 'Protocolos Vencendo' - PendencyNotificationService: alertas via beep a cada 5 minutos - SharedContext: novos ObservableLists todayTaskItems e expiringProtocolItems - AgendaTabController: refresh imediato da lista ao salvar tarefa - theme-dark.css: cobertura completa do popup DatePicker em modo escuro - app.css: seleção em ListView/TableView visível em linhas pares e ímpares - docs: CHANGELOG.md e DEVELOPMENT.md criados com documentação técnica |
-| Data | 2026-06-23 12:07:55 -0400 |
+| Hash completo | `5acbc9f5d678b7954b15743787d224c229d6f5cf` |
+| Mensagem | feat(ui): badge popover + atalho alternativo de lembrete - AgendaApp: click no badge abre popover com breakdown A/H/P e acao 'Lembrar agora' - AgendaApp: adiciona atalho Ctrl/Cmd+Shift+S alem de Ctrl/Cmd+S - AgendaTabController: fluxo preview-first com ESC para cancelar e edicao explicita - docs: CHANGELOG atualizado com popover e atalho alternativo |
+| Data | 2026-06-23 15:33:32 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
@@ -18,25 +18,27 @@
 CHANGELOG.md
 DEVELOPMENT.md
 LAST_CHANGES.md
-src/main/java/com/pessoal/agenda/app/SharedContext.java
+src/main/java/com/pessoal/agenda/AgendaApp.java
 src/main/java/com/pessoal/agenda/service/PendencyNotificationService.java
 src/main/java/com/pessoal/agenda/ui/controller/AgendaTabController.java
 src/main/java/com/pessoal/agenda/ui/controller/DashboardController.java
 src/main/resources/com/pessoal/agenda/app.css
+src/main/resources/sounds/reminder.wav
 ```
 
 ## Diff Resumido
 
 ```diff
- CHANGELOG.md                                       |  47 +++++
- DEVELOPMENT.md                                     | 227 +++++++++++++++++++++
- LAST_CHANGES.md                                    |  44 ++++
- .../java/com/pessoal/agenda/app/SharedContext.java |   6 +
- .../service/PendencyNotificationService.java       |  92 +++++++++
- .../agenda/ui/controller/AgendaTabController.java  |   3 +
- .../agenda/ui/controller/DashboardController.java  |  99 +++++++++
- src/main/resources/com/pessoal/agenda/app.css      |  74 ++++++-
- 8 files changed, 590 insertions(+), 2 deletions(-)
+ CHANGELOG.md                                       |  14 ++-
+ DEVELOPMENT.md                                     |  27 +++-
+ LAST_CHANGES.md                                    |  30 ++---
+ src/main/java/com/pessoal/agenda/AgendaApp.java    | 140 ++++++++++++++++++++-
+ .../service/PendencyNotificationService.java       |  26 +++-
+ .../agenda/ui/controller/AgendaTabController.java  | 123 ++++++++++++++++--
+ .../agenda/ui/controller/DashboardController.java  |  12 +-
+ src/main/resources/com/pessoal/agenda/app.css      |  18 +++
+ src/main/resources/sounds/reminder.wav             | Bin 0 -> 26504 bytes
+ 9 files changed, 354 insertions(+), 36 deletions(-)
 ```
 
 ---

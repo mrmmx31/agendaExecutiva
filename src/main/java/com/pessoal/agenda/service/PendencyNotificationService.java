@@ -1,6 +1,9 @@
 package com.pessoal.agenda.service;
 
 import javafx.application.Platform;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -74,10 +77,25 @@ public class PendencyNotificationService {
 
     private void playNotificationSound() {
         try {
-            // Toca som do sistema (beep)
-            java.awt.Toolkit.getDefaultToolkit().beep();
+            var url = PendencyNotificationService.class.getResource("/sounds/reminder.wav");
+            if (url == null) {
+                java.awt.Toolkit.getDefaultToolkit().beep();
+                return;
+            }
+
+            try (AudioInputStream audioIn = AudioSystem.getAudioInputStream(url)) {
+                Clip clip = AudioSystem.getClip();
+                clip.open(audioIn);
+                clip.start();
+                clip.addLineListener(event -> {
+                    if (event.getType() == javax.sound.sampled.LineEvent.Type.STOP) {
+                        clip.close();
+                    }
+                });
+            }
         } catch (Exception e) {
-            // Se não conseguir tocar som, apenas ignora (sem quebrar a aplicação)
+            // Fallback robusto quando audio customizado falhar.
+            try { java.awt.Toolkit.getDefaultToolkit().beep(); } catch (Exception ignored) {}
         }
     }
 
@@ -88,5 +106,7 @@ public class PendencyNotificationService {
         checkAndNotify();
     }
 }
+
+
 
 

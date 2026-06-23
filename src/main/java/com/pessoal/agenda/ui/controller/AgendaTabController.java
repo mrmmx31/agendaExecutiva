@@ -518,6 +518,9 @@ public class AgendaTabController {
                         startTimeField.getText(), endTimeField.getText(), priority, status);
                 ctx.setStatus("Tarefa atualizada: " + titleField.getText().trim());
             }
+            // Atualiza imediatamente a aba atual (dia/semana/mes/ano) e painéis dependentes.
+            refreshCurrentView();
+            ctx.triggerDashboardRefresh();
             resetForm();
         } catch (IllegalArgumentException ex) {
             ctx.setStatus("Erro: " + ex.getMessage());

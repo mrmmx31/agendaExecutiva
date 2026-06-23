@@ -59,6 +59,12 @@ public class SharedContext {
     public final ObservableList<String> alertItems    = FXCollections.observableArrayList();
     public final ObservableList<String> upcomingItems = FXCollections.observableArrayList();
 
+    // ── Dados TDAH: tarefas de hoje + protocolos vencendo ────────────────────
+    public final ObservableList<String> todayTaskItems   = FXCollections.observableArrayList();
+    public final ObservableList<String> expiringProtocolItems = FXCollections.observableArrayList();
+    public final Label tasksDueCountLabel = new Label("0");
+    public final Label protocolsExpiringCountLabel = new Label("0");
+
     public SharedContext(Consumer<String> statusSetter) {
         this.statusSetter = statusSetter;
     }

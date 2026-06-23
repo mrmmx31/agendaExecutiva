@@ -288,8 +288,21 @@
     -fx-border-color: transparent transparent -t-bd-list transparent;
     -fx-border-width: 0 0 1 0;
 }
-.clean-list .list-cell:selected { -fx-background-color: -t-selected;  -fx-text-fill: -t-text-b; }
 .clean-list .list-cell:odd      { -fx-background-color: -t-surface-c; }
+/* Mantem a seleção visível mesmo em linhas alternadas (:odd/:even).
+   Sem foco: tom mais suave; com foco: tom mais forte para indicar edição ativa. */
+.clean-list .list-cell:filled:selected,
+.clean-list .list-cell:filled:selected:odd,
+.clean-list .list-cell:filled:selected:even {
+    -fx-background-color: -t-selected2;
+    -fx-text-fill: -t-text-b;
+}
+.clean-list:focused .list-cell:filled:selected,
+.clean-list:focused .list-cell:filled:selected:odd,
+.clean-list:focused .list-cell:filled:selected:even {
+    -fx-background-color: -t-selected;
+    -fx-text-fill: -t-text-b;
+}
 
 /* ── Toggle de visualização ─────────────────────────────────────────────── */
 .view-toggle-bar {
@@ -552,9 +565,66 @@
     -fx-border-color: transparent transparent -t-bd-lt transparent;
     -fx-border-width: 0 0 1 0;
 }
-.ideas-list .list-cell:selected { -fx-background-color: -t-selected2; }
 .ideas-list .list-cell:odd      { -fx-background-color: -t-surface-c; }
 .ideas-list .list-cell:hover    { -fx-background-color: -t-hover; }
+.ideas-list .list-cell:filled:selected,
+.ideas-list .list-cell:filled:selected:odd,
+.ideas-list .list-cell:filled:selected:even {
+    -fx-background-color: -t-selected2;
+    -fx-text-fill: -t-text-b;
+}
+.ideas-list:focused .list-cell:filled:selected,
+.ideas-list:focused .list-cell:filled:selected:odd,
+.ideas-list:focused .list-cell:filled:selected:even {
+    -fx-background-color: -t-selected;
+    -fx-text-fill: -t-text-b;
+}
+
+/* TableView theme-aware com seleção consistente em qualquer alternância. */
+.table-view {
+    -fx-background-color: -t-surface-b;
+    -fx-border-color: -t-bd;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+}
+.table-view .column-header-background {
+    -fx-background-color: -t-surface-d;
+    -fx-border-color: transparent transparent -t-bd transparent;
+}
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: -t-surface-d;
+    -fx-border-color: transparent transparent -t-bd transparent;
+}
+.table-view .column-header .label {
+    -fx-text-fill: -t-text-s;
+    -fx-font-weight: 700;
+}
+.table-row-cell {
+    -fx-background-color: -t-surface-b;
+    -fx-table-cell-border-color: -t-bd-list;
+}
+.table-row-cell:odd { -fx-background-color: -t-surface-c; }
+.table-row-cell:filled:selected,
+.table-row-cell:filled:selected:odd,
+.table-row-cell:filled:selected:even {
+    -fx-background-color: -t-selected2;
+    -fx-table-cell-border-color: -t-bd;
+}
+.table-view:focused .table-row-cell:filled:selected,
+.table-view:focused .table-row-cell:filled:selected:odd,
+.table-view:focused .table-row-cell:filled:selected:even {
+    -fx-background-color: -t-selected;
+    -fx-table-cell-border-color: -t-pri-bd;
+}
+.table-view .table-cell {
+    -fx-text-fill: -t-text-s;
+    -fx-border-color: transparent transparent -t-bd-list transparent;
+}
+.table-row-cell:filled:selected .table-cell,
+.table-view:focused .table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: -t-text-b;
+}
 
 .kanban-col-header {
     -fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: -t-text-inv;

@@ -8,10 +8,14 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.Tab;
 import javafx.scene.control.Tooltip;
+import com.pessoal.agenda.service.PendencyNotificationService;
+import javafx.scene.paint.Color;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.control.Separator;
+import java.time.temporal.ChronoUnit;
 
 import java.time.YearMonth;
 import java.util.function.IntConsumer;
@@ -52,6 +56,8 @@ public class DashboardController {
         cards.getStyleClass().add("dashboard-cards");
         cards.setHgap(12); cards.setVgap(12);
         cards.getChildren().addAll(
+                UIHelper.createKpiCard("📋 Tarefas de HOJE",    ctx.tasksDueCountLabel,   "kpi-red"),
+                UIHelper.createKpiCard("⚠️ Protocolos vencendo", ctx.protocolsExpiringCountLabel, "kpi-orange"),
                 UIHelper.createKpiCard("Tarefas abertas",       ctx.openTasksValue,       "kpi-blue"),
                 UIHelper.createKpiCard("Tarefas atrasadas",     ctx.overdueTasksValue,    "kpi-red"),
                 UIHelper.createKpiCard("Pagamentos pendentes",  ctx.pendingPaymentsValue, "kpi-orange"),
@@ -61,6 +67,44 @@ public class DashboardController {
                 UIHelper.createKpiCard("Estoque baixo",         ctx.lowStockValue,        "kpi-red"),
                 UIHelper.createKpiCard("Ideias em progresso",   ctx.ideasInProgressValue, "kpi-indigo")
         );
+
+        // ── ListView de tarefas de hoje ────────────────────────────────────────
+        ListView<String> todayTasksList = new ListView<>(ctx.todayTaskItems);
+        todayTasksList.getStyleClass().add("clean-list");
+        Tooltip.install(todayTasksList,
+                new Tooltip("Tarefas vencendo hoje. Duplo clique para navegar."));
+        todayTasksList.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2 && tabNavigator != null) {
+                tabNavigator.accept(1); // Agenda e Prioridades
+            }
+        });
+
+        Label todayHint = new Label("💡 Duplo clique para abrir Agenda e Prioridades");
+        todayHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
+
+        VBox todayTasksBox = UIHelper.createCardSection("📋 Tarefas de Hoje",
+                new VBox(4,
+                        new VBox(4, new Label("Foco nas tarefas de hoje — não deixe escapar!"), todayHint),
+                        todayTasksList));
+
+        // ── ListView de protocolos vencendo ─────────────────────────────────────
+        ListView<String> expiringProtocolsList = new ListView<>(ctx.expiringProtocolItems);
+        expiringProtocolsList.getStyleClass().add("clean-list");
+        Tooltip.install(expiringProtocolsList,
+                new Tooltip("Protocolos que expiram em breve. Duplo clique para ir à aba."));
+        expiringProtocolsList.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2 && tabNavigator != null) {
+                tabNavigator.accept(2); // Protocolos Operacionais
+            }
+        });
+
+        Label protocolHint = new Label("💡 Duplo clique para abrir Protocolos Operacionais");
+        protocolHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
+
+        VBox expiringProtocolsBox = UIHelper.createCardSection("⚠️ Protocolos Vencendo",
+                new VBox(4,
+                        new VBox(4, new Label("Protocolos próximos do vencimento — execute em breve!"), protocolHint),
+                        expiringProtocolsList));
 
         ListView<String> upcomingList = new ListView<>(ctx.upcomingItems);
         upcomingList.getStyleClass().add("clean-list");
@@ -115,7 +159,18 @@ public class DashboardController {
         HBox.setHgrow(upcomingBox, Priority.ALWAYS);
         HBox.setHgrow(alertsBox,   Priority.ALWAYS);
 
+        // ── Layout vertical com seções TDAH no topo ─────────────────────────
+        VBox topAlerts = new VBox(8, todayTasksBox, expiringProtocolsBox);
+        VBox.setVgrow(todayTasksBox, Priority.ALWAYS);
+        VBox.setVgrow(expiringProtocolsBox, Priority.ALWAYS);
+
+        HBox tdahSection = new HBox(12, topAlerts);
+        HBox.setHgrow(topAlerts, Priority.ALWAYS);
+
         VBox content = new VBox(12, cards, bottom);
+        // Insere a seção TDAH entre os KPIs e os alertas gerais
+        content.getChildren().add(1, new Separator());
+        content.getChildren().add(2, tdahSection);
         content.setPadding(new Insets(16));
         tab.setContent(content);
         return tab;
@@ -133,6 +188,50 @@ public class DashboardController {
         ctx.studyHoursValue.setText("%.1f h".formatted(studyMins / 60.0));
         ctx.lowStockValue.setText(String.valueOf(db.countLowStockItems()));
         ctx.ideasInProgressValue.setText(String.valueOf(db.countIdeasInProgress()));
+
+        // ── TDAH: Tarefas de hoje + Protocolos vencendo ────────────────────
+        updateTodayTasks();
+        updateExpiringProtocols();
+    }
+
+    private void updateTodayTasks() {
+        try {
+            var tasks = db.listTasksByDay(java.time.LocalDate.now(), null);
+            ctx.todayTaskItems.clear();
+            int count = 0;
+            for (var t : tasks) {
+                ctx.todayTaskItems.add("📌 " + t.text());
+                count++;
+            }
+            ctx.tasksDueCountLabel.setText(String.valueOf(count));
+            // Sinaliza ao notification service que há alertas se houver tarefas
+            PendencyNotificationService.getInstance().setHasAlerts(count > 0);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void updateExpiringProtocols() {
+        try {
+            // Busca protocolos que vencem em até 3 dias
+            var repo = AppContextHolder.get().protocolRepository();
+            var allProtocols = repo.findAllProtocols(null, null, null);
+
+            ctx.expiringProtocolItems.clear();
+            int count = 0;
+            // Mostra protocolos periódicos (que precisam ser executados novamente)
+            for (var p : allProtocols) {
+                if (p.hasValidity()) {
+                    // Protocolo periódico — sugerindo execução
+                    ctx.expiringProtocolItems.add("📌 " + p.name() + " (" + p.validityDays() + " dias)");
+                    count++;
+                    if (count >= 5) break; // Limita a 5 sugestões
+                }
+            }
+            ctx.protocolsExpiringCountLabel.setText(String.valueOf(count));
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 }
 

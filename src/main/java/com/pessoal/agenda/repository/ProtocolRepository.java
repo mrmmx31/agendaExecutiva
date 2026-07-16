@@ -33,40 +33,58 @@ public class ProtocolRepository {
 
     public long saveProtocol(String name, ProtocolExecutionType type,
                              String category, String description,
-                             Long linkedTaskId, int validityDays) {
+                             Long linkedTaskId, int validityDays,
+                             String timingMode, String fixedTime, Integer leadMinutes) {
         try (Connection conn = db.connect();
              PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO protocols(name, execution_type, category, description, linked_task_id, validity_days)"
-                + " VALUES(?,?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS)) {
+                "INSERT INTO protocols(name, execution_type, category, description, linked_task_id, validity_days, timing_mode, fixed_time, lead_minutes)"
+                + " VALUES(?,?,?,?,?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, name);
             ps.setString(2, type.name());
             ps.setString(3, category != null ? category : "Geral");
             ps.setString(4, description);
             ps.setObject(5, linkedTaskId);
             ps.setInt(6, validityDays);
+            ps.setString(7, timingMode != null ? timingMode : "NONE");
+            ps.setString(8, fixedTime);
+            ps.setObject(9, leadMinutes);
             ps.executeUpdate();
             try (ResultSet rk = ps.getGeneratedKeys()) { return rk.next() ? rk.getLong(1) : -1; }
         } catch (SQLException e) { throw new RuntimeException("Erro ao salvar protocolo", e); }
     }
 
+    public long saveProtocol(String name, ProtocolExecutionType type,
+                             String category, String description,
+                             Long linkedTaskId, int validityDays) {
+        return saveProtocol(name, type, category, description, linkedTaskId, validityDays, "NONE", null, null);
+    }
+
     /** Compatibilidade retroativa sem validity_days. */
     public long saveProtocol(String name, ProtocolExecutionType type,
                              String category, String description, Long linkedTaskId) {
-        return saveProtocol(name, type, category, description, linkedTaskId, 0);
+        return saveProtocol(name, type, category, description, linkedTaskId, 0, "NONE", null, null);
+    }
+
+    public void updateProtocol(long id, String name, ProtocolExecutionType type,
+                               String category, String description,
+                               Long linkedTaskId, int validityDays,
+                               String timingMode, String fixedTime, Integer leadMinutes) {
+        db.execute("UPDATE protocols SET name=?, execution_type=?, category=?, description=?, linked_task_id=?, validity_days=?, timing_mode=?, fixed_time=?, lead_minutes=? WHERE id=?",
+            name, type.name(), category != null ? category : "Geral",
+            description, linkedTaskId, validityDays,
+            timingMode != null ? timingMode : "NONE", fixedTime, leadMinutes, id);
     }
 
     public void updateProtocol(long id, String name, ProtocolExecutionType type,
                                String category, String description,
                                Long linkedTaskId, int validityDays) {
-        db.execute("UPDATE protocols SET name=?, execution_type=?, category=?, description=?, linked_task_id=?, validity_days=? WHERE id=?",
-            name, type.name(), category != null ? category : "Geral",
-            description, linkedTaskId, validityDays, id);
+        updateProtocol(id, name, type, category, description, linkedTaskId, validityDays, "NONE", null, null);
     }
 
     /** Compatibilidade retroativa. */
     public void updateProtocol(long id, String name, ProtocolExecutionType type,
                                String category, String description, Long linkedTaskId) {
-        updateProtocol(id, name, type, category, description, linkedTaskId, 0);
+        updateProtocol(id, name, type, category, description, linkedTaskId, 0, "NONE", null, null);
     }
 
     public void deleteProtocol(long id) {
@@ -167,6 +185,160 @@ public class ProtocolRepository {
                 if (rs.next()) return Optional.of(mapProtocol(rs));
             }
         } catch (SQLException e) { throw new RuntimeException("Erro ao buscar protocolo", e); }
+        return Optional.empty();
+    }
+
+    /** Cria (ou reaproveita) um protocolo padrão de saída de casa para evitar esquecimentos. */
+    public long createLeavingHomeProtocolTemplate() {
+        String name = "Protocolo de saída de casa";
+        String category = "Rotina diária";
+        Optional<Protocol> existing = findProtocolByName(name);
+        if (existing.isPresent()) {
+            return existing.get().id();
+        }
+
+        long templateId = saveProtocol(
+                name,
+                ProtocolExecutionType.RECORRENTE,
+                category,
+                "Checklist rápido antes de sair: confirme itens essenciais e reduza esquecimentos.",
+                null,
+                0
+        );
+        saveStep(templateId, 1, "Carteira e documentos", "RG, CPF, cartões e dinheiro", true);
+        saveStep(templateId, 2, "Chaves", "Casa, portão, carro ou trabalho", true);
+        saveStep(templateId, 3, "Celular", "Verificar bateria e sinal", true);
+        saveStep(templateId, 4, "Carregador", "Cabo/fonte ou power bank", true);
+        saveStep(templateId, 5, "Óculos / fone / crachá", "Itens pessoais úteis para o dia", false);
+        return templateId;
+    }
+
+    /** Cria (ou reaproveita) um protocolo padrão para reuniões/saídas externas. */
+    public long createMeetingProtocolTemplate() {
+        String name = "Protocolo de reunião / saída externa";
+        String category = "Saídas e reuniões";
+        Optional<Protocol> existing = findProtocolByName(name);
+        if (existing.isPresent()) {
+            return existing.get().id();
+        }
+
+        long templateId = saveProtocol(
+                name,
+                ProtocolExecutionType.RECORRENTE,
+                category,
+                "Checklist para encontros, reuniões e compromissos fora de casa: leve o essencial e confirme materiais específicos.",
+                null,
+                0
+        );
+        saveStep(templateId, 1, "Carteira, chave e celular", "Itens básicos antes de sair", true);
+        saveStep(templateId, 2, "Notebook / tablet", "Se a reunião exigir consulta ou apresentação", false);
+        saveStep(templateId, 3, "Carregador / power bank", "Energia para celular e notebook", true);
+        saveStep(templateId, 4, "Relatório impresso / documentos", "Levar qualquer material combinado para a reunião", true);
+        saveStep(templateId, 5, "Endereço, horário e contato", "Confirmar local, horário e pessoa responsável", true);
+        saveStep(templateId, 6, "Remédio / água / item pessoal importante", "Aquilo que você não pode esquecer no dia", false);
+        return templateId;
+    }
+
+    /**
+     * Cria (ou reaproveita) protocolos orientados por horário para rotinas diárias.
+     *
+     * @return IDs dos protocolos criados/encontrados na ordem: remédio 08:00, remédio 20:00,
+     * preparar saída 30 min antes, reunião 1h antes.
+     */
+    public List<Long> createTimeBasedProtocolTemplates() {
+        List<Long> ids = new ArrayList<>();
+        ids.add(createOrReuseTimedTemplate(
+                "Remédio 08:00",
+                "Horários",
+                "Tomar medicação da manhã às 08:00.",
+                "FIXED_TIME",
+                "08:00",
+                null,
+                List.of(
+                        new StepSeed("Separar água", "Deixe a água pronta para reduzir atrito", true),
+                        new StepSeed("Tomar remédio", "Dose da manhã", true),
+                        new StepSeed("Registrar tomada", "Marque horário e observações rápidas", false)
+                )));
+        ids.add(createOrReuseTimedTemplate(
+                "Remédio 20:00",
+                "Horários",
+                "Tomar medicação da noite às 20:00.",
+                "FIXED_TIME",
+                "20:00",
+                null,
+                List.of(
+                        new StepSeed("Separar água", "Deixe a água pronta para reduzir atrito", true),
+                        new StepSeed("Tomar remédio", "Dose da noite", true),
+                        new StepSeed("Registrar tomada", "Marque horário e observações rápidas", false)
+                )));
+        ids.add(createOrReuseTimedTemplate(
+                "Preparar saída 30 min antes",
+                "Horários",
+                "Checklist de preparação para sair, com antecedência de 30 minutos da tarefa/evento.",
+                "BEFORE_TASK",
+                null,
+                30,
+                List.of(
+                        new StepSeed("Documentos e carteira", "Conferir itens obrigatórios", true),
+                        new StepSeed("Celular e bateria", "Garantir autonomia durante o deslocamento", true),
+                        new StepSeed("Material da agenda", "Levar o que foi combinado para o compromisso", true)
+                )));
+        ids.add(createOrReuseTimedTemplate(
+                "Reunião 1h antes",
+                "Horários",
+                "Preparação de reunião com 1 hora de antecedência.",
+                "BEFORE_TASK",
+                null,
+                60,
+                List.of(
+                        new StepSeed("Revisar pauta", "Relembrar objetivos e tópicos principais", true),
+                        new StepSeed("Separar documentos", "Abrir arquivos e material de apoio", true),
+                        new StepSeed("Checar logística", "Link/local, horário e lembrete final", true)
+                )));
+        return ids;
+    }
+
+    private long createOrReuseTimedTemplate(String name,
+                                            String category,
+                                            String description,
+                                            String timingMode,
+                                            String fixedTime,
+                                            Integer leadMinutes,
+                                            List<StepSeed> steps) {
+        Optional<Protocol> existing = findProtocolByName(name);
+        if (existing.isPresent()) {
+            Protocol p = existing.get();
+            updateProtocol(p.id(), p.name(), p.executionType(), p.category(), p.description(),
+                    p.linkedTaskId(), p.validityDays(), timingMode, fixedTime, leadMinutes);
+            return p.id();
+        }
+        long templateId = saveProtocol(name,
+                ProtocolExecutionType.RECORRENTE,
+                category,
+                description,
+                null,
+                0,
+                timingMode,
+                fixedTime,
+                leadMinutes);
+        for (int i = 0; i < steps.size(); i++) {
+            StepSeed s = steps.get(i);
+            saveStep(templateId, i + 1, s.text(), s.notes(), s.critical());
+        }
+        return templateId;
+    }
+
+    private record StepSeed(String text, String notes, boolean critical) {}
+
+    private Optional<Protocol> findProtocolByName(String name) {
+        try (Connection conn = db.connect();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT * FROM protocols WHERE lower(name)=lower(?) ORDER BY id ASC LIMIT 1")) {
+            ps.setString(1, name);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return Optional.of(mapProtocol(rs));
+            }
+        } catch (SQLException e) { throw new RuntimeException("Erro ao buscar protocolo por nome", e); }
         return Optional.empty();
     }
 
@@ -337,8 +509,29 @@ public class ProtocolRepository {
             linkedId != null ? ((Number) linkedId).longValue() : null,
             linkedTitle,
             rs.getInt("validity_days"),
+            readColumnOrDefault(rs, "timing_mode", "NONE"),
+            readColumnOrDefault(rs, "fixed_time", null),
+            readIntColumnOrNull(rs, "lead_minutes"),
             parseDateTime(createdStr)
         );
+    }
+
+    private String readColumnOrDefault(ResultSet rs, String column, String fallback) {
+        try {
+            String value = rs.getString(column);
+            return value != null ? value : fallback;
+        } catch (SQLException ignored) {
+            return fallback;
+        }
+    }
+
+    private Integer readIntColumnOrNull(ResultSet rs, String column) {
+        try {
+            Object value = rs.getObject(column);
+            return value != null ? ((Number) value).intValue() : null;
+        } catch (SQLException ignored) {
+            return null;
+        }
     }
 
     /**

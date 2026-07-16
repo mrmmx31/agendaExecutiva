@@ -46,9 +46,13 @@ public class CategoryService {
         repo.seedIfEmpty(CategoryDomain.TASK, List.of(
                 "Geral", "Pesquisa", "Experimento", "Leitura", "Escrita",
                 "Reuniao", "Administracao", "Saude", "Pessoal", "Projeto"));
-        repo.seedIfEmpty(CategoryDomain.CHECKLIST, List.of(
-                "Geral", "Laboratorio", "Protocolo Experimental",
-                "Manutencao", "Seguranca", "Administracao", "Campo"));
+        List<String> checklistDefaults = List.of(
+                "Geral", "Horários", "Rotina diária", "Saídas e reuniões",
+                "Medicamentos", "Laboratorio", "Protocolo Experimental",
+                "Manutencao", "Seguranca", "Administracao", "Campo");
+        for (String name : checklistDefaults) {
+            repo.save(name, CategoryDomain.CHECKLIST, null);
+        }
         repo.seedIfEmpty(CategoryDomain.STUDY, List.of(
                 "Geral", "Leitura de Artigos", "Redacao Cientifica",
                 "Analise de Dados", "Programacao", "Estatistica",
@@ -57,9 +61,12 @@ public class CategoryService {
                 java.util.Arrays.stream(StudyType.values())
                         .map(StudyType::label)
                         .collect(java.util.stream.Collectors.toList()));
-        repo.seedIfEmpty(CategoryDomain.IDEA, List.of(
-                "Geral", "Hipotese", "Metodologia", "Publicacao",
-                "Projeto de Extensao", "Inovacao", "Colaboracao"));
+        List<String> ideaDefaults = List.of(
+                "Geral", "Caixa de entrada", "Arquivo", "Hipotese", "Metodologia", "Publicacao",
+                "Projeto de Extensao", "Inovacao", "Colaboracao");
+        for (String name : ideaDefaults) {
+            repo.save(name, CategoryDomain.IDEA, null);
+        }
     }
 }
 

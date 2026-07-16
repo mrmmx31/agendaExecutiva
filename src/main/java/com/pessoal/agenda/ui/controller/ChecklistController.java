@@ -11,6 +11,8 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.TransferMode;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
@@ -48,6 +50,10 @@ public class ChecklistController {
     private Button                          executeBtn;
     private TextField                       nameField;
     private TextField                       validityDaysField;
+    private ComboBox<TimingOption>          timingModeCombo;
+    private TextField                       fixedTimeField;
+    private TextField                       leadMinutesField;
+    private HBox                            timingConfigRow;
     private ComboBox<ProtocolExecutionType> typeCombo;
     private ComboBox<String>                catFormCombo;
     private ComboBox<TaskOption>            linkedTaskCombo;
@@ -64,6 +70,10 @@ public class ChecklistController {
     }
 
     private record StatusOption(String key, String label) {
+        @Override public String toString() { return label; }
+    }
+
+    private record TimingOption(String key, String label) {
         @Override public String toString() { return label; }
     }
 
@@ -149,6 +159,29 @@ public class ChecklistController {
         newBtn.getStyleClass().add("primary-button");
         newBtn.setOnAction(e -> clearForm());
 
+        Button leavingHomeBtn = new Button("🏠  Protocolo saída de casa");
+        leavingHomeBtn.getStyleClass().add("secondary-button");
+        leavingHomeBtn.setOnAction(e -> createOrOpenLeavingHomeProtocol());
+
+        Button meetingBtn = new Button("🧳  Protocolo reunião");
+        meetingBtn.getStyleClass().add("secondary-button");
+        meetingBtn.setOnAction(e -> createOrOpenMeetingProtocol());
+
+        Button timedBtn = new Button("⏰  Protocolos por horário");
+        timedBtn.getStyleClass().add("secondary-button");
+        timedBtn.setOnAction(e -> createOrOpenTimeBasedProtocols());
+
+        Button quickStartBtn = new Button("▶  Iniciar selecionado");
+        quickStartBtn.getStyleClass().add("secondary-button");
+        quickStartBtn.setOnAction(e -> {
+            Protocol sel = protocolListView != null ? protocolListView.getSelectionModel().getSelectedItem() : null;
+            if (sel == null) {
+                ctx.setStatus("Selecione um protocolo para iniciar.");
+                return;
+            }
+            openExecutionWindow(sel);
+        });
+
         // ── Filtro de categoria ───────────────────────────────────────────
         ComboBox<String> catFilterCombo = new ComboBox<>();
         catFilterCombo.getStyleClass().add("input-control");
@@ -228,7 +261,7 @@ public class ChecklistController {
         printBtn.setOnAction(e -> printChecklists());
 
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox bar = new HBox(8, newBtn, spacer,
+        HBox bar = new HBox(8, newBtn, leavingHomeBtn, meetingBtn, timedBtn, quickStartBtn, spacer,
                 catFilterCombo, typeFilterCombo, statusFilterCombo, clearBtn, printBtn);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(10, 14, 10, 14));
@@ -247,6 +280,7 @@ public class ChecklistController {
             private final Label validityBadge = new Label();
             private final Label taskLbl       = new Label();
             private final Label descLbl       = new Label();
+            private final Button runBtn       = new Button("▶");
             private final VBox  container;
             {
                 typeBadge.getStyleClass().addAll("study-badge", "badge-type");
@@ -256,8 +290,11 @@ public class ChecklistController {
                 taskLbl.getStyleClass().add("study-dates-label");
                 descLbl.getStyleClass().add("study-plan-detail");
                 descLbl.setWrapText(false);
+                runBtn.getStyleClass().add("secondary-button");
+                runBtn.setStyle("-fx-font-size: 10px; -fx-padding: 1 7 1 7;");
+                runBtn.setTooltip(new Tooltip("Iniciar execução deste protocolo"));
                 Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-                HBox top  = new HBox(6, typeBadge, nameLbl, sp, validityBadge, execBadge);
+                HBox top  = new HBox(6, typeBadge, nameLbl, sp, validityBadge, execBadge, runBtn);
                 HBox bot  = new HBox(6, catLbl, taskLbl, descLbl);
                 top.setAlignment(Pos.CENTER_LEFT);
                 bot.setAlignment(Pos.CENTER_LEFT);
@@ -284,6 +321,12 @@ public class ChecklistController {
                 int active = AppContextHolder.get().protocolRepository().countActiveExecutionsOf(p.id());
                 execBadge.setVisible(active > 0); execBadge.setManaged(active > 0);
                 execBadge.setText("  ● " + active + " ativa  ");
+                runBtn.setDisable(active > 0);
+                runBtn.setText(active > 0 ? "●" : "▶");
+                runBtn.setOnAction(e -> {
+                    e.consume();
+                    openExecutionWindow(p);
+                });
 
                 validityBadge.getStyleClass().removeAll(
                         "deadline-overdue", "deadline-warn", "deadline-ok", "study-dates-label");
@@ -361,6 +404,30 @@ public class ChecklistController {
         validityDaysField.setPrefWidth(120);
         validityDaysField.setMaxWidth(160);
 
+        timingModeCombo = new ComboBox<>();
+        timingModeCombo.getStyleClass().add("input-control");
+        timingModeCombo.getItems().addAll(
+                new TimingOption("NONE", "Sem gatilho por horário"),
+                new TimingOption("FIXED_TIME", "Horário fixo"),
+                new TimingOption("BEFORE_TASK", "Antes da tarefa associada")
+        );
+        timingModeCombo.setValue(timingModeCombo.getItems().get(0));
+
+        fixedTimeField = new TextField();
+        fixedTimeField.getStyleClass().add("input-control");
+        fixedTimeField.setPromptText("HH:mm (ex.: 08:00)");
+        fixedTimeField.setPrefWidth(130);
+
+        leadMinutesField = new TextField();
+        leadMinutesField.getStyleClass().add("input-control");
+        leadMinutesField.setPromptText("Minutos antes (ex.: 30)");
+        leadMinutesField.setPrefWidth(150);
+
+        timingConfigRow = new HBox(8, timingModeCombo, fixedTimeField, leadMinutesField);
+        timingConfigRow.setAlignment(Pos.CENTER_LEFT);
+        timingConfigRow.setVisible(false);
+        timingConfigRow.setManaged(false);
+
         Label vHint = new Label(
                 "Nº de dias que o resultado permanece válido após a última conclusão.\n"
               + "Ex: 30 = mensal · 90 = trimestral · 180 = semestral · 365 = anual");
@@ -393,6 +460,9 @@ public class ChecklistController {
             if (isTarefa) reloadTaskOptions();
         });
 
+        catFormCombo.valueProperty().addListener((obs, old, cat) -> updateTimingVisibility());
+        timingModeCombo.valueProperty().addListener((obs, old, mode) -> updateTimingModeFields());
+
         // ── Linha tipo + categoria ────────────────────────────────────────
         VBox typeCtrl = labeledControl("Tipo de Execução", typeCombo);
         VBox catCtrl  = labeledControl("Categoria do Protocolo", catFormCombo);
@@ -410,6 +480,7 @@ public class ChecklistController {
                 typeCatRow,
                 typeHint,
                 linkedTaskRow,
+                namedRow("Gatilho de horário (categoria Horários)", timingConfigRow),
                 fieldRow("Descrição / Objetivo", descArea),
                 namedRow("Validade (dias)", validityRow));
 
@@ -490,6 +561,7 @@ public class ChecklistController {
         row.setStyle("-fx-background-color: -t-surface; -fx-background-radius: 4;"
                 + " -fx-border-color: -t-bd-lt; -fx-border-radius: 4;"
                 + " -fx-border-width: 1;");
+        Tooltip.install(row, new Tooltip("Arraste esta linha para reordenar os passos."));
 
         StepRow sr = new StepRow(existing != null ? existing.id() : null, stepField, criticalCb, row);
         stepRows.add(sr);
@@ -498,6 +570,48 @@ public class ChecklistController {
         upBtn.setOnAction(e -> moveStep(sr, -1));
         downBtn.setOnAction(e -> moveStep(sr, +1));
         delBtn.setOnAction(e -> removeStep(sr));
+
+        // Reordenação por arrastar e soltar para reduzir fricção ao editar protocolos longos.
+        row.setOnDragDetected(e -> {
+            var db = row.startDragAndDrop(TransferMode.MOVE);
+            ClipboardContent content = new ClipboardContent();
+            content.putString(String.valueOf(stepRows.indexOf(sr)));
+            db.setContent(content);
+            e.consume();
+        });
+        row.setOnDragOver(e -> {
+            if (e.getGestureSource() != row && e.getDragboard().hasString()) {
+                e.acceptTransferModes(TransferMode.MOVE);
+            }
+            e.consume();
+        });
+        row.setOnDragEntered(e -> {
+            if (e.getGestureSource() != row && e.getDragboard().hasString()) {
+                row.setStyle("-fx-background-color: -t-pri-lt; -fx-background-radius: 4;"
+                        + " -fx-border-color: -t-pri-bd; -fx-border-radius: 4; -fx-border-width: 1;");
+            }
+        });
+        row.setOnDragExited(e -> row.setStyle("-fx-background-color: -t-surface; -fx-background-radius: 4;"
+                + " -fx-border-color: -t-bd-lt; -fx-border-radius: 4;"
+                + " -fx-border-width: 1;"));
+        row.setOnDragDropped(e -> {
+            var db = e.getDragboard();
+            boolean ok = false;
+            if (db.hasString()) {
+                int from = Integer.parseInt(db.getString());
+                int to = stepRows.indexOf(sr);
+                if (from >= 0 && to >= 0 && from != to) {
+                    StepRow moved = stepRows.remove(from);
+                    stepRows.add(to, moved);
+                    stepsEditorBox.getChildren().remove(moved.row());
+                    stepsEditorBox.getChildren().add(to, moved.row());
+                    renumber();
+                    ok = true;
+                }
+            }
+            e.setDropCompleted(ok);
+            e.consume();
+        });
     }
 
     private void moveStep(StepRow sr, int dir) {
@@ -533,6 +647,41 @@ public class ChecklistController {
         if (kpiActive != null) kpiActive.setText(String.valueOf(repo.countActiveExecutions()));
     }
 
+    private void createOrOpenLeavingHomeProtocol() {
+        ProtocolRepository repo = AppContextHolder.get().protocolRepository();
+        long protocolId = repo.createLeavingHomeProtocolTemplate();
+        selectProtocolById(protocolId);
+        ctx.setStatus("Protocolo de saída de casa pronto: carteira, chave, celular, carregador... ");
+    }
+
+    private void createOrOpenMeetingProtocol() {
+        ProtocolRepository repo = AppContextHolder.get().protocolRepository();
+        long protocolId = repo.createMeetingProtocolTemplate();
+        selectProtocolById(protocolId);
+        ctx.setStatus("Protocolo de reunião pronto: documentos, relatório, notebook, carregador e itens essenciais.");
+    }
+
+    private void createOrOpenTimeBasedProtocols() {
+        ProtocolRepository repo = AppContextHolder.get().protocolRepository();
+        List<Long> ids = repo.createTimeBasedProtocolTemplates();
+        if (!ids.isEmpty()) {
+            selectProtocolById(ids.get(0));
+            ctx.setStatus("Protocolos por horário prontos: remédio 08:00/20:00, saída 30 min antes e reunião 1h antes.");
+        }
+    }
+
+    private void selectProtocolById(long protocolId) {
+        refresh();
+        protocolItems.stream()
+                .filter(p -> p.id() == protocolId)
+                .findFirst()
+                .ifPresentOrElse(p -> {
+                    protocolListView.getSelectionModel().select(p);
+                    protocolListView.scrollTo(p);
+                    loadProtocolIntoForm(p);
+                }, this::clearForm);
+    }
+
     private void loadProtocolIntoForm(Protocol p) {
         editingId = p.id();
         nameField.setText(p.name());
@@ -540,6 +689,7 @@ public class ChecklistController {
         catFormCombo.setValue(p.category());
         descArea.setText(p.description() != null ? p.description() : "");
         validityDaysField.setText(p.validityDays() > 0 ? String.valueOf(p.validityDays()) : "");
+        applyTimingFromProtocol(p);
 
         boolean isTarefa = p.executionType() == ProtocolExecutionType.TAREFA;
         linkedTaskRow.setVisible(isTarefa); linkedTaskRow.setManaged(isTarefa);
@@ -566,6 +716,7 @@ public class ChecklistController {
         cancelFormBtn.getStyleClass().removeAll("secondary-button", "danger-button");
         cancelFormBtn.getStyleClass().add("danger-button");
         executeBtn.setVisible(true); executeBtn.setManaged(true);
+        updateTimingVisibility();
     }
 
     private void clearForm() {
@@ -575,6 +726,10 @@ public class ChecklistController {
         catFormCombo.setValue(ctx.checklistCatNames.isEmpty() ? null : ctx.checklistCatNames.get(0));
         linkedTaskRow.setVisible(false); linkedTaskRow.setManaged(false);
         linkedTaskCombo.getItems().clear(); linkedTaskCombo.setValue(null);
+        timingModeCombo.setValue(timingModeCombo.getItems().get(0));
+        fixedTimeField.clear();
+        leadMinutesField.clear();
+        updateTimingVisibility();
         stepRows.clear(); stepsEditorBox.getChildren().clear();
         formModeLabel.setText("📋 Novo Protocolo Operacional");
         saveBtn.setText("💾  Salvar Protocolo");
@@ -596,6 +751,28 @@ public class ChecklistController {
         String desc = descArea.getText();
         int    validityDays = safeParseInt(validityDaysField.getText());
 
+        String timingMode = "NONE";
+        String fixedTime = null;
+        Integer leadMinutes = null;
+        if (isTimingCategory(cat)) {
+            TimingOption timing = timingModeCombo.getValue();
+            timingMode = timing != null ? timing.key() : "NONE";
+            if ("FIXED_TIME".equals(timingMode)) {
+                fixedTime = normalizeTime(fixedTimeField.getText());
+                if (fixedTime == null) {
+                    ctx.setStatus("Informe o horário no formato HH:mm para gatilho fixo.");
+                    return;
+                }
+            } else if ("BEFORE_TASK".equals(timingMode)) {
+                int lead = safeParseInt(leadMinutesField.getText());
+                if (lead <= 0) {
+                    ctx.setStatus("Informe minutos antes (>0) para gatilho de antecedência.");
+                    return;
+                }
+                leadMinutes = lead;
+            }
+        }
+
         Long linkedTaskId = null;
         if (type == ProtocolExecutionType.TAREFA) {
             TaskOption sel = linkedTaskCombo.getValue();
@@ -605,10 +782,10 @@ public class ChecklistController {
         ProtocolRepository repo = AppContextHolder.get().protocolRepository();
         long protId;
         if (editingId == null) {
-            protId = repo.saveProtocol(name, type, cat, desc, linkedTaskId, validityDays);
+            protId = repo.saveProtocol(name, type, cat, desc, linkedTaskId, validityDays, timingMode, fixedTime, leadMinutes);
             ctx.setStatus("Protocolo criado: \"" + name + "\".");
         } else {
-            repo.updateProtocol(editingId, name, type, cat, desc, linkedTaskId, validityDays);
+            repo.updateProtocol(editingId, name, type, cat, desc, linkedTaskId, validityDays, timingMode, fixedTime, leadMinutes);
             repo.deleteAllSteps(editingId);
             protId = editingId;
             ctx.setStatus("Protocolo atualizado: \"" + name + "\".");
@@ -654,6 +831,55 @@ public class ChecklistController {
         } else {
             linkedTaskCombo.setValue(TaskOption.NONE);
         }
+    }
+
+    private void updateTimingVisibility() {
+        boolean visible = isTimingCategory(catFormCombo.getValue());
+        timingConfigRow.setVisible(visible);
+        timingConfigRow.setManaged(visible);
+        updateTimingModeFields();
+    }
+
+    private void updateTimingModeFields() {
+        boolean visible = timingConfigRow.isVisible();
+        String mode = timingModeCombo.getValue() != null ? timingModeCombo.getValue().key() : "NONE";
+        boolean fixed = visible && "FIXED_TIME".equals(mode);
+        boolean lead = visible && "BEFORE_TASK".equals(mode);
+        fixedTimeField.setVisible(fixed);
+        fixedTimeField.setManaged(fixed);
+        leadMinutesField.setVisible(lead);
+        leadMinutesField.setManaged(lead);
+    }
+
+    private void applyTimingFromProtocol(Protocol protocol) {
+        String mode = protocol.timingMode() != null ? protocol.timingMode() : "NONE";
+        timingModeCombo.getItems().stream()
+                .filter(opt -> opt.key().equals(mode))
+                .findFirst()
+                .ifPresentOrElse(timingModeCombo::setValue,
+                        () -> timingModeCombo.setValue(timingModeCombo.getItems().get(0)));
+        fixedTimeField.setText(protocol.fixedTime() != null ? protocol.fixedTime() : "");
+        leadMinutesField.setText(protocol.leadMinutes() != null ? String.valueOf(protocol.leadMinutes()) : "");
+        updateTimingModeFields();
+    }
+
+    private static boolean isTimingCategory(String category) {
+        if (category == null) return false;
+        String normalized = category.toLowerCase()
+                .replace('á', 'a').replace('à', 'a').replace('â', 'a').replace('ã', 'a')
+                .replace('é', 'e').replace('ê', 'e')
+                .replace('í', 'i')
+                .replace('ó', 'o').replace('ô', 'o').replace('õ', 'o')
+                .replace('ú', 'u')
+                .replace('ç', 'c');
+        return normalized.contains("horario");
+    }
+
+    private static String normalizeTime(String raw) {
+        if (raw == null) return null;
+        String value = raw.trim();
+        if (!value.matches("^([01]\\d|2[0-3]):[0-5]\\d$")) return null;
+        return value;
     }
 
     private void openExecutionWindow(Protocol p) {

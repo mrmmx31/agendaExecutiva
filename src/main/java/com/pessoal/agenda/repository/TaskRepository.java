@@ -22,24 +22,26 @@ public class TaskRepository {
     public void save(String title, String notes, LocalDate dueDate, String category,
                      ScheduleType scheduleType, LocalDate endDate, String recurrenceDays) {
         save(title, notes, dueDate, category, scheduleType, endDate, recurrenceDays,
-             null, null, TaskPriority.NORMAL, TaskStatus.PENDENTE);
+             null, null, TaskPriority.NORMAL, TaskStatus.PENDENTE, null);
     }
 
     /** Insere tarefa com todos os campos. */
     public void save(String title, String notes, LocalDate dueDate, String category,
                      ScheduleType scheduleType, LocalDate endDate, String recurrenceDays,
-                     String startTime, String endTime, TaskPriority priority, TaskStatus status) {
+                     String startTime, String endTime, TaskPriority priority, TaskStatus status,
+                     Long linkedProtocolId) {
         db.execute(
             "INSERT INTO tasks(title,notes,due_date,done,category,schedule_type,"
-            + "end_date,recurrence_days,start_time,end_time,priority,status)"
-            + " VALUES(?,?,?,0,?,?,?,?,?,?,?,?)",
+            + "end_date,recurrence_days,start_time,end_time,priority,status,linked_protocol_id)"
+            + " VALUES(?,?,?,0,?,?,?,?,?,?,?,?,?)",
             title, notes, dueDate.toString(),
             category != null ? category : "Geral",
             (scheduleType != null ? scheduleType : ScheduleType.SINGLE).name(),
             endDate != null ? endDate.toString() : null,
             recurrenceDays, startTime, endTime,
             (priority  != null ? priority  : TaskPriority.NORMAL).name(),
-            (status    != null ? status    : TaskStatus.PENDENTE).name());
+            (status    != null ? status    : TaskStatus.PENDENTE).name(),
+            linkedProtocolId);
     }
 
     // ── UPDATE ────────────────────────────────────────────────────────────
@@ -51,9 +53,17 @@ public class TaskRepository {
     public void update(long id, String title, String notes, LocalDate dueDate, String category,
                        ScheduleType scheduleType, LocalDate endDate, String recurrenceDays,
                        String startTime, String endTime, TaskPriority priority, TaskStatus status) {
+        update(id, title, notes, dueDate, category, scheduleType, endDate, recurrenceDays,
+                startTime, endTime, priority, status, null);
+    }
+
+    public void update(long id, String title, String notes, LocalDate dueDate, String category,
+                       ScheduleType scheduleType, LocalDate endDate, String recurrenceDays,
+                       String startTime, String endTime, TaskPriority priority, TaskStatus status,
+                       Long linkedProtocolId) {
         db.execute(
             "UPDATE tasks SET title=?,notes=?,due_date=?,category=?,schedule_type=?,"
-            + "end_date=?,recurrence_days=?,start_time=?,end_time=?,priority=?,status=?"
+            + "end_date=?,recurrence_days=?,start_time=?,end_time=?,priority=?,status=?,linked_protocol_id=?"
             + " WHERE id=?",
             title, notes, dueDate.toString(),
             category != null ? category : "Geral",
@@ -62,7 +72,7 @@ public class TaskRepository {
             recurrenceDays, startTime, endTime,
             (priority  != null ? priority  : TaskPriority.NORMAL).name(),
             (status    != null ? status    : TaskStatus.PENDENTE).name(),
-            id);
+            linkedProtocolId, id);
     }
 
     // ── DELETE ────────────────────────────────────────────────────────────
@@ -206,7 +216,8 @@ public class TaskRepository {
             rs.getString("start_time"),
             rs.getString("end_time"),
             prioStr  != null ? TaskPriority.valueOf(prioStr) : TaskPriority.NORMAL,
-            statStr  != null ? TaskStatus.valueOf(statStr)   : TaskStatus.PENDENTE);
+            statStr  != null ? TaskStatus.valueOf(statStr)   : TaskStatus.PENDENTE,
+            rs.getObject("linked_protocol_id") != null ? rs.getLong("linked_protocol_id") : null);
     }
 }
 

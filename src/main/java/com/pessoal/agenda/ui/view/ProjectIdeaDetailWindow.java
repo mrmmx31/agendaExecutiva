@@ -39,6 +39,7 @@ public class ProjectIdeaDetailWindow {
     private TextField titleField;
     private ComboBox<String> statusCombo;
     private ComboBox<String> categoryCombo;
+    private ComboBox<ParentIdeaOption> parentIdeaCombo;
     private ComboBox<String> priorityCombo;
     private ComboBox<String> typeCombo;
     private ComboBox<String> impactCombo;
@@ -58,6 +59,11 @@ public class ProjectIdeaDetailWindow {
     private VBox checklistItemsBox;
     private Label checklistProgressLabel;
     private VBox checklistPane;
+
+    private record ParentIdeaOption(Long id, String label) {
+        private static final ParentIdeaOption NONE = new ParentIdeaOption(null, "— sem ideia-mãe —");
+        @Override public String toString() { return label; }
+    }
 
     /** Estado mutável de um item de checklist na UI. */
     private static class ChecklistItemState {
@@ -193,6 +199,11 @@ public class ProjectIdeaDetailWindow {
         }
         categoryCombo.setValue(nvl(idea.category(), categoryCombo.getItems().get(0)));
 
+        parentIdeaCombo = new ComboBox<>();
+        parentIdeaCombo.getStyleClass().add("input-control");
+        parentIdeaCombo.setMaxWidth(Double.MAX_VALUE);
+        reloadParentIdeaOptions();
+
         feasibilitySpinner = new Spinner<>(1, 5, Math.max(1, Math.min(5, idea.feasibility())));
         feasibilitySpinner.setEditable(true);
         feasibilitySpinner.getStyleClass().add("input-control");
@@ -213,11 +224,13 @@ public class ProjectIdeaDetailWindow {
 
         HBox row3 = new HBox(10,
                 labeledControl("Categoria",          categoryCombo),
+                labeledControl("Pertence a",         parentIdeaCombo),
                 labeledControl("Viabilidade (1-5)",  feasibilitySpinner),
                 labeledControl("Horas estimadas",    hoursSpinner),
                 labeledControl("Início planejado",   startDatePicker),
                 labeledControl("Prazo-alvo",         targetDatePicker));
         HBox.setHgrow(categoryCombo, Priority.ALWAYS);
+        HBox.setHgrow(parentIdeaCombo, Priority.ALWAYS);
         form.getChildren().add(row3);
 
         // ── Seção: Descrição / Hipótese / Abstract ─────────────────────────
@@ -488,7 +501,8 @@ public class ProjectIdeaDetailWindow {
                 methodologyArea.getText().trim(),
                 nextActionsArea.getText().trim(),   // texto livre (preservado mesmo no modo checklist)
                 keywordsField.getText().trim(),
-                referencesArea.getText().trim());
+                referencesArea.getText().trim(),
+                parentIdeaCombo.getValue() != null ? parentIdeaCombo.getValue().id() : null);
 
         long savedId;
         if (idea.id() == 0) {
@@ -571,6 +585,27 @@ public class ProjectIdeaDetailWindow {
         ta.setPromptText(prompt);
         ta.setWrapText(true);
         return ta;
+    }
+
+    private void reloadParentIdeaOptions() {
+        if (parentIdeaCombo == null) return;
+        parentIdeaCombo.getItems().setAll(ParentIdeaOption.NONE);
+        for (ProjectIdea candidate : repo.findAll()) {
+            if (idea.id() > 0 && candidate.id() == idea.id()) continue;
+            parentIdeaCombo.getItems().add(new ParentIdeaOption(
+                    candidate.id(),
+                    candidate.title() + (candidate.category() != null && !candidate.category().isBlank()
+                            ? " [" + candidate.category() + "]" : "")
+            ));
+        }
+        if (idea.parentIdeaId() == null) {
+            parentIdeaCombo.setValue(ParentIdeaOption.NONE);
+            return;
+        }
+        parentIdeaCombo.getItems().stream()
+                .filter(opt -> opt.id() != null && opt.id().equals(idea.parentIdeaId()))
+                .findFirst()
+                .ifPresentOrElse(parentIdeaCombo::setValue, () -> parentIdeaCombo.setValue(ParentIdeaOption.NONE));
     }
 
     private static String nvl(String s, String def) { return s != null ? s : def; }

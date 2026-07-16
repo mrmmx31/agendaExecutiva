@@ -18,10 +18,15 @@ public record Protocol(
         Long                  linkedTaskId,
         String                linkedTaskTitle,
         int                   validityDays,
+        String                timingMode,
+        String                fixedTime,
+        Integer               leadMinutes,
         LocalDateTime         createdAt
 ) {
     public boolean hasValidity()    { return validityDays > 0; }
     public boolean hasLinkedTask()  { return linkedTaskId != null; }
+    public boolean hasFixedTime()   { return "FIXED_TIME".equalsIgnoreCase(timingMode) && fixedTime != null && !fixedTime.isBlank(); }
+    public boolean hasLeadMinutes() { return "BEFORE_TASK".equalsIgnoreCase(timingMode) && leadMinutes != null && leadMinutes > 0; }
 }
 
 

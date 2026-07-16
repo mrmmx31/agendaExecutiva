@@ -601,7 +601,8 @@ public class IdeasController {
                 idea.methodology(),
                 idea.nextActions(),
                 idea.keywords(),
-                idea.referencesText()
+                idea.referencesText(),
+                idea.parentIdeaId()
         );
         long newId = repo.saveFullIdea(copy);
         Optional<ProjectIdea> saved = repo.findById(newId);
@@ -631,7 +632,8 @@ public class IdeasController {
                 idea.ideaType(), idea.impactLevel(), idea.feasibility(),
                 idea.estimatedHours(), idea.startDate(), idea.targetDate(),
                 idea.methodology(), idea.nextActions(), idea.keywords(),
-                idea.referencesText()
+                idea.referencesText(),
+                idea.parentIdeaId()
         );
         repo.update(updated);
         refreshView();
@@ -748,7 +750,16 @@ public class IdeasController {
                 kwLbl.setText("🏷 " + idea.keywords());
             kwLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2;");
 
-            HBox row2 = new HBox(12, feasLbl, hoursLbl, dateLbl, kwLbl);
+            Label parentLbl = new Label();
+            if (idea.parentIdeaId() != null) {
+                String parentTitle = repo.findTitleById(idea.parentIdeaId());
+                if (parentTitle != null && !parentTitle.isBlank()) {
+                    parentLbl.setText("↳ ligada a: " + truncate(parentTitle, 48));
+                }
+            }
+            parentLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-purple;");
+
+            HBox row2 = new HBox(12, feasLbl, hoursLbl, dateLbl, kwLbl, parentLbl);
             row2.setAlignment(Pos.CENTER_LEFT);
 
             // Linha 3: trecho da descrição

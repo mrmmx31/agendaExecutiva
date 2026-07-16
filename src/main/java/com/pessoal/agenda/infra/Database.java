@@ -197,6 +197,9 @@ public class Database {
                     description TEXT,
                     linked_task_id INTEGER,
                     validity_days INTEGER NOT NULL DEFAULT 0,
+                    timing_mode TEXT NOT NULL DEFAULT 'NONE',
+                    fixed_time TEXT,
+                    lead_minutes INTEGER,
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )""");
 
@@ -260,6 +263,14 @@ public class Database {
                     created_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )""");
 
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS study_plan_status_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    study_plan_id INTEGER NOT NULL,
+                    status TEXT NOT NULL,
+                    changed_at TEXT NOT NULL DEFAULT (date('now'))
+                )""");
+
             // ── Checklist de Próximas Ações (Ideias / Projetos) ───────────
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS idea_checklist_items (
@@ -302,8 +313,12 @@ public class Database {
         applyAlterIfMissing("ALTER TABLE tasks ADD COLUMN end_time TEXT");
         applyAlterIfMissing("ALTER TABLE tasks ADD COLUMN priority TEXT NOT NULL DEFAULT 'NORMAL'");
         applyAlterIfMissing("ALTER TABLE tasks ADD COLUMN status TEXT NOT NULL DEFAULT 'PENDENTE'");
+        applyAlterIfMissing("ALTER TABLE tasks ADD COLUMN linked_protocol_id INTEGER");
         // Protocolos: validade em dias
         applyAlterIfMissing("ALTER TABLE protocols ADD COLUMN validity_days INTEGER NOT NULL DEFAULT 0");
+        applyAlterIfMissing("ALTER TABLE protocols ADD COLUMN timing_mode TEXT NOT NULL DEFAULT 'NONE'");
+        applyAlterIfMissing("ALTER TABLE protocols ADD COLUMN fixed_time TEXT");
+        applyAlterIfMissing("ALTER TABLE protocols ADD COLUMN lead_minutes INTEGER");
         // Ideias e Projetos: campos avancados (pipeline cientifico)
         applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN priority TEXT NOT NULL DEFAULT 'NORMAL'");
         applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN idea_type TEXT NOT NULL DEFAULT 'GERAL'");
@@ -316,6 +331,7 @@ public class Database {
         applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN next_actions TEXT");
         applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN keywords TEXT");
         applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN references_text TEXT");
+        applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN parent_idea_id INTEGER");
         // Modo da seção Próximas Ações: 'text' ou 'checklist'
         applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN next_actions_mode TEXT NOT NULL DEFAULT 'text'");
         // Vendas e Estoque: suporte a materiais e serviços

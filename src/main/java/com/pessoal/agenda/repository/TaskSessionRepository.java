@@ -24,6 +24,11 @@ public class TaskSessionRepository {
                 subject, date.toString(), minutes, notes);
     }
 
+    public void update(long sessionId, String subject, int minutes, String notes) {
+        db.execute("UPDATE study_sessions SET subject=?, duration_minutes=?, notes=? WHERE id=?",
+                subject, minutes, notes, sessionId);
+    }
+
     public List<TaskSession> findByTaskId(long taskId) {
         // study_sessions table does not have taskId column; we search by subject containing task id prefix if needed.
         // For now return all sessions whose subject equals 'Tarefa:#<id>' pattern.

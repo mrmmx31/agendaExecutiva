@@ -4,11 +4,13 @@ import com.pessoal.agenda.ui.view.Dialogs;
 import com.pessoal.agenda.DatabaseService;
 import com.pessoal.agenda.app.AppContextHolder;
 import com.pessoal.agenda.app.SharedContext;
+import com.pessoal.agenda.model.Protocol;
 import com.pessoal.agenda.model.ScheduleType;
 import com.pessoal.agenda.model.Task;
 import com.pessoal.agenda.model.TaskPriority;
 import com.pessoal.agenda.model.TaskStatus;
 import com.pessoal.agenda.tools.ICalendarExporter;
+import com.pessoal.agenda.ui.view.ProtocolExecutionWindow;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -27,8 +29,10 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Controller da aba Agenda e Prioridades.
@@ -71,10 +75,12 @@ public class AgendaTabController {
     private Label            formModeLabel;
     private Button           submitBtn;
     private Button           cancelEditBtn;
+    private CheckBox         quickAddCheck;
     private TextField        titleField;
     private ComboBox<String> catCombo;
     private ComboBox<String> priorityCombo;
     private ComboBox<String> statusCombo;
+    private ComboBox<ProtocolOption> protocolCombo;
     private DatePicker       startPicker;
     private TextField        startTimeField;
     private TextField        endTimeField;
@@ -84,8 +90,22 @@ public class AgendaTabController {
     private TextArea         notesArea;
     private Label            endDateLabel;
     private Label            daysLabel;
+    private Label            categoryFieldLabel;
+    private Label            priorityFieldLabel;
+    private Label            statusFieldLabel;
+    private Label            protocolFieldLabel;
+    private Label            timeFieldLabel;
+    private Label            scheduleFieldLabel;
     private HBox             daysBox;
+    private HBox             timeBox;
     private FormMode         formMode        = FormMode.PREVIEW;
+
+    private record ProtocolOption(Long id, String label) {
+        private static final ProtocolOption NONE = new ProtocolOption(null, "— nenhum protocolo associado —");
+        @Override public String toString() { return label; }
+    }
+
+    private record LinkedProtocolRef(Long id, String name) {}
 
     public AgendaTabController(SharedContext ctx, DatabaseService db) {
         this.ctx = ctx;
@@ -197,6 +217,15 @@ public class AgendaTabController {
 
     public LocalDate getCurrentDate() { return currentDate; }
 
+    public void navigateToTask(LocalDate date, Long taskId) {
+        currentDate = date != null ? date : LocalDate.now();
+        currentView = AgendaView.DIA;
+        refreshCurrentView();
+        if (taskId != null) {
+            javafx.application.Platform.runLater(() -> selectTaskInCurrentView(taskId));
+        }
+    }
+
     private ScrollPane buildSidePanel() {
         titleField = new TextField();
         titleField.getStyleClass().add("input-control");
@@ -217,6 +246,11 @@ public class AgendaTabController {
         for (TaskStatus s : TaskStatus.values()) statusCombo.getItems().add(s.label());
         statusCombo.setValue(TaskStatus.PENDENTE.label());
 
+        protocolCombo = new ComboBox<>();
+        protocolCombo.getStyleClass().add("input-control");
+        protocolCombo.setMaxWidth(Double.MAX_VALUE);
+        reloadProtocolOptions(null);
+
         startPicker = new DatePicker(LocalDate.now());
         startPicker.getStyleClass().add("input-control");
 
@@ -228,7 +262,7 @@ public class AgendaTabController {
         endTimeField.getStyleClass().add("input-control");
         endTimeField.setPromptText("HH:MM"); endTimeField.setPrefWidth(68);
 
-        HBox timeBox = new HBox(4, startTimeField, new Label("→"), endTimeField);
+        timeBox = new HBox(4, startTimeField, new Label("→"), endTimeField);
         timeBox.setAlignment(Pos.CENTER_LEFT);
 
         scheduleCombo = new ComboBox<>();
@@ -258,19 +292,18 @@ public class AgendaTabController {
         UIHelper.setConditionalVisible(daysLabel, false);
         UIHelper.setConditionalVisible(daysBox, false);
 
-        scheduleCombo.setOnAction(ev -> {
-            String v = scheduleCombo.getValue();
-            boolean range = "Intervalo de datas".equals(v), weekly = "Dias da semana".equals(v);
-            UIHelper.setConditionalVisible(endDateLabel,  range || weekly);
-            UIHelper.setConditionalVisible(endDatePicker, range || weekly);
-            UIHelper.setConditionalVisible(daysLabel,     weekly);
-            UIHelper.setConditionalVisible(daysBox,       weekly);
-        });
+        scheduleCombo.setOnAction(ev -> updateRecurrenceVisibility());
 
         notesArea = new TextArea();
         notesArea.getStyleClass().add("input-control");
         notesArea.setPromptText("Contexto, experimento, hipótese ou observação");
         notesArea.setPrefRowCount(3);
+
+        quickAddCheck = new CheckBox("⚡ Captura rápida (menos campos)");
+        quickAddCheck.getStyleClass().addAll("recurrence-day-check", "quick-add-toggle");
+        quickAddCheck.setTooltip(new Tooltip("Mostra apenas os campos essenciais para registrar rápido."));
+        quickAddCheck.setSelected(true);
+        quickAddCheck.setOnAction(e -> applyQuickAddMode(quickAddCheck.isSelected()));
 
         GridPane form = new GridPane();
         form.getStyleClass().add("form-grid"); form.setHgap(8); form.setVgap(6);
@@ -279,14 +312,21 @@ public class AgendaTabController {
         javafx.scene.layout.ColumnConstraints col1 = new javafx.scene.layout.ColumnConstraints();
         col1.setHgrow(Priority.ALWAYS); col1.setFillWidth(true);
         form.getColumnConstraints().addAll(col0, col1);
+        categoryFieldLabel = new Label("Categoria");
+        priorityFieldLabel = new Label("Prioridade");
+        statusFieldLabel = new Label("Status");
+        protocolFieldLabel = new Label("Protocolo");
+        timeFieldLabel = new Label("Hora ini→fim");
+        scheduleFieldLabel = new Label("Recorrência");
         int row = 0;
         form.add(new Label("Título"),         0, row); form.add(titleField,    1, row++);
-        form.add(new Label("Categoria"),      0, row); form.add(catCombo,      1, row++);
-        form.add(new Label("Prioridade"),     0, row); form.add(priorityCombo, 1, row++);
-        form.add(new Label("Status"),         0, row); form.add(statusCombo,   1, row++);
+        form.add(categoryFieldLabel,           0, row); form.add(catCombo,      1, row++);
+        form.add(priorityFieldLabel,           0, row); form.add(priorityCombo, 1, row++);
+        form.add(statusFieldLabel,             0, row); form.add(statusCombo,   1, row++);
+        form.add(protocolFieldLabel,           0, row); form.add(protocolCombo, 1, row++);
         form.add(new Label("Data início"),    0, row); form.add(startPicker,   1, row++);
-        form.add(new Label("Hora ini→fim"),   0, row); form.add(timeBox,       1, row++);
-        form.add(new Label("Recorrência"),    0, row); form.add(scheduleCombo, 1, row++);
+        form.add(timeFieldLabel,               0, row); form.add(timeBox,       1, row++);
+        form.add(scheduleFieldLabel,           0, row); form.add(scheduleCombo, 1, row++);
         form.add(endDateLabel,                0, row); form.add(endDatePicker, 1, row++);
         form.add(daysLabel,                   0, row); form.add(daysBox,       1, row++);
         form.add(new Label("Notas"),          0, row); form.add(notesArea,     1, row);
@@ -294,6 +334,7 @@ public class AgendaTabController {
         GridPane.setHgrow(catCombo,      Priority.ALWAYS);
         GridPane.setHgrow(priorityCombo, Priority.ALWAYS);
         GridPane.setHgrow(statusCombo,   Priority.ALWAYS);
+        GridPane.setHgrow(protocolCombo, Priority.ALWAYS);
         GridPane.setHgrow(startPicker,   Priority.ALWAYS);
         GridPane.setHgrow(timeBox,       Priority.ALWAYS);
         GridPane.setHgrow(scheduleCombo, Priority.ALWAYS);
@@ -315,7 +356,7 @@ public class AgendaTabController {
         cancelEditBtn.setOnAction(e -> resetForm());
         UIHelper.setConditionalVisible(cancelEditBtn, false);
 
-        VBox formSection = new VBox(8, formModeLabel, form, submitBtn, cancelEditBtn);
+        VBox formSection = new VBox(8, formModeLabel, quickAddCheck, form, submitBtn, cancelEditBtn);
         formSection.getStyleClass().add("section-card");
         formSection.setPadding(new Insets(12));
 
@@ -503,37 +544,46 @@ public class AgendaTabController {
         if (titleField.getText().isBlank() || startPicker.getValue() == null) {
             ctx.setStatus("Informe título e data de início."); return;
         }
-        String sv = scheduleCombo.getValue();
+        boolean quickCreate = formMode == FormMode.CREATE && quickAddCheck != null && quickAddCheck.isSelected();
+        String sv = quickCreate ? "Dia único" : scheduleCombo.getValue();
         ScheduleType st = switch (sv) {
             case "Intervalo de datas" -> ScheduleType.RANGE;
             case "Dias da semana"     -> ScheduleType.WEEKLY;
-            default                   -> ScheduleType.SINGLE;
+            default                    -> ScheduleType.SINGLE;
         };
-        LocalDate endDate = (st == ScheduleType.SINGLE) ? null : endDatePicker.getValue();
+        LocalDate endDate = quickCreate || st == ScheduleType.SINGLE ? null : endDatePicker.getValue();
         String recDays = null;
-        if (st == ScheduleType.WEEKLY) {
+        if (!quickCreate && st == ScheduleType.WEEKLY) {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < 7; i++) {
-                if (dayChecks[i].isSelected()) { if (!sb.isEmpty()) sb.append(","); sb.append(i); }
+                if (dayChecks[i].isSelected()) {
+                    if (!sb.isEmpty()) sb.append(",");
+                    sb.append(i);
+                }
             }
             recDays = sb.toString();
         }
-        TaskPriority priority = resolvePriority(priorityCombo.getValue());
-        TaskStatus   status   = resolveStatus(statusCombo.getValue());
+        TaskPriority priority = quickCreate ? TaskPriority.NORMAL : resolvePriority(priorityCombo.getValue());
+        TaskStatus   status   = quickCreate ? TaskStatus.PENDENTE : resolveStatus(statusCombo.getValue());
+        String category = quickCreate ? "Geral" : catCombo.getValue();
+        Long linkedProtocolId = quickCreate || protocolCombo == null || protocolCombo.getValue() == null
+                ? null : protocolCombo.getValue().id();
+        String startTime = quickCreate ? "" : startTimeField.getText();
+        String endTime = quickCreate ? "" : endTimeField.getText();
         try {
             var svc = AppContextHolder.get().taskService();
             if (editingId == null) {
                 svc.createTask(titleField.getText().trim(), notesArea.getText().trim(),
-                        startPicker.getValue(), catCombo.getValue(),
+                        startPicker.getValue(), category,
                         st, endDate, recDays,
-                        startTimeField.getText(), endTimeField.getText(), priority, status);
+                        startTime, endTime, priority, status, linkedProtocolId);
                 ctx.setStatus("Tarefa registrada com sucesso.");
             } else {
                 svc.updateTask(editingId,
                         titleField.getText().trim(), notesArea.getText().trim(),
-                        startPicker.getValue(), catCombo.getValue(),
+                        startPicker.getValue(), category,
                         st, endDate, recDays,
-                        startTimeField.getText(), endTimeField.getText(), priority, status);
+                        startTime, endTime, priority, status, linkedProtocolId);
                 ctx.setStatus("Tarefa atualizada: " + titleField.getText().trim());
             }
             // Atualiza imediatamente a aba atual (dia/semana/mes/ano) e painéis dependentes.
@@ -556,6 +606,7 @@ public class AgendaTabController {
         }
         priorityCombo.setValue(t.priority() != null ? t.priority().label() : TaskPriority.NORMAL.label());
         statusCombo.setValue(t.status() != null ? t.status().label() : TaskStatus.PENDENTE.label());
+        reloadProtocolOptions(t.linkedProtocolId());
         ScheduleType sched = t.scheduleType() != null ? t.scheduleType() : ScheduleType.SINGLE;
         scheduleCombo.setValue(switch (sched) {
             case RANGE  -> "Intervalo de datas";
@@ -584,6 +635,8 @@ public class AgendaTabController {
         fillFormFromTask(t);
         formMode = FormMode.EDIT;
         setFormEditable(true);
+        quickAddCheck.setSelected(false);
+        applyQuickAddMode(false);
         formModeLabel.setText("Editando: \"" + t.title() + "\"");
         submitBtn.setText("Salvar alterações");
         UIHelper.setConditionalVisible(cancelEditBtn, true);
@@ -594,6 +647,8 @@ public class AgendaTabController {
         editingId = null;
         fillFormFromTask(t);
         formMode = FormMode.PREVIEW;
+        quickAddCheck.setSelected(false);
+        applyQuickAddMode(false);
         setFormEditable(false);
         formModeLabel.setText("Pré-visualização: \"" + t.title() + "\"");
         submitBtn.setText("Nova tarefa");
@@ -612,17 +667,16 @@ public class AgendaTabController {
         catCombo.setValue(ctx.taskCatNames.isEmpty() ? "Geral" : ctx.taskCatNames.get(0));
         priorityCombo.setValue(TaskPriority.NORMAL.label());
         statusCombo.setValue(TaskStatus.PENDENTE.label());
+        reloadProtocolOptions(null);
         scheduleCombo.setValue("Dia único");
         endDatePicker.setValue(LocalDate.now().plusDays(7));
-        UIHelper.setConditionalVisible(endDateLabel, false);
-        UIHelper.setConditionalVisible(endDatePicker, false);
-        UIHelper.setConditionalVisible(daysLabel, false);
-        UIHelper.setConditionalVisible(daysBox, false);
         for (int i = 0; i < 7; i++) dayChecks[i].setSelected(i >= 1 && i <= 5);
+        quickAddCheck.setSelected(true);
+        applyQuickAddMode(true);
         formModeLabel.setText("Nova tarefa");
         submitBtn.setText("+ Adicionar tarefa");
         UIHelper.setConditionalVisible(cancelEditBtn, true);
-        ctx.setStatus("Modo nova tarefa ativo.");
+        ctx.setStatus("Modo nova tarefa ativo (captura rápida ligada).");
     }
 
     private void setFormEditable(boolean editable) {
@@ -630,13 +684,86 @@ public class AgendaTabController {
         catCombo.setDisable(!editable);
         priorityCombo.setDisable(!editable);
         statusCombo.setDisable(!editable);
+        protocolCombo.setDisable(!editable);
         startPicker.setDisable(!editable);
         startTimeField.setDisable(!editable);
         endTimeField.setDisable(!editable);
         scheduleCombo.setDisable(!editable);
         endDatePicker.setDisable(!editable);
         notesArea.setDisable(!editable);
+        if (quickAddCheck != null) quickAddCheck.setDisable(!editable || formMode != FormMode.CREATE);
         for (CheckBox check : dayChecks) check.setDisable(!editable);
+    }
+
+    private void applyQuickAddMode(boolean quickMode) {
+        if (quickAddCheck == null) return;
+
+        boolean isPreview = formMode == FormMode.PREVIEW;
+        boolean isCreate = formMode == FormMode.CREATE;
+        UIHelper.setConditionalVisible(quickAddCheck, !isPreview);
+        quickAddCheck.setDisable(!isCreate);
+
+        boolean hideAdvanced = isCreate && quickMode;
+        UIHelper.setConditionalVisible(categoryFieldLabel, !hideAdvanced);
+        UIHelper.setConditionalVisible(catCombo, !hideAdvanced);
+        UIHelper.setConditionalVisible(priorityFieldLabel, !hideAdvanced);
+        UIHelper.setConditionalVisible(priorityCombo, !hideAdvanced);
+        UIHelper.setConditionalVisible(statusFieldLabel, !hideAdvanced);
+        UIHelper.setConditionalVisible(statusCombo, !hideAdvanced);
+        UIHelper.setConditionalVisible(protocolFieldLabel, !hideAdvanced);
+        UIHelper.setConditionalVisible(protocolCombo, !hideAdvanced);
+        UIHelper.setConditionalVisible(timeFieldLabel, !hideAdvanced);
+        UIHelper.setConditionalVisible(timeBox, !hideAdvanced);
+        UIHelper.setConditionalVisible(scheduleFieldLabel, !hideAdvanced);
+        UIHelper.setConditionalVisible(scheduleCombo, !hideAdvanced);
+
+        if (hideAdvanced) {
+            scheduleCombo.setValue("Dia único");
+            startTimeField.clear();
+            endTimeField.clear();
+        }
+
+        quickAddCheck.getStyleClass().remove("quick-add-active");
+        if (isCreate && quickMode) {
+            quickAddCheck.getStyleClass().add("quick-add-active");
+        }
+        updateRecurrenceVisibility();
+    }
+
+    private void updateRecurrenceVisibility() {
+        boolean hideByQuickMode = formMode == FormMode.CREATE && quickAddCheck != null && quickAddCheck.isSelected();
+        if (hideByQuickMode) {
+            UIHelper.setConditionalVisible(endDateLabel, false);
+            UIHelper.setConditionalVisible(endDatePicker, false);
+            UIHelper.setConditionalVisible(daysLabel, false);
+            UIHelper.setConditionalVisible(daysBox, false);
+            return;
+        }
+
+        String value = scheduleCombo.getValue();
+        boolean range = "Intervalo de datas".equals(value);
+        boolean weekly = "Dias da semana".equals(value);
+        UIHelper.setConditionalVisible(endDateLabel, range || weekly);
+        UIHelper.setConditionalVisible(endDatePicker, range || weekly);
+        UIHelper.setConditionalVisible(daysLabel, weekly);
+        UIHelper.setConditionalVisible(daysBox, weekly);
+    }
+
+    private static String priorityStyle(TaskPriority priority) {
+        if (priority == null) return "task-priority-normal";
+        return switch (priority) {
+            case CRITICA -> "task-priority-critical";
+            case ALTA    -> "task-priority-high";
+            case NORMAL  -> "task-priority-normal";
+            case BAIXA   -> "task-priority-low";
+        };
+    }
+
+    private void stylePriorityCell(ListCell<DatabaseService.RowItem> cell, DatabaseService.RowItem item) {
+        cell.getStyleClass().removeAll("task-priority-critical", "task-priority-high", "task-priority-normal", "task-priority-low");
+        if (item == null) return;
+        AppContextHolder.get().taskService().findById(item.id()).ifPresent(task ->
+                cell.getStyleClass().add(priorityStyle(task.priority())));
     }
 
     private void previewSelectedItem(DatabaseService.RowItem sel) {
@@ -659,17 +786,51 @@ public class AgendaTabController {
         catCombo.setValue(ctx.taskCatNames.isEmpty() ? "Geral" : ctx.taskCatNames.get(0));
         priorityCombo.setValue(TaskPriority.NORMAL.label());
         statusCombo.setValue(TaskStatus.PENDENTE.label());
+        reloadProtocolOptions(null);
         scheduleCombo.setValue("Dia único");
         endDatePicker.setValue(LocalDate.now().plusDays(7));
-        UIHelper.setConditionalVisible(endDateLabel,  false);
-        UIHelper.setConditionalVisible(endDatePicker, false);
-        UIHelper.setConditionalVisible(daysLabel,     false);
-        UIHelper.setConditionalVisible(daysBox,       false);
         for (int i = 0; i < 7; i++) dayChecks[i].setSelected(i >= 1 && i <= 5);
+        quickAddCheck.setSelected(true);
+        applyQuickAddMode(false);
         setFormEditable(false);
         formModeLabel.setText("Selecione uma tarefa para pré-visualizar");
         submitBtn.setText("Nova tarefa");
         UIHelper.setConditionalVisible(cancelEditBtn, false);
+    }
+
+    private Map<Long, LinkedProtocolRef> loadLinkedProtocols(Iterable<DatabaseService.RowItem> items) {
+        Map<Long, LinkedProtocolRef> links = new HashMap<>();
+        var taskRepo = AppContextHolder.get().taskRepository();
+        var protocolRepo = AppContextHolder.get().protocolRepository();
+        for (DatabaseService.RowItem item : items) {
+            if (links.containsKey(item.id())) continue;
+            taskRepo.findById(item.id()).ifPresent(task -> {
+                if (task.linkedProtocolId() == null) return;
+                protocolRepo.findProtocolById(task.linkedProtocolId())
+                        .ifPresent(protocol -> links.put(item.id(),
+                                new LinkedProtocolRef(protocol.id(), protocol.name())));
+            });
+        }
+        return links;
+    }
+
+    private String withLinkedProtocol(DatabaseService.RowItem item, Map<Long, LinkedProtocolRef> protocolByTaskId) {
+        LinkedProtocolRef protocol = protocolByTaskId.get(item.id());
+        String protocolName = protocol != null ? protocol.name() : null;
+        return (protocolName == null || protocolName.isBlank())
+                ? item.text()
+                : item.text() + " · 🔗 " + protocolName;
+    }
+
+    private void openProtocolById(Long protocolId) {
+        if (protocolId == null) {
+            ctx.setStatus("Esta tarefa não possui protocolo associado.");
+            return;
+        }
+        AppContextHolder.get().protocolRepository().findProtocolById(protocolId)
+                .ifPresentOrElse(protocol ->
+                                new ProtocolExecutionWindow(protocol, AppContextHolder.get().protocolRepository(), ctx::triggerDashboardRefresh).show(),
+                        () -> ctx.setStatus("Protocolo associado não encontrado."));
     }
 
     // ── Construtores de view ───────────────────────────────────────────────
@@ -682,9 +843,41 @@ public class AgendaTabController {
             VBox box = new VBox(empty); box.setAlignment(Pos.CENTER); box.setPrefHeight(220);
             return box;
         }
+        Map<Long, LinkedProtocolRef> protocolByTaskId = loadLinkedProtocols(dayTaskItems);
         ListView<DatabaseService.RowItem> list = new ListView<>(dayTaskItems);
         list.getStyleClass().add("clean-list");
         list.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
+        list.setCellFactory(lv -> new ListCell<>() {
+            private final Label textLabel = new Label();
+            private final Region spacer = new Region();
+            private final Button protocolBtn = new Button("🔗");
+            private final HBox row = new HBox(6, textLabel, spacer, protocolBtn);
+            {
+                textLabel.setWrapText(true);
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                protocolBtn.getStyleClass().add("secondary-button");
+                protocolBtn.setStyle("-fx-font-size: 10.5px; -fx-padding: 1 8 1 8;");
+                protocolBtn.setFocusTraversable(false);
+            }
+            @Override
+            protected void updateItem(DatabaseService.RowItem item, boolean empty) {
+                super.updateItem(item, empty);
+                getStyleClass().removeAll("task-priority-critical", "task-priority-high", "task-priority-normal", "task-priority-low");
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+                LinkedProtocolRef linked = protocolByTaskId.get(item.id());
+                textLabel.setText(withLinkedProtocol(item, protocolByTaskId));
+                protocolBtn.setVisible(linked != null);
+                protocolBtn.setManaged(linked != null);
+                protocolBtn.setOnAction(e -> openProtocolById(linked != null ? linked.id() : null));
+                setGraphic(row);
+                setText(null);
+                stylePriorityCell(this, item);
+            }
+        });
         currentMainListView = list;
         list.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             currentMainListView = list;
@@ -713,17 +906,53 @@ public class AgendaTabController {
             LocalDate day     = weekStart.plusDays(i);
             boolean   isToday = day.equals(today);
             weekDayItems.get(i).setAll(db.listTasksByDay(day, categoryFilter));
+            Map<Long, LinkedProtocolRef> protocolByTaskId = loadLinkedProtocols(weekDayItems.get(i));
             Label header = new Label(dayNames[i] + "\n" + day.getDayOfMonth() + "/" + day.getMonthValue());
             header.getStyleClass().add(isToday ? "day-column-header-today" : "day-column-header");
             header.setMaxWidth(Double.MAX_VALUE); header.setAlignment(Pos.CENTER);
             ListView<DatabaseService.RowItem> dayList = new ListView<>(weekDayItems.get(i));
             dayList.getStyleClass().add("clean-list"); VBox.setVgrow(dayList, Priority.ALWAYS);
+            dayList.setCellFactory(lv -> new ListCell<>() {
+                private final Label textLabel = new Label();
+                private final Region spacer = new Region();
+                private final Button protocolBtn = new Button("🔗");
+                private final HBox row = new HBox(6, textLabel, spacer, protocolBtn);
+                {
+                    textLabel.setWrapText(true);
+                    HBox.setHgrow(spacer, Priority.ALWAYS);
+                    protocolBtn.getStyleClass().add("secondary-button");
+                    protocolBtn.setStyle("-fx-font-size: 10.5px; -fx-padding: 1 8 1 8;");
+                    protocolBtn.setFocusTraversable(false);
+                }
+                @Override
+                protected void updateItem(DatabaseService.RowItem item, boolean empty) {
+                    super.updateItem(item, empty);
+                    getStyleClass().removeAll("task-priority-critical", "task-priority-high", "task-priority-normal", "task-priority-low");
+                    if (empty || item == null) {
+                        setText(null);
+                        setGraphic(null);
+                        return;
+                    }
+                    LinkedProtocolRef linked = protocolByTaskId.get(item.id());
+                    textLabel.setText(withLinkedProtocol(item, protocolByTaskId));
+                    protocolBtn.setVisible(linked != null);
+                    protocolBtn.setManaged(linked != null);
+                    protocolBtn.setOnAction(e -> openProtocolById(linked != null ? linked.id() : null));
+                    setGraphic(row);
+                    setText(null);
+                    stylePriorityCell(this, item);
+                }
+            });
             dayList.setOnMouseClicked(ev -> {
                 if (ev.getClickCount() == 2) {
                     DatabaseService.RowItem sel = dayList.getSelectionModel().getSelectedItem();
                     if (sel != null) {
                         AppContextHolder.get().taskService().findById(sel.id()).ifPresent(t ->
-                            new com.pessoal.agenda.ui.view.TaskTimerWindow(t, AppContextHolder.get().taskSessionRepository()).show());
+                            new com.pessoal.agenda.ui.view.TaskTimerWindow(
+                                t,
+                                AppContextHolder.get().taskSessionRepository(),
+                                this::refreshMainListView // callback para refresh
+                            ).show());
                     }
                 }
             });
@@ -747,6 +976,7 @@ public class AgendaTabController {
 
     private Node buildMonthContent() {
         taskItems.setAll(db.listTasksByMonthFiltered(YearMonth.from(currentDate), categoryFilter));
+        Map<Long, LinkedProtocolRef> protocolByTaskId = loadLinkedProtocols(taskItems);
         ListView<DatabaseService.RowItem> list = new ListView<>(taskItems);
         list.getStyleClass().add("clean-list");
         list.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
@@ -757,36 +987,51 @@ public class AgendaTabController {
         });
         list.setCellFactory(lv -> new ListCell<>() {
             private final HBox cellBox = new HBox(8);
+            private final Region priorityBar = new Region();
             private final Label textLabel = new Label();
             private final Label timerLabel = new Label();
+            private final Button protocolBtn = new Button("🔗");
             private final Button playPauseBtn = new Button();
             private final Button stopBtn = new Button();
             private final Button resetBtn = new Button();
             private Long cellTaskId = null;
             private Runnable tickUnsubscriber = null;
             {
+                priorityBar.setMinWidth(5);
+                priorityBar.setPrefWidth(5);
+                priorityBar.setMaxWidth(5);
+                priorityBar.getStyleClass().add("task-priority-bar");
                 playPauseBtn.setPrefWidth(32); playPauseBtn.setFocusTraversable(false);
                 stopBtn.setPrefWidth(32); stopBtn.setFocusTraversable(false);
                 resetBtn.setPrefWidth(32); resetBtn.setFocusTraversable(false);
+                protocolBtn.setFocusTraversable(false);
                 playPauseBtn.setText("▶");
                 stopBtn.setText("■");
                 resetBtn.setText("⟲");
+                protocolBtn.getStyleClass().add("secondary-button");
+                protocolBtn.setStyle("-fx-font-size: 10.5px; -fx-padding: 1 8 1 8;");
                 timerLabel.getStyleClass().add("timer-label-inline");
                 cellBox.setAlignment(Pos.CENTER_LEFT);
             }
             @Override
             protected void updateItem(DatabaseService.RowItem item, boolean empty) {
                 super.updateItem(item, empty);
+                getStyleClass().removeAll("task-priority-critical", "task-priority-high", "task-priority-normal", "task-priority-low");
                 if (empty || item == null) {
                     setGraphic(null); setText(null); cellTaskId = null;
                     if (tickUnsubscriber != null) { tickUnsubscriber.run(); tickUnsubscriber = null; }
                     return;
                 }
                 cellTaskId = item.id();
+                stylePriorityCell(this, item);
+                LinkedProtocolRef linked = protocolByTaskId.get(item.id());
+                textLabel.setText(withLinkedProtocol(item, protocolByTaskId));
+                protocolBtn.setVisible(linked != null);
+                protocolBtn.setManaged(linked != null);
+                protocolBtn.setOnAction(e -> openProtocolById(linked != null ? linked.id() : null));
                 var timerService = com.pessoal.agenda.service.TaskTimerService.get();
                 if (timerService.getActiveTaskId() != null && timerService.getActiveTaskId().equals(item.id())) {
                     // Timer ativo para esta tarefa: mostra controles
-                    textLabel.setText(item.text());
                     // Atualiza label do timer
                     long s = timerService.getElapsedSeconds();
                     timerLabel.setText(formatTimer(s));
@@ -809,9 +1054,12 @@ public class AgendaTabController {
                         // Ao parar, exibe o mesmo diálogo de salvar sessão do TaskTimerWindow
                         var task = db.findTaskById(cellTaskId);
                         if (task != null) {
+                            long elapsedSeconds = timerService.getElapsedSeconds();
+                            timerService.stop();
                             com.pessoal.agenda.ui.view.TaskTimerWindow.showSaveSessionDialog(
                                 task,
                                 db.getTaskSessionRepository(),
+                                elapsedSeconds,
                                 null,
                                 () -> { list.refresh(); }
                             );
@@ -821,12 +1069,21 @@ public class AgendaTabController {
                         }
                     });
                     resetBtn.setOnAction(e -> { timerService.reset(); });
-                    cellBox.getChildren().setAll(textLabel, timerLabel, playPauseBtn, stopBtn, resetBtn);
-                    setGraphic(cellBox); setText(null);
-                } else {
-                    // Não é a tarefa ativa: mostra só o texto
-                    setGraphic(null); setText(item.text());
-                    if (tickUnsubscriber != null) { tickUnsubscriber.run(); tickUnsubscriber = null; }
+                                    if (linked != null) {
+                                        cellBox.getChildren().setAll(priorityBar, textLabel, protocolBtn, timerLabel, playPauseBtn, stopBtn, resetBtn);
+                                    } else {
+                                        cellBox.getChildren().setAll(priorityBar, textLabel, timerLabel, playPauseBtn, stopBtn, resetBtn);
+                                    }
+                                    setGraphic(cellBox); setText(null);
+                                } else {
+                                    // Não é a tarefa ativa: mostra apenas o texto com a barra de prioridade
+                                    if (tickUnsubscriber != null) { tickUnsubscriber.run(); tickUnsubscriber = null; }
+                                    if (linked != null) {
+                                        cellBox.getChildren().setAll(priorityBar, textLabel, protocolBtn);
+                                    } else {
+                                        cellBox.getChildren().setAll(priorityBar, textLabel);
+                                    }
+                                    setGraphic(cellBox); setText(null);
                 }
             }
             private String formatTimer(long s) {
@@ -961,6 +1218,40 @@ public class AgendaTabController {
         }
     }
 
+    private void selectTaskInCurrentView(Long taskId) {
+        if (taskId == null || currentMainListView == null) return;
+        for (DatabaseService.RowItem item : currentMainListView.getItems()) {
+            if (item != null && item.id() == taskId) {
+                currentMainListView.getSelectionModel().select(item);
+                currentMainListView.scrollTo(item);
+                previewSelectedItem(item);
+                return;
+            }
+        }
+    }
+
+    private void reloadProtocolOptions(Long selectedId) {
+        if (protocolCombo == null) return;
+        protocolCombo.getItems().clear();
+        protocolCombo.getItems().add(ProtocolOption.NONE);
+        for (Protocol protocol : AppContextHolder.get().protocolRepository().findAllProtocols(null, null, null)) {
+            protocolCombo.getItems().add(new ProtocolOption(
+                    protocol.id(),
+                    protocol.executionType().icon() + " " + protocol.name()
+                            + (protocol.category() != null && !protocol.category().isBlank()
+                            ? " [" + protocol.category() + "]" : "")
+            ));
+        }
+        if (selectedId == null) {
+            protocolCombo.setValue(ProtocolOption.NONE);
+            return;
+        }
+        protocolCombo.getItems().stream()
+                .filter(option -> option.id() != null && option.id().equals(selectedId))
+                .findFirst()
+                .ifPresentOrElse(protocolCombo::setValue, () -> protocolCombo.setValue(ProtocolOption.NONE));
+    }
+
     // ── Menu popup de contexto para tarefas ──────────────────────────────────
 
     /** Menu popup (botão direito) para qualquer ListView de tarefas. */
@@ -993,6 +1284,16 @@ public class AgendaTabController {
         checklistItem.setOnAction(e -> AppContextHolder.get().taskService().findById(item.id()).ifPresent(
                 t -> com.pessoal.agenda.ui.view.TaskChecklistWindow.open(t, this::refreshMainListView)));
 
+        MenuItem linkedProtocolItem = new MenuItem("🔗  Abrir protocolo associado");
+        linkedProtocolItem.setOnAction(e -> AppContextHolder.get().taskService().findById(item.id())
+                .map(Task::linkedProtocolId)
+                .ifPresentOrElse(this::openProtocolById,
+                        () -> ctx.setStatus("Esta tarefa não possui protocolo associado.")));
+        boolean hasLinkedProtocol = AppContextHolder.get().taskService().findById(item.id())
+                .map(Task::linkedProtocolId)
+                .isPresent();
+        linkedProtocolItem.setDisable(!hasLinkedProtocol);
+
         MenuItem historyItem = new MenuItem("📋  Histórico de sessões");
         historyItem.setOnAction(e -> new com.pessoal.agenda.ui.view.SessionHistoryWindow(
                 AppContextHolder.get().taskSessionRepository(), item.id()).show());
@@ -1012,7 +1313,7 @@ public class AgendaTabController {
                     });
         });
 
-        taskContextMenu.getItems().addAll(editItem, doneItem, timerItem, checklistItem, historyItem, sep, deleteItem);
+        taskContextMenu.getItems().addAll(editItem, doneItem, timerItem, checklistItem, linkedProtocolItem, historyItem, sep, deleteItem);
         taskContextMenu.show(owner, screenX, screenY);
     }
 

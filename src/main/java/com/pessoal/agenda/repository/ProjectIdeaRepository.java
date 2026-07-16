@@ -37,8 +37,8 @@ public class ProjectIdeaRepository {
     public long saveFullIdea(ProjectIdea p) {
         String sql = "INSERT INTO project_ideas(title,description,status,category,"
                 + "priority,idea_type,impact_level,feasibility,estimated_hours,"
-                + "start_date,target_date,methodology,next_actions,keywords,references_text)"
-                + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                + "start_date,target_date,methodology,next_actions,keywords,references_text,parent_idea_id)"
+                + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         try (Connection conn = db.connect();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, p.title()); ps.setString(2, p.description());
@@ -52,6 +52,7 @@ public class ProjectIdeaRepository {
             ps.setString(11, p.targetDate() != null ? p.targetDate().toString() : null);
             ps.setString(12, p.methodology()); ps.setString(13, p.nextActions());
             ps.setString(14, p.keywords()); ps.setString(15, p.referencesText());
+            ps.setObject(16, p.parentIdeaId());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 return keys.next() ? keys.getLong(1) : -1;
@@ -65,7 +66,7 @@ public class ProjectIdeaRepository {
         db.execute(
             "UPDATE project_ideas SET title=?,description=?,status=?,category=?,"
             + "priority=?,idea_type=?,impact_level=?,feasibility=?,estimated_hours=?,"
-            + "start_date=?,target_date=?,methodology=?,next_actions=?,keywords=?,references_text=?"
+            + "start_date=?,target_date=?,methodology=?,next_actions=?,keywords=?,references_text=?,parent_idea_id=?"
             + " WHERE id=?",
             p.title(), p.description(), p.status(),
             p.category() != null ? p.category() : "Geral",
@@ -76,12 +77,13 @@ public class ProjectIdeaRepository {
             p.startDate()  != null ? p.startDate().toString()  : null,
             p.targetDate() != null ? p.targetDate().toString() : null,
             p.methodology(), p.nextActions(), p.keywords(), p.referencesText(),
-            p.id());
+            p.parentIdeaId(), p.id());
     }
 
     // ── DELETE ────────────────────────────────────────────────────────────────
 
     public void deleteById(long id) {
+        db.execute("UPDATE project_ideas SET parent_idea_id=NULL WHERE parent_idea_id=?", id);
         db.execute("DELETE FROM project_ideas WHERE id=?", id);
     }
 
@@ -173,6 +175,30 @@ public class ProjectIdeaRepository {
                 new Object[]{status});
     }
 
+    public List<ProjectIdea> findInboxIdeas(int limit) {
+        String sql = "SELECT * FROM project_ideas WHERE "
+                + "(category='Caixa de entrada' OR status IN ('nova','em_validacao')) "
+                + "ORDER BY CASE WHEN parent_idea_id IS NULL THEN 0 ELSE 1 END, created_at DESC, id DESC LIMIT ?";
+        return query(sql, new Object[]{limit});
+    }
+
+    public int countInboxIdeas() {
+        return db.queryInt("SELECT COUNT(*) FROM project_ideas WHERE (category='Caixa de entrada' OR status IN ('nova','em_validacao'))");
+    }
+
+    public String findTitleById(long id) {
+        try (Connection conn = db.connect();
+             PreparedStatement ps = conn.prepareStatement("SELECT title FROM project_ideas WHERE id=?")) {
+            ps.setLong(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getString("title");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erro ao buscar título da ideia", e);
+        }
+        return null;
+    }
+
     public int countAll()      { return db.queryInt("SELECT COUNT(*) FROM project_ideas"); }
     public int countActive()   { return db.queryInt("SELECT COUNT(*) FROM project_ideas WHERE status NOT IN ('concluida','concluída','abandonada')"); }
     public int countDone()     { return db.queryInt("SELECT COUNT(*) FROM project_ideas WHERE status IN ('concluida','concluída')"); }
@@ -213,7 +239,8 @@ public class ProjectIdeaRepository {
                 rs.getString("methodology"),
                 rs.getString("next_actions"),
                 rs.getString("keywords"),
-                rs.getString("references_text"));
+                rs.getString("references_text"),
+                rs.getObject("parent_idea_id") != null ? rs.getLong("parent_idea_id") : null);
     }
 
     private String nullOrDefault(ResultSet rs, String col, String def) {

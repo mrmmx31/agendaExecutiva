@@ -3,8 +3,7 @@ package com.pessoal.agenda.ui.view;
 import com.pessoal.agenda.app.AppContextHolder;
 import com.pessoal.agenda.model.*;
 import com.pessoal.agenda.model.AttendanceDay.AttendanceStatus;
-import com.pessoal.agenda.service.StudyAttendanceService.Summary;
-import javafx.geometry.Insets;
+import com.pessoal.agenda.service.StudyAttendanceService.Summary;import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -241,13 +240,21 @@ public class StudyMonitorWindow {
     // ── Lado direito: compensações ────────────────────────────────────────
 
     private VBox buildCompensationSide() {
-        Label title = new Label("Compensações Pendentes");
+        Label title = new Label("Compensações e Abonos");
         title.getStyleClass().add("section-title");
 
-        Button detectBtn = new Button("🔍");
+        Button detectBtn = new Button("🔍 Detectar");
         detectBtn.getStyleClass().addAll("icon-button");
-        detectBtn.setTooltip(new Tooltip("Detectar ausências"));
+        detectBtn.setTooltip(new Tooltip("Detectar ausências e registrar para reposição"));
         detectBtn.setOnAction(e -> detectAndRegisterAbsences());
+
+        Button pardonAllBtn = new Button("🎟 Abonar todas");
+        pardonAllBtn.getStyleClass().addAll("secondary-button");
+        pardonAllBtn.setTooltip(new Tooltip("Abonar (justificar sem reposição) todas as ausências do período exibido"));
+        pardonAllBtn.setOnAction(e -> pardonAllAbsences());
+
+        javafx.scene.layout.HBox btnRow = new javafx.scene.layout.HBox(6, detectBtn, pardonAllBtn);
+        btnRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
         compensationPanel = new VBox(8);
         VBox.setVgrow(compensationPanel, Priority.ALWAYS);
@@ -258,7 +265,7 @@ public class StudyMonitorWindow {
         scroll.getStyleClass().add("edge-to-edge");
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
-        VBox side = new VBox(10, title, detectBtn, scroll);
+        VBox side = new VBox(10, title, btnRow, scroll);
         side.setPadding(new Insets(12));
         side.getStyleClass().add("section-card");
         return side;
@@ -287,6 +294,7 @@ public class StudyMonitorWindow {
         statusLbl.getStyleClass().addAll("study-badge",
                 "PENDENTE".equals(c.status())  ? "badge-status-em_andamento" :
                 "CONCLUIDA".equals(c.status()) ? "badge-status-concluido"    :
+                "ABONADO".equals(c.status())   ? "badge-status-pausado"      :
                                                   "badge-status-abandonado");
 
         Label minLbl = new Label(fmt(c.compensationMinutes()) + " a compensar");
@@ -315,6 +323,16 @@ public class StudyMonitorWindow {
                 rebuildCalendar();
             });
 
+            Button pardonBtn = new Button("🎟 Abonar");
+            pardonBtn.getStyleClass().addAll("secondary-button");
+            pardonBtn.setTooltip(new Tooltip("Abonar esta falta (justificar sem reposição)"));
+            pardonBtn.setStyle("-fx-font-size: 10.5px;");
+            pardonBtn.setOnAction(e -> {
+                AppContextHolder.get().studyCompensationRepository().pardon(c.id());
+                refreshCompensations();
+                rebuildCalendar();
+            });
+
             Button cancelBtn = new Button("✕");
             cancelBtn.getStyleClass().addAll("icon-button", "danger-button");
             cancelBtn.setTooltip(new Tooltip("Cancelar compensação"));
@@ -323,15 +341,60 @@ public class StudyMonitorWindow {
                 refreshCompensations();
             });
 
-            HBox actions = new HBox(8, new Label("Compensar em:"), dp, doneBtn, cancelBtn);
+            HBox actions = new HBox(8, new Label("Compensar em:"), dp, doneBtn, pardonBtn, cancelBtn);
             actions.setAlignment(Pos.CENTER_LEFT);
             card.getChildren().add(actions);
         } else if (c.isDone() && c.compensationDate() != null) {
             Label doneLbl = new Label("Compensado em: " + c.compensationDate().format(DAY_FMT));
             doneLbl.getStyleClass().add("study-dates-label");
             card.getChildren().add(doneLbl);
+        } else if (c.isAbsolved()) {
+            Label absLbl = new Label("Falta abonada — não requer reposição.");
+            absLbl.getStyleClass().add("study-dates-label");
+            card.getChildren().add(absLbl);
         }
         return card;
+    }
+
+    private void pardonAllAbsences() {
+        LocalDate monthStart = currentMonth.atDay(1);
+        LocalDate planStart  = plan.startDate();
+        LocalDate from = (planStart != null && planStart.isAfter(monthStart)) ? planStart : monthStart;
+        LocalDate to   = LocalDate.now().isBefore(currentMonth.atEndOfMonth())
+                       ? LocalDate.now() : currentMonth.atEndOfMonth();
+
+        var svc  = AppContextHolder.get().studyAttendanceService();
+        var repo = AppContextHolder.get().studyCompensationRepository();
+
+        List<LocalDate> unregistered = svc.getUnregisteredAbsences(plan.id(), from, to);
+
+        // Abonar também compensações PENDENTE existentes
+        var pending = repo.findByStudyId(plan.id()).stream()
+                .filter(StudyCompensation::isPending)
+                .toList();
+
+        if (unregistered.isEmpty() && pending.isEmpty()) {
+            showInfo("Nenhuma ausência pendente para abonar no período.");
+            return;
+        }
+
+        int total = unregistered.size() + pending.size();
+        Alert confirm = Dialogs.build(Alert.AlertType.CONFIRMATION,
+                "Confirmar abono em lote",
+                "Serão abonadas " + total + " ausência(s) no período exibido.",
+                "Faltas abonadas saem do cálculo de frequência sem necessidade de reposição.");
+        var opt = confirm.showAndWait();
+        if (opt.isEmpty() || opt.get() != ButtonType.OK) return;
+
+        for (LocalDate d : unregistered) {
+            repo.savePardon(plan.id(), d, "Abonado em lote via Monitor de Frequência");
+        }
+        for (var c : pending) {
+            repo.pardon(c.id());
+        }
+        refreshCompensations();
+        rebuildCalendar();
+        showInfo(total + " ausência(s) abonada(s) com sucesso.");
     }
 
     private void detectAndRegisterAbsences() {

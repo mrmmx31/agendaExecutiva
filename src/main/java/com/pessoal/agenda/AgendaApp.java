@@ -97,6 +97,10 @@ public class AgendaApp extends Application {
 
         // Navegação a partir do Dashboard: Agenda=1, Financeiro=3
         dashboardCtrl.setTabNavigator(idx -> tabPane.getSelectionModel().select(idx));
+        dashboardCtrl.setTaskNavigator((date, taskId) -> {
+            tabPane.getSelectionModel().select(1);
+            agendaCtrl.navigateToTask(date, taskId);
+        });
 
         tabPane.getTabs().addAll(
                 dashboardCtrl.buildTab(),
@@ -204,13 +208,14 @@ public class AgendaApp extends Application {
             statusAlertBadge.setText("SEM ALERTAS");
             statusAlertTooltip.setText("Sem pendências críticas no momento.");
             statusAlertBadge.getStyleClass().remove("status-alert-critical");
+            statusAlertBadge.getStyleClass().remove("status-alert-warning");
             statusAlertBadge.getStyleClass().add("status-alert-ok");
             statusAlertBadge.setOpacity(1.0);
             stopBadgeBlink();
             return;
         }
 
-        statusAlertBadge.setText("ALERTA: " + critical + " (A:" + overdueAlerts
+        statusAlertBadge.setText("PENDÊNCIAS: " + critical + " (A:" + overdueAlerts
                 + " H:" + todayCount + " P:" + protocolCount + ")");
         statusAlertTooltip.setText("Pendências críticas:\n"
                 + "A = Alertas de atraso: " + overdueAlerts + "\n"
@@ -218,8 +223,12 @@ public class AgendaApp extends Application {
                 + "P = Protocolos periódicos: " + protocolCount + "\n\n"
                 + "Dica: use Ctrl/Cmd+S para lembrar agora.");
         statusAlertBadge.getStyleClass().remove("status-alert-ok");
-        if (!statusAlertBadge.getStyleClass().contains("status-alert-critical")) {
+        statusAlertBadge.getStyleClass().remove("status-alert-critical");
+        statusAlertBadge.getStyleClass().remove("status-alert-warning");
+        if (overdueAlerts > 0) {
             statusAlertBadge.getStyleClass().add("status-alert-critical");
+        } else {
+            statusAlertBadge.getStyleClass().add("status-alert-warning");
         }
         startBadgeBlink();
     }

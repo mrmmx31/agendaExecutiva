@@ -41,7 +41,7 @@ public class TaskTimerWindow {
     private Label timerLabel;
     private TextArea notesArea;
     private Label totalLabel;
-    private ListView<String> historyList;
+    private ListView<TaskSession> historyList;
 
     // Estado do timer (apenas flags locais)
     private volatile boolean running = false;
@@ -156,9 +156,24 @@ public class TaskTimerWindow {
         histTitle.getStyleClass().add("section-title");
         historyList = new ListView<>();
         historyList.setPrefHeight(260);
+        historyList.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(TaskSession item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    return;
+                }
+                String notes = item.notes() == null ? "" : item.notes();
+                setText(String.format("%s — %d min — %s", item.sessionDate(), item.durationMinutes(), notes));
+            }
+        });
+        Button editTodayBtn = new Button("✎ Editar sessão de hoje");
+        editTodayBtn.getStyleClass().add("secondary-button");
+        editTodayBtn.setOnAction(e -> editSelectedTodaySession());
         totalLabel = new Label("Tempo total: 0 min");
         totalLabel.getStyleClass().add("section-title");
-        right.getChildren().addAll(histTitle, historyList, totalLabel);
+        right.getChildren().addAll(histTitle, historyList, editTodayBtn, totalLabel);
         VBox.setVgrow(historyList, Priority.ALWAYS);
 
         main.getChildren().addAll(left, right);
@@ -228,10 +243,11 @@ public class TaskTimerWindow {
 
     private synchronized void stopAndSave() {
         var timerService = com.pessoal.agenda.service.TaskTimerService.get();
+        long elapsedSeconds = timerService.getElapsedSeconds();
         timerService.stop();
         playPauseBtn.setText("▶");
         if (refreshCallback != null) Platform.runLater(refreshCallback);
-        showSaveSessionDialog(task, repo, notesArea.getText(), () -> {
+        showSaveSessionDialog(task, repo, elapsedSeconds, notesArea.getText(), () -> {
             Platform.runLater(() -> timerLabel.setText("00:00:00"));
             notesArea.clear();
             loadHistory(); updateTotalLabel();
@@ -241,14 +257,23 @@ public class TaskTimerWindow {
     /** Utilitário para exibir o diálogo de salvar sessão, reutilizável pela lista principal. */
     public static void showSaveSessionDialog(Task task, TaskSessionRepository repo, String notesText, Runnable onSave) {
         var timerService = com.pessoal.agenda.service.TaskTimerService.get();
-        long s = timerService.getElapsedSeconds();
-        int minutes = (int) Math.max(1, Math.round(s / 60.0));
+        showSaveSessionDialog(task, repo, timerService.getElapsedSeconds(), notesText, onSave);
+    }
+
+    /**
+     * Exibe o diálogo de salvar sessão com um tempo padrão vindo do contador.
+     * O usuário pode ajustar manualmente antes de salvar.
+     */
+    public static void showSaveSessionDialog(Task task, TaskSessionRepository repo, long elapsedSeconds, String notesText, Runnable onSave) {
+        var timerService = com.pessoal.agenda.service.TaskTimerService.get();
+        long s = Math.max(0, elapsedSeconds);
+        int minutes = s <= 0 ? 0 : (int) Math.ceil(s / 60.0);
         Dialog<ButtonType> dlg = new Dialog<>();
         dlg.setTitle("Salvar sessão"); dlg.setHeaderText("Salvar sessão de trabalho para a tarefa?");
         ButtonType saveBtn = new ButtonType("Salvar", ButtonBar.ButtonData.OK_DONE);
         dlg.getDialogPane().getButtonTypes().addAll(saveBtn, ButtonType.CANCEL);
         TextField titleField = new TextField("Tarefa:#" + task.id() + " — " + task.title());
-        Spinner<Integer> minutesSpinner = new Spinner<>(1, 24*60, minutes);
+        Spinner<Integer> minutesSpinner = new Spinner<>(0, 24*60, minutes);
         TextArea notes = new TextArea(notesText != null ? notesText : ""); notes.setPrefRowCount(4);
         VBox content = new VBox(8, new Label("Título:"), titleField, new Label("Duração (min):"), minutesSpinner, new Label("Observações:"), notes);
         content.setPadding(new Insets(8));
@@ -292,9 +317,7 @@ public class TaskTimerWindow {
             List<TaskSession> sessions = repo.findByTaskId(task.id());
             Platform.runLater(() -> {
                 historyList.getItems().clear();
-                for (TaskSession s : sessions) {
-                    historyList.getItems().add(String.format("%s — %d min — %s", s.sessionDate(), s.durationMinutes(), s.notes() == null ? "" : s.notes()));
-                }
+                historyList.getItems().addAll(sessions);
             });
         } catch (Throwable ex) {
             System.err.println("[TaskTimerWindow] failed loading history: " + ex.getMessage());
@@ -309,6 +332,45 @@ public class TaskTimerWindow {
         } catch (Throwable ex) {
             System.err.println("[TaskTimerWindow] failed updating total: " + ex.getMessage());
         }
+    }
+
+    private void editSelectedTodaySession() {
+        TaskSession selected = historyList.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            Dialogs.warning("Editar sessão", "Selecione uma sessão do histórico para editar.");
+            return;
+        }
+        if (!LocalDate.now().equals(selected.sessionDate())) {
+            Dialogs.warning("Editar sessão", "Por segurança, apenas sessões de hoje podem ser editadas por aqui.");
+            return;
+        }
+
+        Dialog<ButtonType> dlg = new Dialog<>();
+        dlg.setTitle("Editar sessão de hoje");
+        dlg.setHeaderText("Atualize o tempo e as observações da sessão selecionada.");
+        ButtonType saveBtn = new ButtonType("Salvar alterações", ButtonBar.ButtonData.OK_DONE);
+        dlg.getDialogPane().getButtonTypes().addAll(saveBtn, ButtonType.CANCEL);
+
+        TextField titleField = new TextField(selected.subject() != null ? selected.subject() : "");
+        Spinner<Integer> minutesSpinner = new Spinner<>(0, 24 * 60, Math.max(0, selected.durationMinutes()));
+        TextArea notes = new TextArea(selected.notes() != null ? selected.notes() : "");
+        notes.setPrefRowCount(4);
+
+        VBox content = new VBox(8,
+                new Label("Título:"), titleField,
+                new Label("Duração (min):"), minutesSpinner,
+                new Label("Observações:"), notes);
+        content.setPadding(new Insets(8));
+        dlg.getDialogPane().setContent(content);
+        dlg.setResultConverter(bt -> bt == saveBtn ? saveBtn : null);
+
+        dlg.showAndWait().ifPresent(res -> {
+            if (res == saveBtn) {
+                repo.update(selected.id(), titleField.getText(), minutesSpinner.getValue(), notes.getText());
+                loadHistory();
+                updateTotalLabel();
+            }
+        });
     }
 }
 

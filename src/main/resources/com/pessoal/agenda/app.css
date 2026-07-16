@@ -281,12 +281,15 @@
 }
 .clean-list .list-cell {
     -fx-padding: 6 12 6 12;
-    -fx-font-size: 11.5px;
+    -fx-font-size: 12px;
     -fx-font-family: "JetBrains Mono", "Consolas", monospace;
-    -fx-text-fill: -t-text-s;
+    -fx-text-fill: -t-text;
     -fx-background-color: -t-surface-b;
     -fx-border-color: transparent transparent -t-bd-list transparent;
     -fx-border-width: 0 0 1 0;
+}
+.clean-list .list-cell .label {
+    -fx-text-fill: -t-text;
 }
 .clean-list .list-cell:odd      { -fx-background-color: -t-surface-c; }
 /* Mantem a seleção visível mesmo em linhas alternadas (:odd/:even).
@@ -297,11 +300,55 @@
     -fx-background-color: -t-selected2;
     -fx-text-fill: -t-text-b;
 }
+.clean-list .list-cell:filled:selected .label,
+.clean-list .list-cell:filled:selected:odd .label,
+.clean-list .list-cell:filled:selected:even .label {
+    -fx-text-fill: -t-text-b;
+}
 .clean-list:focused .list-cell:filled:selected,
 .clean-list:focused .list-cell:filled:selected:odd,
 .clean-list:focused .list-cell:filled:selected:even {
     -fx-background-color: -t-selected;
     -fx-text-fill: -t-text-b;
+}
+.clean-list:focused .list-cell:filled:selected .label,
+.clean-list:focused .list-cell:filled:selected:odd .label,
+.clean-list:focused .list-cell:filled:selected:even .label {
+    -fx-text-fill: -t-text-b;
+}
+
+/* ── Prioridade visual das tarefas ─────────────────────────────────────── */
+.task-priority-bar {
+    -fx-background-radius: 4;
+    -fx-min-height: 24px;
+    -fx-background-insets: 0;
+}
+.task-priority-critical { -fx-border-color: transparent transparent transparent #b71c1c; -fx-border-width: 0 0 0 4; }
+.task-priority-high     { -fx-border-color: transparent transparent transparent #e65100; -fx-border-width: 0 0 0 4; }
+.task-priority-normal   { -fx-border-color: transparent transparent transparent #1565c0; -fx-border-width: 0 0 0 4; }
+.task-priority-low      { -fx-border-color: transparent transparent transparent #2e7d32; -fx-border-width: 0 0 0 4; }
+.task-priority-critical .task-priority-bar { -fx-background-color: #b71c1c; }
+.task-priority-high .task-priority-bar     { -fx-background-color: #e65100; }
+.task-priority-normal .task-priority-bar   { -fx-background-color: #1565c0; }
+.task-priority-low .task-priority-bar      { -fx-background-color: #2e7d32; }
+
+/* ── Bloco de foco da dashboard ───────────────────────────────────────── */
+.focus-now-card {
+    -fx-border-color: -t-pri-bd;
+    -fx-border-width: 1 1 1 4;
+    -fx-background-color: linear-gradient(to right, -t-pri-lt 0%, -t-surface 100%);
+}
+.focus-now-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: 800;
+    -fx-text-fill: -t-text-b;
+}
+.focus-now-detail {
+    -fx-font-size: 12px;
+    -fx-text-fill: -t-text-s;
+}
+.focus-now-action {
+    -fx-max-width: 9999px;
 }
 
 /* ── Toggle de visualização ─────────────────────────────────────────────── */
@@ -405,6 +452,11 @@
     -fx-border-color: -t-err-dk;
     -fx-text-fill: -t-err;
 }
+.status-alert-warning {
+    -fx-background-color: -t-warn-bg;
+    -fx-border-color: -t-warn;
+    -fx-text-fill: -t-warn;
+}
 
 /* ── Grid de formulário ─────────────────────────────────────────────────── */
 .form-grid { -fx-padding: 4 0 4 0; }
@@ -417,6 +469,16 @@
     -fx-cursor: hand; -fx-font-family: "JetBrains Mono", "Consolas", monospace;
 }
 .recurrence-day-check:selected { -fx-text-fill: -t-pri; -fx-font-weight: 700; }
+.quick-add-toggle {
+    -fx-background-color: -t-surface-a;
+    -fx-border-color: -t-bd-lt;
+    -fx-border-radius: 5;
+    -fx-padding: 5 8 5 8;
+}
+.quick-add-toggle.quick-add-active {
+    -fx-background-color: -t-pri-lt;
+    -fx-border-color: -t-pri-bd;
+}
 .form-label { -fx-font-size: 12px; -fx-text-fill: -t-text-s; -fx-font-weight: 600; }
 
 /* ── Configurações — painéis de categoria ───────────────────────────────── */

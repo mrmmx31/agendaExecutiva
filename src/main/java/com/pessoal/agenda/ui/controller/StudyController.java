@@ -248,6 +248,8 @@ public class StudyController {
         Button newBtn    = new Button("+ Novo plano");    newBtn.getStyleClass().add("primary-button");
         Button removeBtn = new Button("✕ Remover");       removeBtn.getStyleClass().add("danger-button");
         Button diaryBtn  = new Button("📖 Abrir Diário"); diaryBtn.getStyleClass().add("secondary-button");
+        Button pauseBtn  = new Button("⏸ Pausar");        pauseBtn.getStyleClass().add("secondary-button");
+        Button resumeBtn = new Button("▶ Retomar");       resumeBtn.getStyleClass().add("secondary-button");
 
         newBtn.setOnAction(e -> clearForm());
         removeBtn.setOnAction(e -> removeSelectedPlan());
@@ -256,8 +258,10 @@ public class StudyController {
             if (sel != null) openDiary(sel);
             else ctx.setStatus("Selecione um plano para abrir o Diário Científico.");
         });
+        pauseBtn.setOnAction(e -> pauseSelectedPlan());
+        resumeBtn.setOnAction(e -> resumeSelectedPlan());
 
-        HBox leftBtns = new HBox(8, newBtn, removeBtn, diaryBtn); leftBtns.setAlignment(Pos.CENTER_LEFT);
+        HBox leftBtns = new HBox(8, newBtn, removeBtn, diaryBtn, pauseBtn, resumeBtn); leftBtns.setAlignment(Pos.CENTER_LEFT);
 
         VBox leftPanel = new VBox(8, filterBox, planListView, hint, leftBtns);
         leftPanel.setPadding(new Insets(12)); leftPanel.getStyleClass().add("section-card");
@@ -602,6 +606,11 @@ public class StudyController {
         }
         // Salva grade horária
         if (savedId > 0) saveSchedule(savedId);
+        // Registra histórico de status para cálculo de frequência correto
+        if (savedId > 0 && (status == StudyPlanStatus.EM_ANDAMENTO
+                || status == StudyPlanStatus.PAUSADO)) {
+            AppContextHolder.get().studyStatusLogRepository().log(savedId, status);
+        }
         clearForm(); refresh(); ctx.triggerDashboardRefresh();
     }
 
@@ -615,6 +624,53 @@ public class StudyController {
                     AppContextHolder.get().studyPlanRepository().deleteById(sel.id());
                     clearForm(); refresh(); ctx.triggerDashboardRefresh();
                     ctx.setStatus("Plano \"" + sel.title() + "\" removido.");
+                });
+    }
+
+    private void pauseSelectedPlan() {
+        StudyPlan sel = planListView.getSelectionModel().getSelectedItem();
+        if (sel == null) {
+            ctx.setStatus("Selecione um plano para pausar.");
+            return;
+        }
+        if (sel.status() == StudyPlanStatus.PAUSADO) {
+            ctx.setStatus("Este plano já está pausado.");
+            return;
+        }
+        AppContextHolder.get().studyPlanRepository().updateStatus(sel.id(), StudyPlanStatus.PAUSADO);
+        AppContextHolder.get().studyStatusLogRepository().log(sel.id(), StudyPlanStatus.PAUSADO);
+        refresh();
+        selectPlanById(sel.id());
+        ctx.triggerDashboardRefresh();
+        ctx.setStatus("Plano pausado: \"" + sel.title() + "\".");
+    }
+
+    private void resumeSelectedPlan() {
+        StudyPlan sel = planListView.getSelectionModel().getSelectedItem();
+        if (sel == null) {
+            ctx.setStatus("Selecione um plano para retomar.");
+            return;
+        }
+        if (sel.status() == StudyPlanStatus.EM_ANDAMENTO) {
+            ctx.setStatus("Este plano já está ativo.");
+            return;
+        }
+        AppContextHolder.get().studyPlanRepository().updateStatus(sel.id(), StudyPlanStatus.EM_ANDAMENTO);
+        AppContextHolder.get().studyStatusLogRepository().log(sel.id(), StudyPlanStatus.EM_ANDAMENTO);
+        refresh();
+        selectPlanById(sel.id());
+        ctx.triggerDashboardRefresh();
+        ctx.setStatus("Plano retomado: \"" + sel.title() + "\".");
+    }
+
+    private void selectPlanById(long id) {
+        if (planListView == null) return;
+        planItems.stream()
+                .filter(p -> p.id() == id)
+                .findFirst()
+                .ifPresent(p -> {
+                    planListView.getSelectionModel().select(p);
+                    planListView.scrollTo(p);
                 });
     }
 

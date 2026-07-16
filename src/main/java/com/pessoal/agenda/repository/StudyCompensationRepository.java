@@ -39,6 +39,25 @@ public class StudyCompensationRepository {
         db.execute("UPDATE study_compensations SET status='CANCELADA' WHERE id=?", id);
     }
 
+    /**
+     * Abona uma compensação pendente (falta justificada sem necessidade de reposição).
+     * Status passa de PENDENTE para ABONADO.
+     */
+    public void pardon(long id) {
+        db.execute("UPDATE study_compensations SET status='ABONADO' WHERE id=?", id);
+    }
+
+    /**
+     * Cria diretamente uma entrada de ausência abonada para um plano/data.
+     * Útil para o fluxo "Abonar todas as faltas do período".
+     */
+    public void savePardon(long studyPlanId, LocalDate missedDate, String notes) {
+        db.execute(
+            "INSERT INTO study_compensations(study_plan_id, missed_date, status, notes, compensation_minutes)"
+            + " VALUES(?,?,'ABONADO',?,0)",
+            studyPlanId, missedDate.toString(), notes);
+    }
+
     public void deleteByStudyId(long studyPlanId) {
         db.execute("DELETE FROM study_compensations WHERE study_plan_id=?", studyPlanId);
     }

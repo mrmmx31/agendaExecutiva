@@ -22,5 +22,6 @@ public record StudyCompensation(
     public boolean isPending()   { return "PENDENTE".equals(status);  }
     public boolean isDone()      { return "CONCLUIDA".equals(status); }
     public boolean isCancelled() { return "CANCELADA".equals(status); }
+    public boolean isAbsolved()  { return "ABONADO".equals(status);   }
 }
 

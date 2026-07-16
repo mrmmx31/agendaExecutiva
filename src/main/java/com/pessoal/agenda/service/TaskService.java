@@ -27,7 +27,7 @@ public class TaskService {
     public void createTask(String title, String notes, LocalDate startDate, String category,
                            ScheduleType scheduleType, LocalDate endDate, String recurrenceDays) {
         createTask(title, notes, startDate, category, scheduleType, endDate, recurrenceDays,
-                   null, null, TaskPriority.NORMAL, TaskStatus.PENDENTE);
+                   null, null, TaskPriority.NORMAL, TaskStatus.PENDENTE, null);
     }
 
     // ── criação completa ──────────────────────────────────────────────────
@@ -35,10 +35,19 @@ public class TaskService {
                            ScheduleType scheduleType, LocalDate endDate, String recurrenceDays,
                            String startTime, String endTime,
                            TaskPriority priority, TaskStatus status) {
+        createTask(title, notes, startDate, category, scheduleType, endDate, recurrenceDays,
+                startTime, endTime, priority, status, null);
+    }
+
+    public void createTask(String title, String notes, LocalDate startDate, String category,
+                           ScheduleType scheduleType, LocalDate endDate, String recurrenceDays,
+                           String startTime, String endTime,
+                           TaskPriority priority, TaskStatus status,
+                           Long linkedProtocolId) {
         validate(title, startDate, scheduleType, endDate, recurrenceDays);
         taskRepository.save(title.trim(), notes == null ? "" : notes.trim(),
                 startDate, category, scheduleType, endDate, recurrenceDays,
-                blankToNull(startTime), blankToNull(endTime), priority, status);
+                blankToNull(startTime), blankToNull(endTime), priority, status, linkedProtocolId);
     }
 
     // ── edição ────────────────────────────────────────────────────────────
@@ -46,11 +55,20 @@ public class TaskService {
                            ScheduleType scheduleType, LocalDate endDate, String recurrenceDays,
                            String startTime, String endTime,
                            TaskPriority priority, TaskStatus status) {
+        updateTask(id, title, notes, startDate, category, scheduleType, endDate, recurrenceDays,
+                startTime, endTime, priority, status, null);
+    }
+
+    public void updateTask(long id, String title, String notes, LocalDate startDate, String category,
+                           ScheduleType scheduleType, LocalDate endDate, String recurrenceDays,
+                           String startTime, String endTime,
+                           TaskPriority priority, TaskStatus status,
+                           Long linkedProtocolId) {
         validate(title, startDate, scheduleType, endDate, recurrenceDays);
         boolean done = (status == TaskStatus.CONCLUIDA);
         taskRepository.update(id, title.trim(), notes == null ? "" : notes.trim(),
                 startDate, category, scheduleType, endDate, recurrenceDays,
-                blankToNull(startTime), blankToNull(endTime), priority, status);
+                blankToNull(startTime), blankToNull(endTime), priority, status, linkedProtocolId);
         // sincroniza coluna done com status
         if (done) taskRepository.markDone(id);
     }

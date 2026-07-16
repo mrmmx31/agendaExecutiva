@@ -17,6 +17,7 @@ public record AttendanceDay(
         PARCIAL       ("◑", "attend-partial"),
         AUSENTE       ("✗", "attend-absent"),
         COMPENSADO    ("○", "attend-compensated"),
+        PAUSADO       ("⏸", "attend-paused"),
         NAO_PROGRAMADO("–", "attend-none"),
         FUTURO        ("·", "attend-future");
 

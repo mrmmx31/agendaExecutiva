@@ -34,7 +34,8 @@ public record ProjectIdea(
         String methodology,
         String nextActions,
         String keywords,
-        String referencesText
+        String referencesText,
+        Long parentIdeaId
 ) {
     // ── Construtores de compatibilidade ──────────────────────────────────────
 
@@ -42,14 +43,14 @@ public record ProjectIdea(
     public ProjectIdea(long id, String title, String description, String status) {
         this(id, title, description, status, "Geral",
                 "NORMAL", "GERAL", "MEDIO", 3, 0,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     /** Compatibilidade com categoria. */
     public ProjectIdea(long id, String title, String description, String status, String category) {
         this(id, title, description, status, category,
                 "NORMAL", "GERAL", "MEDIO", 3, 0,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     // ── Helpers de domínio ────────────────────────────────────────────────────
@@ -107,5 +108,9 @@ public record ProjectIdea(
     public boolean isActive() {
         return status != null && !status.equals("concluida") && !status.equals("concluída")
                 && !status.equals("abandonada");
+    }
+
+    public boolean hasParentIdea() {
+        return parentIdeaId != null && parentIdeaId > 0;
     }
 }

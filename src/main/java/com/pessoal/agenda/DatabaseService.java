@@ -120,9 +120,11 @@ public class DatabaseService {
         ensureColumn("ALTER TABLE tasks ADD COLUMN schedule_type TEXT NOT NULL DEFAULT 'SINGLE'");
         ensureColumn("ALTER TABLE tasks ADD COLUMN end_date TEXT");
         ensureColumn("ALTER TABLE tasks ADD COLUMN recurrence_days TEXT");
+        ensureColumn("ALTER TABLE tasks ADD COLUMN linked_protocol_id INTEGER");
         ensureColumn("ALTER TABLE checklist_items ADD COLUMN category TEXT NOT NULL DEFAULT 'Geral'");
         ensureColumn("ALTER TABLE study_sessions ADD COLUMN category TEXT NOT NULL DEFAULT 'Geral'");
         ensureColumn("ALTER TABLE project_ideas ADD COLUMN category TEXT NOT NULL DEFAULT 'Geral'");
+        ensureColumn("ALTER TABLE project_ideas ADD COLUMN parent_idea_id INTEGER");
     }
 
     private void ensureTaskCategoryColumn() {
@@ -511,12 +513,23 @@ public class DatabaseService {
         List<String> alerts = new ArrayList<>();
 
         String overdueTasksSql = """
-                SELECT title, due_date, schedule_type, end_date FROM tasks
+                SELECT title, due_date, schedule_type, end_date, priority,
+                       CASE
+                         WHEN schedule_type = 'SINGLE' THEN due_date
+                         ELSE COALESCE(end_date, due_date)
+                       END AS alert_date
+                FROM tasks
                 WHERE done = 0 AND status != 'CANCELADA' AND (
                   (schedule_type = 'SINGLE' AND due_date < date('now'))
                   OR (schedule_type IN ('RANGE','WEEKLY') AND end_date IS NOT NULL AND end_date < date('now'))
                 )
-                ORDER BY due_date ASC
+                ORDER BY CASE priority
+                           WHEN 'CRITICA' THEN 0
+                           WHEN 'ALTA' THEN 1
+                           WHEN 'NORMAL' THEN 2
+                           ELSE 3
+                         END ASC,
+                         alert_date DESC
                 """;
 
         String overduePaymentsSql = """

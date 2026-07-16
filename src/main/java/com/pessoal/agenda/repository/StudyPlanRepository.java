@@ -54,6 +54,12 @@ public class StudyPlanRepository {
             (status != null ? status : StudyPlanStatus.EM_ANDAMENTO).name(), id);
     }
 
+    /** Atualiza apenas o status do plano (atalhos de pausar/retomar). */
+    public void updateStatus(long id, StudyPlanStatus status) {
+        db.execute("UPDATE study_plans SET status=? WHERE id=?",
+                (status != null ? status : StudyPlanStatus.PLANEJADO).name(), id);
+    }
+
     /** Atualiza progresso de livro: current_page, total_pages, progress_percent e status. */
     public void updateProgressFull(long id, int currentPage, int totalPages,
                                    double progressPercent, StudyPlanStatus status) {
@@ -69,6 +75,7 @@ public class StudyPlanRepository {
         db.execute("DELETE FROM study_entries WHERE study_id=?", id);
         db.execute("DELETE FROM study_schedules WHERE study_plan_id=?", id);
         db.execute("DELETE FROM study_compensations WHERE study_plan_id=?", id);
+        db.execute("DELETE FROM study_plan_status_log WHERE study_plan_id=?", id);
         db.execute("DELETE FROM study_plans WHERE id=?", id);
     }
 
@@ -134,6 +141,23 @@ public class StudyPlanRepository {
                 + " target_date ASC, id ASC");
 
         return query(sql.toString(), params.toArray());
+    }
+
+    public List<StudyPlan> findByStatus(String status) {
+        return query("SELECT * FROM study_plans WHERE status=? ORDER BY title ASC", new Object[]{status});
+    }
+
+    /**
+     * Retorna planos EM_ANDAMENTO que têm o dia de hoje na grade semanal.
+     * Usado pelo dashboard para exibir os estudos do dia.
+     */
+    public List<StudyPlan> findActiveForToday() {
+        int dayOfWeek = LocalDate.now().getDayOfWeek().getValue(); // 1=Seg…7=Dom (ISO)
+        return query(
+            "SELECT sp.* FROM study_plans sp"
+            + " INNER JOIN study_schedules ss ON ss.study_plan_id = sp.id"
+            + " WHERE sp.status = 'EM_ANDAMENTO' AND ss.day_of_week = ?"
+            + " ORDER BY sp.title ASC", new Object[]{dayOfWeek});
     }
 
     // ── helpers ───────────────────────────────────────────────────────────

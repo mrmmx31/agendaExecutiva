@@ -20,13 +20,14 @@ import java.time.LocalDate;
 public record Task(long id, String title, String notes, LocalDate dueDate, boolean done,
                    String category, ScheduleType scheduleType, LocalDate endDate,
                    String recurrenceDays, String startTime, String endTime,
-                   TaskPriority priority, TaskStatus status) {
+                   TaskPriority priority, TaskStatus status,
+                   Long linkedProtocolId) {
 
     /** Construtor de compatibilidade total para código legado (apenas campos básicos). */
     public Task(long id, String title, String notes, LocalDate dueDate, boolean done, String category) {
         this(id, title, notes, dueDate, done, category,
              ScheduleType.SINGLE, null, null, null, null,
-             TaskPriority.NORMAL, TaskStatus.PENDENTE);
+             TaskPriority.NORMAL, TaskStatus.PENDENTE, null);
     }
 
     /** Construtor de compatibilidade com agendamento mas sem tempo/prioridade. */
@@ -34,7 +35,7 @@ public record Task(long id, String title, String notes, LocalDate dueDate, boole
                 String category, ScheduleType scheduleType, LocalDate endDate, String recurrenceDays) {
         this(id, title, notes, dueDate, done, category,
              scheduleType, endDate, recurrenceDays, null, null,
-             TaskPriority.NORMAL, TaskStatus.PENDENTE);
+             TaskPriority.NORMAL, TaskStatus.PENDENTE, null);
     }
 
     public boolean isOverdue()  { return !done && effectiveEndDate().isBefore(LocalDate.now()); }
@@ -50,7 +51,7 @@ public record Task(long id, String title, String notes, LocalDate dueDate, boole
         };
     }
 
-    private LocalDate effectiveEndDate() {
+    public LocalDate effectiveEndDate() {
         return endDate != null ? endDate : dueDate;
     }
 

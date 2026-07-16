@@ -35,6 +35,7 @@ public class AppContext {
     private final ProtocolRepository protocolRepository;
     private final StudyScheduleRepository studyScheduleRepository;
     private final StudyCompensationRepository studyCompensationRepository;
+    private final com.pessoal.agenda.repository.StudyStatusLogRepository studyStatusLogRepository;
     private final com.pessoal.agenda.repository.TaskSessionRepository taskSessionRepository;
     private final com.pessoal.agenda.repository.GoogleTasksMappingRepository googleTasksMappingRepository;
 
@@ -63,6 +64,7 @@ public class AppContext {
         this.protocolRepository = new ProtocolRepository(database);
         this.studyScheduleRepository = new StudyScheduleRepository(database);
         this.studyCompensationRepository = new StudyCompensationRepository(database);
+        this.studyStatusLogRepository = new com.pessoal.agenda.repository.StudyStatusLogRepository(database);
         this.taskSessionRepository = new com.pessoal.agenda.repository.TaskSessionRepository(database);
         this.googleTasksMappingRepository = new com.pessoal.agenda.repository.GoogleTasksMappingRepository(database);
 
@@ -71,7 +73,8 @@ public class AppContext {
         this.dashboardService = new DashboardService(taskRepository, checklistRepository, financeRepository, inventoryRepository, studyRepository, projectIdeaRepository);
         this.categoryService = new CategoryService(categoryRepository);
         this.studyAttendanceService = new StudyAttendanceService(
-                studyScheduleRepository, studyEntryRepository, studyCompensationRepository);
+                studyScheduleRepository, studyEntryRepository, studyCompensationRepository,
+                studyStatusLogRepository);
         this.categoryService.seedDefaults();
     }
 
@@ -157,6 +160,10 @@ public class AppContext {
 
     public StudyCompensationRepository studyCompensationRepository() {
         return studyCompensationRepository;
+    }
+
+    public com.pessoal.agenda.repository.StudyStatusLogRepository studyStatusLogRepository() {
+        return studyStatusLogRepository;
     }
 
     public com.pessoal.agenda.repository.TaskSessionRepository taskSessionRepository() {

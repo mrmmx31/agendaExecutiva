@@ -16,13 +16,10 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 /** Robust timer window for task sessions with history and metadata. */
 
@@ -38,13 +35,18 @@ public class TaskTimerWindow {
     private Button playPauseBtn;
     private Button stopBtn;
     private Button resetBtn;
+    private Button compactBtn;
     private Label timerLabel;
+    private Label compactTimerLabel;
     private TextArea notesArea;
     private Label totalLabel;
     private ListView<TaskSession> historyList;
-
-    // Estado do timer (apenas flags locais)
-    private volatile boolean running = false;
+    private Stage compactStage;
+    private ToggleButton compactPlayPauseBtn;
+    private boolean alwaysOnTopEnabled = false;
+    private boolean transitioningToCompact = false;
+    private boolean transitioningToMain = false;
+    private boolean disposed = false;
 
     private final Runnable refreshCallback;
 
@@ -58,7 +60,7 @@ public class TaskTimerWindow {
         this.tickListener = sec -> {
             var timerService = com.pessoal.agenda.service.TaskTimerService.get();
             if (timerService.getActiveTaskId() != null && timerService.getActiveTaskId().equals(task.id())) {
-                javafx.application.Platform.runLater(() -> timerLabel.setText(formatTimer(sec)));
+                javafx.application.Platform.runLater(() -> setTimerText(formatTimer(sec)));
             }
         };
     }
@@ -69,7 +71,8 @@ public class TaskTimerWindow {
     public void show() {
         // ── Evita abrir duplicata para a mesma tarefa ──
         Stage existing = openWindows.get(task.id());
-        if (existing != null && existing.isShowing()) {
+        if (existing != null) {
+            existing.show();
             existing.toFront();
             existing.requestFocus();
             return;
@@ -136,8 +139,20 @@ public class TaskTimerWindow {
         resetBtn = new Button("⟲");
         resetBtn.getStyleClass().addAll("secondary-button", "icon-button");
         resetBtn.setPrefWidth(56);
-        HBox controls = new HBox(8, playPauseBtn, stopBtn, resetBtn, timerLabel);
+        compactBtn = new Button("🗕");
+        compactBtn.getStyleClass().addAll("secondary-button", "icon-button");
+        compactBtn.setPrefWidth(56);
+        compactBtn.setTooltip(new Tooltip("Modo mini flutuante"));
+        HBox controls = new HBox(8, playPauseBtn, stopBtn, resetBtn, compactBtn, timerLabel);
         controls.setAlignment(Pos.CENTER_LEFT);
+
+        CheckBox pinTopCheck = new CheckBox("Sempre no topo");
+        pinTopCheck.getStyleClass().add("form-label");
+        pinTopCheck.setSelected(alwaysOnTopEnabled);
+        pinTopCheck.setOnAction(e -> {
+            alwaysOnTopEnabled = pinTopCheck.isSelected();
+            applyAlwaysOnTop();
+        });
 
         // Notes
         Label notesLbl = new Label("Observações da sessão:");
@@ -146,7 +161,7 @@ public class TaskTimerWindow {
         notesArea.getStyleClass().add("input-control");
         notesArea.setPrefRowCount(4);
 
-        left.getChildren().addAll(metaGrid, controls, notesLbl, notesArea);
+        left.getChildren().addAll(metaGrid, controls, pinTopCheck, notesLbl, notesArea);
         VBox.setVgrow(notesArea, Priority.ALWAYS);
 
         // Coluna direita: histórico e total
@@ -186,15 +201,19 @@ public class TaskTimerWindow {
         playPauseBtn.setOnAction(e -> toggle());
         stopBtn.setOnAction(e -> stopAndSave());
         resetBtn.setOnAction(e -> resetCounter());
+        compactBtn.setOnAction(e -> openCompactWindow());
 
         Scene sc = new Scene(root, 700, 440);
         ThemeManager.getInstance().applyTo(sc);
         stage.setScene(sc);
+        stage.setAlwaysOnTop(alwaysOnTopEnabled);
         stage.setOnHiding(e -> {
+            if (transitioningToCompact) {
+                transitioningToCompact = false;
+                return;
+            }
             // Remove tickListener e referência da janela
-            if (tickUnsubscriber != null) tickUnsubscriber.run();
-            openWindows.remove(task.id());
-            if (refreshCallback != null) refreshCallback.run();
+            disposeWindowState();
         });
 
         // Atualiza o label do timer com o valor global
@@ -209,6 +228,105 @@ public class TaskTimerWindow {
         stage.show();
     }
 
+    private void openCompactWindow() {
+        if (compactStage == null) {
+            compactStage = buildCompactStage();
+        }
+        transitioningToCompact = true;
+        stage.hide();
+        compactStage.show();
+        compactStage.toFront();
+        applyAlwaysOnTop();
+        syncPlayButtons();
+    }
+
+    private Stage buildCompactStage() {
+        Stage mini = new Stage();
+        mini.initModality(Modality.NONE);
+        mini.initStyle(StageStyle.UNDECORATED);
+        mini.setTitle("Timer mini — " + task.title());
+
+        Label miniTitle = new Label("⏱ " + task.title());
+        miniTitle.getStyleClass().add("t-heading-sm");
+        miniTitle.setWrapText(true);
+
+        compactTimerLabel = new Label("00:00:00");
+        compactTimerLabel.getStyleClass().add("page-title");
+
+        compactPlayPauseBtn = new ToggleButton("▶");
+        compactPlayPauseBtn.getStyleClass().add("primary-button");
+        compactPlayPauseBtn.setPrefWidth(46);
+        compactPlayPauseBtn.setOnAction(e -> toggle());
+
+        Button miniStopBtn = new Button("■");
+        miniStopBtn.getStyleClass().add("danger-button");
+        miniStopBtn.setPrefWidth(46);
+        miniStopBtn.setOnAction(e -> stopAndSave());
+
+        Button expandBtn = new Button("⤢");
+        expandBtn.getStyleClass().add("secondary-button");
+        expandBtn.setTooltip(new Tooltip("Expandir timer"));
+        expandBtn.setPrefWidth(46);
+        expandBtn.setOnAction(e -> expandFromCompact());
+
+        ToggleButton pinBtn = new ToggleButton("📌");
+        pinBtn.getStyleClass().add("secondary-button");
+        pinBtn.setTooltip(new Tooltip("Sempre no topo"));
+        pinBtn.setPrefWidth(46);
+        pinBtn.setSelected(alwaysOnTopEnabled);
+        pinBtn.setOnAction(e -> {
+            alwaysOnTopEnabled = pinBtn.isSelected();
+            applyAlwaysOnTop();
+        });
+
+        HBox row1 = new HBox(6, compactPlayPauseBtn, miniStopBtn, expandBtn);
+        row1.setAlignment(Pos.CENTER);
+        HBox row2 = new HBox(6, pinBtn);
+        row2.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox root = new VBox(8, miniTitle, compactTimerLabel, row1, row2);
+        root.setPadding(new Insets(10));
+        root.setAlignment(Pos.CENTER);
+        root.getStyleClass().add("section-card");
+        root.setStyle("-fx-border-color: -t-pri-bd; -fx-border-width: 1.2; -fx-background-radius: 10; -fx-border-radius: 10;");
+
+        final double[] dragOffsetX = new double[1];
+        final double[] dragOffsetY = new double[1];
+        root.setOnMousePressed(e -> {
+            dragOffsetX[0] = e.getSceneX();
+            dragOffsetY[0] = e.getSceneY();
+        });
+        root.setOnMouseDragged(e -> {
+            mini.setX(e.getScreenX() - dragOffsetX[0]);
+            mini.setY(e.getScreenY() - dragOffsetY[0]);
+        });
+
+        Scene miniScene = new Scene(root, 170, 165);
+        ThemeManager.getInstance().applyTo(miniScene);
+        mini.setScene(miniScene);
+        mini.setAlwaysOnTop(alwaysOnTopEnabled);
+        mini.setOnHiding(e -> {
+            if (transitioningToMain) {
+                transitioningToMain = false;
+                return;
+            }
+            disposeWindowState();
+            if (stage != null) stage.close();
+        });
+        return mini;
+    }
+
+    private void expandFromCompact() {
+        if (compactStage == null || stage == null) return;
+        transitioningToMain = true;
+        compactStage.hide();
+        stage.show();
+        stage.toFront();
+        stage.requestFocus();
+        applyAlwaysOnTop();
+        syncPlayButtons();
+    }
+
     private synchronized void toggle() {
         var timerService = com.pessoal.agenda.service.TaskTimerService.get();
         if (!timerService.isRunning() || timerService.getActiveTaskId() == null || !timerService.getActiveTaskId().equals(task.id())) {
@@ -221,21 +339,14 @@ public class TaskTimerWindow {
     private synchronized void startTimer() {
         var timerService = com.pessoal.agenda.service.TaskTimerService.get();
         timerService.start(task.id());
-        playPauseBtn.setText("⏸");
+        syncPlayButtons();
         if (refreshCallback != null) Platform.runLater(refreshCallback);
     }
 
     private synchronized void pauseTimer() {
         var timerService = com.pessoal.agenda.service.TaskTimerService.get();
         timerService.pause();
-        playPauseBtn.setText("▶");
-        if (refreshCallback != null) Platform.runLater(refreshCallback);
-    }
-
-    private synchronized void resumeTimer() {
-        var timerService = com.pessoal.agenda.service.TaskTimerService.get();
-        timerService.resume();
-        playPauseBtn.setText("⏸");
+        syncPlayButtons();
         if (refreshCallback != null) Platform.runLater(refreshCallback);
     }
 
@@ -245,10 +356,10 @@ public class TaskTimerWindow {
         var timerService = com.pessoal.agenda.service.TaskTimerService.get();
         long elapsedSeconds = timerService.getElapsedSeconds();
         timerService.stop();
-        playPauseBtn.setText("▶");
+        syncPlayButtons();
         if (refreshCallback != null) Platform.runLater(refreshCallback);
         showSaveSessionDialog(task, repo, elapsedSeconds, notesArea.getText(), () -> {
-            Platform.runLater(() -> timerLabel.setText("00:00:00"));
+            Platform.runLater(() -> setTimerText("00:00:00"));
             notesArea.clear();
             loadHistory(); updateTotalLabel();
         });
@@ -265,7 +376,6 @@ public class TaskTimerWindow {
      * O usuário pode ajustar manualmente antes de salvar.
      */
     public static void showSaveSessionDialog(Task task, TaskSessionRepository repo, long elapsedSeconds, String notesText, Runnable onSave) {
-        var timerService = com.pessoal.agenda.service.TaskTimerService.get();
         long s = Math.max(0, elapsedSeconds);
         int minutes = s <= 0 ? 0 : (int) Math.ceil(s / 60.0);
         Dialog<ButtonType> dlg = new Dialog<>();
@@ -294,22 +404,63 @@ public class TaskTimerWindow {
         pauseTimer();
         var timerService = com.pessoal.agenda.service.TaskTimerService.get();
         timerService.reset();
-        Platform.runLater(() -> timerLabel.setText("00:00:00"));
+        Platform.runLater(() -> setTimerText("00:00:00"));
         if (refreshCallback != null) Platform.runLater(refreshCallback);
     }
 
     private void updateTimerLabelFromService() {
         var timerService = com.pessoal.agenda.service.TaskTimerService.get();
         if (timerService.getActiveTaskId() != null && timerService.getActiveTaskId().equals(task.id())) {
-            timerLabel.setText(formatTimer(timerService.getElapsedSeconds()));
+            setTimerText(formatTimer(timerService.getElapsedSeconds()));
         } else {
-            timerLabel.setText("00:00:00");
+            setTimerText("00:00:00");
         }
+        syncPlayButtons();
     }
 
     private static String formatTimer(long s) {
-        long hh = s / 3600; long mm = (s % 3600) / 60; long ss = s % 60;
+        long hh = s / 3600;
+        long mm = (s % 3600) / 60;
+        long ss = s % 60;
         return String.format("%02d:%02d:%02d", hh, mm, ss);
+    }
+
+    private void setTimerText(String text) {
+        if (timerLabel != null) timerLabel.setText(text);
+        if (compactTimerLabel != null) compactTimerLabel.setText(text);
+    }
+
+    private void syncPlayButtons() {
+        var timerService = com.pessoal.agenda.service.TaskTimerService.get();
+        boolean activeHere = timerService.getActiveTaskId() != null && timerService.getActiveTaskId().equals(task.id());
+        boolean runningHere = activeHere && timerService.isRunning();
+        if (playPauseBtn != null) playPauseBtn.setText(runningHere ? "⏸" : "▶");
+        if (compactPlayPauseBtn != null) {
+            compactPlayPauseBtn.setSelected(runningHere);
+            compactPlayPauseBtn.setText(runningHere ? "⏸" : "▶");
+        }
+    }
+
+    private void applyAlwaysOnTop() {
+        if (stage != null) stage.setAlwaysOnTop(alwaysOnTopEnabled);
+        if (compactStage != null) compactStage.setAlwaysOnTop(alwaysOnTopEnabled);
+    }
+
+    private void disposeWindowState() {
+        if (disposed) return;
+        disposed = true;
+        if (tickUnsubscriber != null) {
+            tickUnsubscriber.run();
+            tickUnsubscriber = null;
+        }
+        openWindows.remove(task.id());
+        if (compactStage != null) {
+            if (compactStage.isShowing()) {
+                compactStage.hide();
+            }
+            compactStage = null;
+        }
+        if (refreshCallback != null) refreshCallback.run();
     }
 
     private void loadHistory() {

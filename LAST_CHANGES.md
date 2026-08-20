@@ -3,28 +3,28 @@
 > Gerado automaticamente pelo git hook `post-commit`.
 > Não editar manualmente — será sobrescrito no próximo commit.
 
-## Commit: `30d236208`
+## Commit: `d048d3d4d`
 
 | Campo | Valor |
 |---|---|
-| Hash completo | `30d236208b9e407d78445301fd3064773a2f73fe` |
-| Mensagem | Timer: adiciona modo mini flutuante e opcao sempre no topo |
-| Data | 2026-08-20 09:34:42 -0400 |
+| Hash completo | `d048d3d4dd99b6a2a3249bd5e1a56847f816fe04` |
+| Mensagem | Historico de sessoes: permite editar sessao do dia via menu de contexto |
+| Data | 2026-08-20 09:57:22 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
 LAST_CHANGES.md
-src/main/java/com/pessoal/agenda/ui/view/TaskTimerWindow.java
+src/main/java/com/pessoal/agenda/ui/view/SessionHistoryWindow.java
 ```
 
 ## Diff Resumido
 
 ```diff
- LAST_CHANGES.md                                    |  14 +-
- .../pessoal/agenda/ui/view/TaskTimerWindow.java    | 211 ++++++++++++++++++---
- 2 files changed, 189 insertions(+), 36 deletions(-)
+ LAST_CHANGES.md                                    | 16 ++++----
+ .../agenda/ui/view/SessionHistoryWindow.java       | 46 ++++++++++++++++++++++
+ 2 files changed, 54 insertions(+), 8 deletions(-)
 ```
 
 ---

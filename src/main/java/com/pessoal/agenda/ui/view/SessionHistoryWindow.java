@@ -176,6 +176,20 @@ public class SessionHistoryWindow {
         exportBtn.setOnAction(e -> exportCsv());
         table.setRowFactory(tv -> {
             TableRow<TaskSession> row = new TableRow<>();
+            MenuItem editTodayItem = new MenuItem("✎ Editar sessão de hoje");
+            editTodayItem.setOnAction(e -> {
+                TaskSession s = row.getItem();
+                if (s != null) {
+                    editTodaySession(s, doLoad);
+                }
+            });
+            ContextMenu menu = new ContextMenu(editTodayItem);
+            row.contextMenuProperty().bind(javafx.beans.binding.Bindings
+                    .when(row.emptyProperty())
+                    .then((ContextMenu) null)
+                    .otherwise(menu));
+            row.itemProperty().addListener((obs, oldItem, newItem) ->
+                    editTodayItem.setDisable(newItem == null || !LocalDate.now().equals(newItem.sessionDate())));
             row.setOnMouseClicked(ev -> {
                 if (ev.getClickCount() == 2 && !row.isEmpty()) {
                     TaskSession s = row.getItem();
@@ -189,6 +203,38 @@ public class SessionHistoryWindow {
         });
         Platform.runLater(doLoad);
         stage.show();
+    }
+
+    private void editTodaySession(TaskSession session, Runnable reloadAction) {
+        if (!LocalDate.now().equals(session.sessionDate())) {
+            Dialogs.warning("Editar sessão", "Somente sessões de hoje podem ser editadas aqui.");
+            return;
+        }
+
+        Dialog<ButtonType> dlg = new Dialog<>();
+        dlg.setTitle("Editar sessão de hoje");
+        dlg.setHeaderText("Ajuste o tempo e as observações da sessão.");
+        ButtonType saveBtn = new ButtonType("Salvar alterações", ButtonBar.ButtonData.OK_DONE);
+        dlg.getDialogPane().getButtonTypes().addAll(saveBtn, ButtonType.CANCEL);
+
+        TextField titleField = new TextField(session.subject() != null ? session.subject() : "");
+        Spinner<Integer> minutesSpinner = new Spinner<>(0, 24 * 60, Math.max(0, session.durationMinutes()));
+        TextArea notesArea = new TextArea(session.notes() != null ? session.notes() : "");
+        notesArea.setPrefRowCount(4);
+
+        VBox content = new VBox(8,
+                new Label("Título:"), titleField,
+                new Label("Duração (min):"), minutesSpinner,
+                new Label("Observações:"), notesArea);
+        content.setPadding(new Insets(8));
+        dlg.getDialogPane().setContent(content);
+        dlg.setResultConverter(bt -> bt == saveBtn ? saveBtn : null);
+        dlg.showAndWait().ifPresent(res -> {
+            if (res == saveBtn) {
+                repo.update(session.id(), titleField.getText(), minutesSpinner.getValue(), notesArea.getText());
+                if (reloadAction != null) reloadAction.run();
+            }
+        });
     }
 
     private static Long extractTaskIdFromSubject(String subj) {

@@ -21,6 +21,35 @@ class GoogleTasksTransportTest {
     Path tempDir;
 
     @Test
+    void authorizationUrlForcesAccountSelectionAndCarriesState() {
+        String url = GoogleAuthService.buildAuthorizationUrl(
+                "https://accounts.google.com/o/oauth2/auth",
+                "client id",
+                "http://localhost:43210",
+                "state-token");
+
+        assertTrue(url.startsWith("https://accounts.google.com/o/oauth2/auth?"));
+        assertTrue(url.contains("client_id=client+id"));
+        assertTrue(url.contains("redirect_uri=http%3A%2F%2Flocalhost%3A43210"));
+        assertTrue(url.contains("prompt=select_account+consent"));
+        assertTrue(url.contains("state=state-token"));
+        assertFalse(url.contains("client_secret"));
+    }
+
+    @Test
+    void authorizationCallbackRequiresMatchingState() throws Exception {
+        String code = GoogleAuthService.extractAuthorizationCode(
+                "GET /?code=authorization-code&state=expected-state HTTP/1.1",
+                "expected-state");
+
+        assertEquals("authorization-code", code);
+        assertThrows(java.io.IOException.class,
+                () -> GoogleAuthService.extractAuthorizationCode(
+                        "GET /?code=sensitive-code&state=other-state HTTP/1.1",
+                        "expected-state"));
+    }
+
+    @Test
     void readRetriesOnceAfterTemporaryServerFailure() throws Exception {
         AtomicInteger calls = new AtomicInteger();
         GoogleTasksService service = new GoogleTasksService(request ->

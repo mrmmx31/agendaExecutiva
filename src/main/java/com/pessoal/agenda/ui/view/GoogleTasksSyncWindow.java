@@ -21,6 +21,8 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
@@ -361,9 +363,27 @@ public class GoogleTasksSyncWindow {
                 "Arquivo ausente ou inválido: ~/.agenda/google-credentials.json");
             return;
         }
-        setStatus("Iniciando autorização OAuth...");
+        Alert choice = Dialogs.build(Alert.AlertType.CONFIRMATION,
+                "Conectar conta Google",
+                "Escolha onde autorizar a conta",
+                "O Google exibirá a seleção de contas. O link também pode ser colado em outro "
+                        + "navegador ou perfil conectado à conta autorizada para esta aplicação.");
+        ButtonType openAndCopy = new ButtonType("Abrir e copiar link", ButtonBar.ButtonData.OK_DONE);
+        ButtonType copyOnly = new ButtonType("Somente copiar link", ButtonBar.ButtonData.OTHER);
+        choice.getButtonTypes().setAll(openAndCopy, copyOnly, ButtonType.CANCEL);
+        ButtonType selected = choice.showAndWait().orElse(ButtonType.CANCEL);
+        if (selected == ButtonType.CANCEL) return;
+
+        boolean openBrowser = selected == openAndCopy;
+        setStatus("Preparando autorização OAuth...");
         runBackground(
-            () -> { auth.authorize(msg -> Platform.runLater(() -> setStatus(msg))); return null; },
+            () -> {
+                auth.authorize(
+                        msg -> Platform.runLater(() -> setStatus(msg)),
+                        url -> Platform.runLater(() -> copyAuthorizationUrl(url, openBrowser)),
+                        openBrowser);
+                return null;
+            },
             result -> {
                 updateConnectionLabel();
                 refreshConnectButtons();
@@ -372,6 +392,15 @@ public class GoogleTasksSyncWindow {
             },
             err -> showError("Erro de autorização", err)
         );
+    }
+
+    private void copyAuthorizationUrl(String url, boolean browserWillOpen) {
+        ClipboardContent content = new ClipboardContent();
+        content.putString(url);
+        Clipboard.getSystemClipboard().setContent(content);
+        setStatus(browserWillOpen
+                ? "Link copiado; escolha a conta correta no Google."
+                : "Link copiado. Cole-o no navegador da conta correta.");
     }
 
     private void doDisconnect() {

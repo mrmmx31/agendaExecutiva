@@ -1069,6 +1069,14 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 
 **Resultado:** o transporte injetável aplica timeout de conexão e requisição, valida todo status Tasks/OAuth e classifica autenticação, limite, timeout, rede, servidor, resposta inválida e requisição. Leituras e mutações idempotentes repetem no máximo uma vez em falhas transitórias; criação não repete após resposta ambígua, e `401` invalida o access token para uma única renovação. Token revogado remove a autorização local, enquanto falha transitória preserva a nova tentativa. Respostas truncadas, IDs ausentes e paginação cíclica abortam antes do plano. Corpos da API e mensagens brutas não chegam a logs ou diálogos. Arquivos de credenciais/tokens são criados ou migrados para permissão POSIX `600`. A interface informa início/fim por lista, itens Google/local processados, revisões, erros e ação de recuperação. Treze testes novos cobrem status, timeout, limite, repetição segura, renovação, resposta parcial sem mutação, sanitização, permissão e resumo. A suíte padrão aprovou 77 testes e o perfil JavaFX aprovou 114, sem acessar conta, tokens ou rede Google.
 
+### GSYNC-03.1 — Escolha segura da conta no OAuth
+
+**Status:** Concluído em 2026-08-30.
+
+**Problema:** a conexão abria imediatamente o navegador padrão com `prompt=consent`. Isso podia reutilizar uma sessão Google de outra conta e não oferecia a URL para abertura no navegador ou perfil correto.
+
+**Resultado:** antes da conexão, a interface oferece `Abrir e copiar link` e `Somente copiar link`. A URL solicita ao Google `select_account` junto do consentimento, permanece disponível na área de transferência e não contém o segredo do cliente. O servidor local reserva a porta durante todo o fluxo e o callback passa a usar e validar um `state` aleatório antes de confirmar o sucesso no navegador. As permissões continuam limitadas ao Google Tasks; nenhuma permissão de perfil foi adicionada. A suíte padrão aprovou 121 testes e o perfil JavaFX aprovou 181, sem acessar a conta ou a rede Google.
+
 ### GSYNC-04 — Interface e validação controlada
 
 **Status:** Concluído em 2026-08-27.

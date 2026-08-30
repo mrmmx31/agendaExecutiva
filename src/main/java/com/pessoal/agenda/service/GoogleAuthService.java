@@ -10,6 +10,8 @@ import java.nio.file.*;
 import java.time.Instant;
 import java.time.Duration;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.function.Consumer;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
@@ -116,84 +118,137 @@ public class GoogleAuthService {
      * @throws Exception em caso de erro
      */
     public void authorize(Consumer<String> progressCallback) throws Exception {
+        authorize(progressCallback, null, true);
+    }
+
+    /**
+     * Inicia o OAuth permitindo que a interface exponha a URL e decida se deve
+     * abrir o navegador padrão. A URL sempre solicita ao Google a escolha da conta.
+     */
+    public void authorize(Consumer<String> progressCallback,
+                          Consumer<String> authorizationUrlCallback,
+                          boolean openBrowser) throws Exception {
         if (!hasValidCredentials()) {
             throw new IllegalStateException(
                 "Credenciais não encontradas em: " + CREDENTIALS_PATH);
         }
 
-        // Porta dinâmica
-        int callbackPort;
-        try (ServerSocket probe = new ServerSocket(0)) {
-            callbackPort = probe.getLocalPort();
+        try (ServerSocket callbackServer = new ServerSocket(0)) {
+            String redirectUri = "http://localhost:" + callbackServer.getLocalPort();
+            String state = newAuthorizationState();
+            String authUrl = buildAuthorizationUrl(authUri, clientId, redirectUri, state);
+
+            if (authorizationUrlCallback != null) {
+                authorizationUrlCallback.accept(authUrl);
+            }
+
+            if (openBrowser) {
+                if (progressCallback != null) {
+                    progressCallback.accept("Abrindo navegador; o link também está disponível para copiar...");
+                }
+                try {
+                    if (!Desktop.isDesktopSupported()) {
+                        throw new UnsupportedOperationException("Desktop não suportado");
+                    }
+                    Desktop.getDesktop().browse(new URI(authUrl));
+                } catch (Exception browserError) {
+                    if (authorizationUrlCallback == null) {
+                        throw new UnsupportedOperationException(
+                                "Não foi possível abrir o navegador para autorização.", browserError);
+                    }
+                    if (progressCallback != null) {
+                        progressCallback.accept("Navegador não abriu. Cole o link copiado em outro navegador.");
+                    }
+                }
+            } else if (progressCallback != null) {
+                progressCallback.accept("Link copiado. Cole-o no navegador da conta Google correta.");
+            }
+
+            if (progressCallback != null) progressCallback.accept("Aguardando autorização do Google...");
+            String code = waitForAuthCode(callbackServer, state);
+
+            if (progressCallback != null) progressCallback.accept("Trocando código por tokens...");
+            exchangeCodeForTokens(code, redirectUri);
         }
-        String redirectUri = "http://localhost:" + callbackPort;
-
-        String authUrl = authUri + "?"
-                + "client_id=" + URLEncoder.encode(clientId, StandardCharsets.UTF_8)
-                + "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)
-                + "&response_type=code"
-                + "&scope=" + URLEncoder.encode(SCOPE, StandardCharsets.UTF_8)
-                + "&access_type=offline"
-                + "&prompt=consent";
-
-        if (progressCallback != null) progressCallback.accept("Abrindo navegador para autorização...");
-
-        if (Desktop.isDesktopSupported()) {
-            Desktop.getDesktop().browse(new URI(authUrl));
-        } else {
-            throw new UnsupportedOperationException(
-                "Não foi possível abrir o navegador. Acesse manualmente:\n" + authUrl);
-        }
-
-        // Aguarda callback
-        if (progressCallback != null) progressCallback.accept("Aguardando autorização do Google...");
-        String code = waitForAuthCode(callbackPort, redirectUri);
-
-        if (progressCallback != null) progressCallback.accept("Trocando código por tokens...");
-        exchangeCodeForTokens(code, redirectUri);
 
         if (progressCallback != null) progressCallback.accept("Conectado com sucesso!");
     }
 
+    static String buildAuthorizationUrl(String authUri, String clientId,
+                                        String redirectUri, String state) {
+        return authUri + "?"
+                + "client_id=" + encode(clientId)
+                + "&redirect_uri=" + encode(redirectUri)
+                + "&response_type=code"
+                + "&scope=" + encode(SCOPE)
+                + "&access_type=offline"
+                + "&prompt=" + encode("select_account consent")
+                + "&state=" + encode(state);
+    }
+
+    private static String newAuthorizationState() {
+        byte[] bytes = new byte[32];
+        new SecureRandom().nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private static String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
     // ── Internals ────────────────────────────────────────────────────────────
 
-    private String waitForAuthCode(int port, String redirectUri) throws Exception {
-        try (ServerSocket server = new ServerSocket(port)) {
-            server.setSoTimeout(120_000); // 2 minutos
-            try (Socket client = server.accept()) {
-                // Lê a primeira linha do request: GET /?code=xxx&... HTTP/1.1
-                BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
-                String requestLine = reader.readLine();
+    private String waitForAuthCode(ServerSocket server, String expectedState) throws Exception {
+        server.setSoTimeout(120_000); // 2 minutos
+        try (Socket client = server.accept()) {
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
+            String code = extractAuthorizationCode(reader.readLine(), expectedState);
+            writeAuthorizationSuccess(client);
+            return code;
+        }
+    }
 
-                // Responde com HTML de sucesso
-                String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
-                        + "<title>Autorizado</title></head><body style='font-family:sans-serif;"
-                        + "text-align:center;padding:60px;'>"
-                        + "<h2 style='color:#1a73e8'>✓ Conexão realizada com sucesso!</h2>"
-                        + "<p>Você pode fechar esta aba e voltar para a Agenda Científica.</p>"
-                        + "</body></html>";
-                String response = "HTTP/1.1 200 OK\r\n"
-                        + "Content-Type: text/html; charset=UTF-8\r\n"
-                        + "Content-Length: " + html.getBytes(StandardCharsets.UTF_8).length + "\r\n"
-                        + "Connection: close\r\n\r\n" + html;
-                client.getOutputStream().write(response.getBytes(StandardCharsets.UTF_8));
+    static String extractAuthorizationCode(String requestLine, String expectedState) throws IOException {
+        if (requestLine == null) {
+            throw new IOException("O Google não retornou um código de autorização.");
+        }
+        String[] requestParts = requestLine.split(" ", 3);
+        if (requestParts.length < 2 || !requestParts[1].contains("?")) {
+            throw new IOException("O Google não retornou um código de autorização.");
+        }
 
-                if (requestLine == null || !requestLine.contains("code=")) {
-                    throw new IOException("Callback sem código de autorização: " + requestLine);
-                }
-
-                // Extrai o code da query string: /  ?code=XXXX&scope=...
-                String query = requestLine.split(" ")[1];
-                if (query.contains("?")) query = query.substring(query.indexOf('?') + 1);
-                for (String param : query.split("&")) {
-                    if (param.startsWith("code=")) {
-                        return URLDecoder.decode(param.substring(5), StandardCharsets.UTF_8);
-                    }
-                }
-                throw new IOException("Parâmetro 'code' não encontrado na resposta: " + requestLine);
+        String code = null;
+        String returnedState = null;
+        String query = requestParts[1].substring(requestParts[1].indexOf('?') + 1);
+        for (String param : query.split("&")) {
+            if (param.startsWith("code=")) {
+                code = URLDecoder.decode(param.substring(5), StandardCharsets.UTF_8);
+            } else if (param.startsWith("state=")) {
+                returnedState = URLDecoder.decode(param.substring(6), StandardCharsets.UTF_8);
             }
         }
+        if (!expectedState.equals(returnedState)) {
+            throw new IOException("Retorno de autorização inválido. Inicie a conexão novamente.");
+        }
+        if (code == null || code.isBlank()) {
+            throw new IOException("O Google não retornou um código de autorização.");
+        }
+        return code;
+    }
+
+    private static void writeAuthorizationSuccess(Socket client) throws IOException {
+        String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+                + "<title>Autorizado</title></head><body style='font-family:sans-serif;"
+                + "text-align:center;padding:60px;'>"
+                + "<h2 style='color:#1a73e8'>Conexão realizada com sucesso!</h2>"
+                + "<p>Você pode fechar esta aba e voltar para a Agenda Científica.</p>"
+                + "</body></html>";
+        String response = "HTTP/1.1 200 OK\r\n"
+                + "Content-Type: text/html; charset=UTF-8\r\n"
+                + "Content-Length: " + html.getBytes(StandardCharsets.UTF_8).length + "\r\n"
+                + "Connection: close\r\n\r\n" + html;
+        client.getOutputStream().write(response.getBytes(StandardCharsets.UTF_8));
     }
 
     private void exchangeCodeForTokens(String code, String redirectUri)

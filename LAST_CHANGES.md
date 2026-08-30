@@ -7,23 +7,27 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | Registra início do piloto e preparação do teste Google |
-| Data | 2026-08-30 05:18:06 -0400 |
+| Mensagem | Permite escolher conta no OAuth do Google |
+| Data | 2026-08-30 05:42:35 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
-PILOT.md
 SPEC.md
+src/main/java/com/pessoal/agenda/service/GoogleAuthService.java
+src/main/java/com/pessoal/agenda/ui/view/GoogleTasksSyncWindow.java
+src/test/java/com/pessoal/agenda/service/GoogleTasksTransportTest.java
 ```
 
 ## Diff Resumido
 
 ```diff
- PILOT.md | 2 ++
- SPEC.md  | 9 +++++++++
- 2 files changed, 11 insertions(+)
+ SPEC.md                                            |   8 +
+ .../pessoal/agenda/service/GoogleAuthService.java  | 173 ++++++++++++++-------
+ .../agenda/ui/view/GoogleTasksSyncWindow.java      |  33 +++-
+ .../agenda/service/GoogleTasksTransportTest.java   |  29 ++++
+ 4 files changed, 182 insertions(+), 61 deletions(-)
 ```
 
 ---

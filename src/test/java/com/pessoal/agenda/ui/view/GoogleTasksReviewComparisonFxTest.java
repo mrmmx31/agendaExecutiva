@@ -6,6 +6,10 @@ import com.pessoal.agenda.service.GoogleTasksSyncService.ReviewItem;
 import com.pessoal.agenda.service.GoogleTasksSyncService.ReviewVersion;
 import javafx.geometry.Bounds;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
@@ -90,6 +94,25 @@ class GoogleTasksReviewComparisonFxTest {
                     .map(ListCell.class::cast)
                     .anyMatch(cell -> cell.getText() != null
                             && cell.getText().contains("Web Application Hacker")));
+        });
+    }
+
+    @Test
+    void cancellationIsTheDefaultOnFinalConfirmation() throws Exception {
+        FxTestSupport.run(() -> {
+            Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
+            ButtonType apply = new ButtonType(
+                    "Aplicar versão local", ButtonBar.ButtonData.OK_DONE);
+            confirmation.getButtonTypes().setAll(apply, ButtonType.CANCEL);
+
+            GoogleTasksSyncWindow.preferReviewCancellation(
+                    confirmation.getDialogPane(), apply);
+
+            Button applyButton = (Button) confirmation.getDialogPane().lookupButton(apply);
+            Button cancelButton = (Button) confirmation.getDialogPane()
+                    .lookupButton(ButtonType.CANCEL);
+            assertTrue(!applyButton.isDefaultButton());
+            assertTrue(cancelButton.isDefaultButton());
         });
     }
 

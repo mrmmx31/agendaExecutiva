@@ -2,6 +2,7 @@ package com.pessoal.agenda.ui.view;
 
 import com.pessoal.agenda.service.GoogleTasksService.SyncResult;
 import com.pessoal.agenda.service.GoogleTasksSyncService.Resolution;
+import com.pessoal.agenda.service.GoogleTasksSyncService.ReviewItem;
 import com.pessoal.agenda.service.GoogleTasksSyncService.ReviewVersion;
 import com.pessoal.agenda.service.GoogleTasksSyncService.SyncPreview;
 import com.pessoal.agenda.repository.GoogleTasksMappingRepository.SyncState;
@@ -62,5 +63,19 @@ class GoogleTasksSyncWindowTest {
         assertTrue(comparison.contains("Notas: Notas Google"));
         assertEquals("Indisponível",
                 GoogleTasksSyncWindow.formatReviewVersion(null, "Indisponível"));
+    }
+
+    @Test
+    void reviewConfirmationRepeatsItemChoiceAndIrreversibleConsequence() {
+        ReviewItem item = new ReviewItem(12, SyncState.CONFLICT,
+                "Ler Capítulo 7", "google-12");
+
+        String confirmation = GoogleTasksSyncWindow.reviewConfirmationText(
+                item, Resolution.USE_LOCAL);
+
+        assertTrue(confirmation.contains("Item: Ler Capítulo 7"));
+        assertTrue(confirmation.contains("Usar versão local"));
+        assertTrue(confirmation.contains("locais substituirão a versão Google"));
+        assertTrue(confirmation.contains("não possui desfazer automático"));
     }
 }

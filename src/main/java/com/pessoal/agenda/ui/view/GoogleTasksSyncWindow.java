@@ -607,7 +607,7 @@ public class GoogleTasksSyncWindow {
         Dialog<ReviewDecision> dialog = Dialogs.prepare(new Dialog<>());
         dialog.setTitle("Revisar sincronização");
         dialog.setHeaderText("Compare as versões e escolha qual estado deve prevalecer");
-        ButtonType apply = new ButtonType("Aplicar decisão", ButtonBar.ButtonData.OK_DONE);
+        ButtonType apply = new ButtonType("Continuar...", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().setAll(apply, ButtonType.CANCEL);
 
         Label reviewCount = new Label(details.size()
@@ -676,6 +676,10 @@ public class GoogleTasksSyncWindow {
         updateChoices.run();
 
         dialog.showAndWait().ifPresent(decision -> {
+            if (!confirmReviewDecision(decision)) {
+                setStatus("Decisão cancelada; nenhuma versão foi substituída.");
+                return;
+            }
             setStatus("Aplicando decisão para '" + decision.item().title() + "'...");
             runBackground(
                     () -> syncService.resolveReview(
@@ -692,6 +696,35 @@ public class GoogleTasksSyncWindow {
                     },
                     error -> showError("Erro ao resolver revisão", error));
         });
+    }
+
+    private boolean confirmReviewDecision(ReviewDecision decision) {
+        Alert confirmation = Dialogs.build(Alert.AlertType.CONFIRMATION,
+                "Confirmar substituição",
+                decision.item().title(),
+                reviewConfirmationText(decision.item(), decision.resolution()));
+        ButtonType apply = new ButtonType(
+                decision.resolution() == Resolution.USE_LOCAL
+                        ? "Aplicar versão local" : "Aplicar versão Google",
+                ButtonBar.ButtonData.OK_DONE);
+        confirmation.getButtonTypes().setAll(apply, ButtonType.CANCEL);
+        confirmation.getDialogPane().setPrefWidth(560);
+        preferReviewCancellation(confirmation.getDialogPane(), apply);
+        return confirmation.showAndWait().orElse(ButtonType.CANCEL) == apply;
+    }
+
+    static void preferReviewCancellation(DialogPane pane, ButtonType apply) {
+        Button applyButton = (Button) pane.lookupButton(apply);
+        Button cancelButton = (Button) pane.lookupButton(ButtonType.CANCEL);
+        applyButton.setDefaultButton(false);
+        cancelButton.setDefaultButton(true);
+    }
+
+    static String reviewConfirmationText(ReviewItem item, Resolution resolution) {
+        return "Item: " + item.title()
+                + "\nDecisão: " + resolutionLabel(item.state(), resolution)
+                + "\n\n" + resolutionConsequence(item.state(), resolution)
+                + "\n\nEsta substituição não possui desfazer automático.";
     }
 
     static ListView<ReviewDetails> reviewItemsList(List<ReviewDetails> details) {

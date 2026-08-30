@@ -1,8 +1,13 @@
 package com.pessoal.agenda.ui.view;
 
+import com.pessoal.agenda.repository.GoogleTasksMappingRepository.SyncState;
+import com.pessoal.agenda.service.GoogleTasksSyncService.ReviewDetails;
+import com.pessoal.agenda.service.GoogleTasksSyncService.ReviewItem;
 import com.pessoal.agenda.service.GoogleTasksSyncService.ReviewVersion;
 import javafx.geometry.Bounds;
 import javafx.scene.Scene;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
@@ -13,6 +18,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -57,6 +63,39 @@ class GoogleTasksReviewComparisonFxTest {
             assertBrightText(localArea);
             assertBrightText(googleArea);
         });
+    }
+
+    @Test
+    void everyPendingItemIsVisibleWithoutOpeningAComboBox() throws Exception {
+        FxTestSupport.run(() -> {
+            ReviewVersion version = new ReviewVersion(true, "Título", null,
+                    LocalDate.now(), true);
+            List<ReviewDetails> details = List.of(
+                    details(1, "Pegar a Royal no Motorock", version),
+                    details(2, "Ler Capítulo 7 do Web Application Hacker's Handbook", version),
+                    details(3, "Consulta Rosy", version),
+                    details(4, "Verificar relatório e filtros", version),
+                    details(5, "Consulta médica", version));
+            ListView<ReviewDetails> list = GoogleTasksSyncWindow.reviewItemsList(details);
+            StackPane root = new StackPane(list);
+            new Scene(root, 700, 190);
+
+            root.applyCss();
+            root.layout();
+
+            assertEquals(5, list.getItems().size());
+            assertTrue(list.getPrefHeight() >= 172);
+            assertTrue(list.lookupAll(".list-cell").stream()
+                    .filter(ListCell.class::isInstance)
+                    .map(ListCell.class::cast)
+                    .anyMatch(cell -> cell.getText() != null
+                            && cell.getText().contains("Web Application Hacker")));
+        });
+    }
+
+    private static ReviewDetails details(long id, String title, ReviewVersion version) {
+        return new ReviewDetails(new ReviewItem(id, SyncState.CONFLICT, title, "google-" + id),
+                version, version);
     }
 
     private static void assertBrightText(TextArea area) {

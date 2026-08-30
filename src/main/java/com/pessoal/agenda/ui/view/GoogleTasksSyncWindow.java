@@ -25,11 +25,12 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-import javafx.util.StringConverter;
 
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Janela de sincronização BIDIRECIONAL com o Google Tasks.
@@ -170,6 +171,7 @@ public class GoogleTasksSyncWindow {
             if (listCombo.getValue() != null) {
                 refreshReviewCount();
                 loadGoogleTasks();
+                loadLocalTasks();
             }
         });
 
@@ -202,7 +204,7 @@ public class GoogleTasksSyncWindow {
         registerGoogleControl(dedupGoogleBtn);
         dedupGoogleBtn.setOnAction(e -> removeGoogleDuplicates());
 
-        reviewBtn = new Button("Revisar pendências");
+        reviewBtn = new Button("Revisar conflitos/exclusões");
         reviewBtn.setId("google-review-items");
         reviewBtn.getStyleClass().add("secondary-button");
         registerGoogleControl(reviewBtn);
@@ -277,7 +279,7 @@ public class GoogleTasksSyncWindow {
     }
 
     private VBox buildLocalPanel() {
-        Label title = new Label("🗓  Tarefas Locais");
+        Label title = new Label("🗓  Tarefas Locais Relacionadas");
         title.setStyle("-fx-font-weight: 700; -fx-font-size: 13px;");
 
         localList = new ListView<>(localItems);
@@ -567,7 +569,8 @@ public class GoogleTasksSyncWindow {
         if (reviewBtn == null || listCombo == null || listCombo.getValue() == null) return;
         int count = syncService.listReviewItems(listCombo.getValue().id()).size();
         reviewBtn.setText(count == 0
-                ? "Revisar pendências" : "Revisar pendências (" + count + ")");
+                ? "Revisar conflitos/exclusões"
+                : "Revisar conflitos/exclusões (" + count + ")");
     }
 
     private void reviewPendingItems() {
@@ -607,17 +610,11 @@ public class GoogleTasksSyncWindow {
         ButtonType apply = new ButtonType("Aplicar decisão", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().setAll(apply, ButtonType.CANCEL);
 
-        ComboBox<ReviewDetails> itemCombo = new ComboBox<>(
-                FXCollections.observableArrayList(details));
-        itemCombo.setId("google-review-item");
-        itemCombo.setMaxWidth(Double.MAX_VALUE);
-        itemCombo.setConverter(new StringConverter<>() {
-            @Override public String toString(ReviewDetails details) {
-                ReviewItem item = details != null ? details.item() : null;
-                return item == null ? "" : reviewStateLabel(item.state()) + ": " + item.title();
-            }
-            @Override public ReviewDetails fromString(String text) { return null; }
-        });
+        Label reviewCount = new Label(details.size()
+                + (details.size() == 1 ? " conflito/exclusão nesta lista Google"
+                : " conflitos/exclusões nesta lista Google"));
+        reviewCount.getStyleClass().add("secondary-text");
+        ListView<ReviewDetails> itemList = reviewItemsList(details);
 
         TextArea localVersion = reviewVersionArea("google-review-local-version");
         TextArea googleVersion = reviewVersionArea("google-review-google-version");
@@ -637,7 +634,7 @@ public class GoogleTasksSyncWindow {
         consequence.setWrapText(true);
         consequence.getStyleClass().add("secondary-text");
 
-        VBox content = new VBox(12, itemCombo, comparison,
+        VBox content = new VBox(8, reviewCount, itemList, comparison,
                 localChoice, googleChoice, consequence);
         content.setPadding(new Insets(8, 0, 0, 0));
         dialog.getDialogPane().setContent(content);
@@ -646,7 +643,7 @@ public class GoogleTasksSyncWindow {
         applyNode.setDisable(true);
 
         Runnable updateChoices = () -> {
-            ReviewDetails selected = itemCombo.getValue();
+            ReviewDetails selected = itemList.getSelectionModel().getSelectedItem();
             ReviewItem item = selected != null ? selected.item() : null;
             choice.selectToggle(null);
             consequence.setText("");
@@ -658,9 +655,10 @@ public class GoogleTasksSyncWindow {
             localChoice.setText(resolutionLabel(item.state(), Resolution.USE_LOCAL));
             googleChoice.setText(resolutionLabel(item.state(), Resolution.USE_GOOGLE));
         };
-        itemCombo.valueProperty().addListener((obs, old, value) -> updateChoices.run());
+        itemList.getSelectionModel().selectedItemProperty()
+                .addListener((obs, old, value) -> updateChoices.run());
         choice.selectedToggleProperty().addListener((obs, old, toggle) -> {
-            ReviewDetails selected = itemCombo.getValue();
+            ReviewDetails selected = itemList.getSelectionModel().getSelectedItem();
             applyNode.setDisable(toggle == null || selected == null);
             if (toggle != null && selected != null) {
                 consequence.setText(resolutionConsequence(selected.item().state(),
@@ -668,12 +666,13 @@ public class GoogleTasksSyncWindow {
             }
         });
         dialog.setResultConverter(button -> {
-            if (button != apply || itemCombo.getValue() == null
+            ReviewDetails selected = itemList.getSelectionModel().getSelectedItem();
+            if (button != apply || selected == null
                     || choice.getSelectedToggle() == null) return null;
-            return new ReviewDecision(itemCombo.getValue().item(),
+            return new ReviewDecision(selected.item(),
                     (Resolution) choice.getSelectedToggle().getUserData());
         });
-        itemCombo.getSelectionModel().selectFirst();
+        itemList.getSelectionModel().selectFirst();
         updateChoices.run();
 
         dialog.showAndWait().ifPresent(decision -> {
@@ -693,6 +692,24 @@ public class GoogleTasksSyncWindow {
                     },
                     error -> showError("Erro ao resolver revisão", error));
         });
+    }
+
+    static ListView<ReviewDetails> reviewItemsList(List<ReviewDetails> details) {
+        ListView<ReviewDetails> list = new ListView<>(
+                FXCollections.observableArrayList(details));
+        list.setId("google-review-items-list");
+        list.setFixedCellSize(34);
+        list.setPrefHeight(Math.min(180, Math.max(70, details.size() * 34 + 2)));
+        list.setMaxWidth(Double.MAX_VALUE);
+        list.setCellFactory(view -> new ListCell<>() {
+            @Override protected void updateItem(ReviewDetails details, boolean empty) {
+                super.updateItem(details, empty);
+                ReviewItem item = details != null ? details.item() : null;
+                setText(empty || item == null ? null
+                        : reviewStateLabel(item.state()) + ": " + item.title());
+            }
+        });
+        return list;
     }
 
     static TextArea reviewVersionArea(String id) {
@@ -910,9 +927,20 @@ public class GoogleTasksSyncWindow {
     }
 
     private void loadLocalTasks() {
-        List<com.pessoal.agenda.model.Task> tasks =
-                AppContextHolder.get().taskRepository().findOpenTasks();
-        localItems.setAll(tasks);
+        var context = AppContextHolder.get();
+        Map<Long, com.pessoal.agenda.model.Task> related = new LinkedHashMap<>();
+        for (com.pessoal.agenda.model.Task task : context.taskRepository().findOpenTasks()) {
+            related.put(task.id(), task);
+        }
+        TaskList selected = listCombo != null ? listCombo.getValue() : null;
+        if (selected != null) {
+            for (var mapping : context.googleTasksMappingRepository()
+                    .findByListId(selected.id())) {
+                context.taskRepository().findById(mapping.localTaskId())
+                        .ifPresent(task -> related.put(task.id(), task));
+            }
+        }
+        localItems.setAll(related.values());
         if (localList != null) localList.refresh();
     }
 

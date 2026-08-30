@@ -1117,6 +1117,14 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 
 **Resultado:** `Revisar pendências` carrega as versões atuais em segundo plano e apresenta `Versão local` e `Versão Google` lado a lado antes das decisões. Cada lado mostra título, status, data e notas; tarefas excluídas ou ausentes aparecem explicitamente como indisponíveis. Trocar o item limpa a escolha anterior, e `Aplicar decisão` continua desabilitado até uma nova escolha explícita. O comparador usa controles somente leitura compatíveis com tema escuro e mantém colunas sem sobreposição em 620 px. Testes cobrem conflitos, ambos os sentidos de exclusão, conteúdo comparativo e contraste. A suíte padrão aprovou 125 testes e o perfil JavaFX aprovou 191, sem acessar a conta ou a rede Google.
 
+### GSYNC-03.7 — Visibilidade das tarefas relacionadas
+
+**Status:** Concluído em 2026-08-30.
+
+**Problema:** o painel local mostrava apenas tarefas abertas, ocultando tarefas concluídas que ainda possuíam vínculo ou conflito Google. A revisão apresentava uma pendência por vez em um seletor fechado, o que dava a impressão de que itens como `Ler Capítulo 7 do Web Application Hacker's Handbook` não estavam mapeados.
+
+**Resultado:** ao selecionar uma lista Google, o painel `Tarefas Locais Relacionadas` reúne tarefas abertas e todas as tarefas vinculadas àquela lista, inclusive concluídas. A ação foi renomeada para `Revisar conflitos/exclusões`, deixando claro que ela não representa todas as tarefas Google. O diálogo mostra a contagem e até cinco conflitos/exclusões simultaneamente em uma lista visível; selecionar outra linha atualiza o comparador e limpa a decisão anterior. Teste JavaFX confirma as cinco linhas, incluindo o título extenso do capítulo, sem depender da abertura de um `ComboBox`. A suíte padrão aprovou 125 testes e o perfil JavaFX aprovou 192.
+
 ### GSYNC-04 — Interface e validação controlada
 
 **Status:** Concluído em 2026-08-27.
@@ -1153,7 +1161,7 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 - [ ] LIVE-07 — Revisar os cinco conflitos existentes e validar uma exclusão controlada
 - [ ] LIVE-08 — Cancelar uma autorização pendente, tentar novamente e validar reconexão
 
-**Próxima ação:** reiniciar a aplicação para carregar `GSYNC-03.6`, abrir `Revisar pendências` na lista `Minhas tarefas` e inspecionar os cinco comparadores sem aplicar decisões. Confirmar que os dois lados estão legíveis e que cada escolha corresponde ao conteúdo que deve ser preservado; somente depois iniciar as resoluções controladas do `LIVE-07`.
+**Próxima ação:** reiniciar a aplicação para carregar `GSYNC-03.7`, selecionar `Minhas tarefas` e confirmar que o painel local inclui as concluídas vinculadas e que `Revisar conflitos/exclusões (5)` exibe as cinco linhas simultaneamente. Inspecionar os comparadores sem aplicar decisões; somente depois iniciar as resoluções controladas do `LIVE-07`.
 
 ## 27. Implementação da interrupção e retomada
 

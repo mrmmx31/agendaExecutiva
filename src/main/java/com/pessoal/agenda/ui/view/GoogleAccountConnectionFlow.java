@@ -10,11 +10,13 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 
+import java.util.concurrent.CancellationException;
 import java.util.function.Consumer;
 
 /** Fluxo OAuth compartilhado pela configuração e pela janela de sincronização. */
 public final class GoogleAccountConnectionFlow {
     private static final GoogleOperationGuard OPERATION_GUARD = GoogleOperationGuard.shared();
+    private static final ConnectionAttempt NO_ATTEMPT = () -> {};
 
     private GoogleAccountConnectionFlow() {}
 
@@ -22,15 +24,16 @@ public final class GoogleAccountConnectionFlow {
         return OPERATION_GUARD.isRunning();
     }
 
-    public static void start(GoogleAuthService auth,
-                             Consumer<String> status,
-                             Consumer<Boolean> busy,
-                             Runnable onSuccess,
-                             Consumer<Throwable> onError) {
+    public static ConnectionAttempt start(GoogleAuthService auth,
+                                          Consumer<String> status,
+                                          Consumer<Boolean> busy,
+                                          Runnable onSuccess,
+                                          Runnable onCancelled,
+                                          Consumer<Throwable> onError) {
         if (!auth.hasValidCredentials()) {
             onError.accept(GoogleSyncException.configuration(
                     "Arquivo ausente ou inválido: ~/.agenda/google-credentials.json."));
-            return;
+            return NO_ATTEMPT;
         }
 
         Alert choice = Dialogs.build(Alert.AlertType.CONFIRMATION,
@@ -42,21 +45,22 @@ public final class GoogleAccountConnectionFlow {
         ButtonType copyOnly = new ButtonType("Somente copiar link", ButtonBar.ButtonData.OTHER);
         choice.getButtonTypes().setAll(openAndCopy, copyOnly, ButtonType.CANCEL);
         ButtonType selected = choice.showAndWait().orElse(ButtonType.CANCEL);
-        if (selected == ButtonType.CANCEL) return;
+        if (selected == ButtonType.CANCEL) return NO_ATTEMPT;
 
         if (!OPERATION_GUARD.tryStart()) {
             status.accept("Aguarde a operação Google em andamento terminar.");
-            return;
+            return NO_ATTEMPT;
         }
 
         boolean openBrowser = selected == openAndCopy;
+        GoogleAuthService.AuthorizationSession session = auth.newAuthorizationSession();
         busy.accept(true);
         status.accept("Preparando autorização OAuth...");
 
         Task<Void> task = new Task<>() {
             @Override
             protected Void call() throws Exception {
-                auth.authorize(
+                session.authorize(
                         message -> Platform.runLater(() -> status.accept(message)),
                         url -> Platform.runLater(() -> copyAuthorizationUrl(
                                 url, openBrowser, status)),
@@ -70,11 +74,26 @@ public final class GoogleAccountConnectionFlow {
         });
         task.setOnFailed(event -> {
             finish(busy);
-            onError.accept(task.getException());
+            Throwable error = task.getException();
+            if (error instanceof CancellationException) {
+                onCancelled.run();
+            } else {
+                onError.accept(error);
+            }
+        });
+        task.setOnCancelled(event -> {
+            finish(busy);
+            onCancelled.run();
         });
         Thread thread = new Thread(task, "google-oauth");
         thread.setDaemon(true);
         thread.start();
+        return session::cancel;
+    }
+
+    @FunctionalInterface
+    public interface ConnectionAttempt {
+        void cancel();
     }
 
     private static void copyAuthorizationUrl(String url, boolean browserWillOpen,

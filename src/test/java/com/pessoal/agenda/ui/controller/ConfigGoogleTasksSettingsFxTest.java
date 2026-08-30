@@ -109,6 +109,31 @@ class ConfigGoogleTasksSettingsFxTest {
         });
     }
 
+    @Test
+    void pendingAuthorizationCanBeCancelledAndRetried() throws Exception {
+        FakeActions actions = new FakeActions();
+        actions.credentials = true;
+        actions.keepConnectionPending = true;
+
+        FxTestSupport.run(() -> {
+            VBox section = controller().buildGoogleTasksSection(actions);
+            Button connect = button(section, "#google-settings-connect");
+            Button cancel = button(section, "#google-settings-cancel-connect");
+
+            connect.fire();
+
+            assertTrue(cancel.isVisible());
+            assertFalse(cancel.isDisabled());
+            assertTrue(connect.isDisabled());
+
+            cancel.fire();
+
+            assertEquals(1, actions.cancelCalls.get());
+            assertFalse(cancel.isVisible());
+            assertFalse(connect.isDisabled());
+        });
+    }
+
     private ConfigController controller() {
         Preferences preferences = Preferences.userRoot().node(
                 "/agenda-tests/config-google-" + System.nanoTime());
@@ -129,18 +154,30 @@ class ConfigGoogleTasksSettingsFxTest {
         private boolean credentials;
         private boolean authorized;
         private int mappings;
+        private boolean keepConnectionPending;
         private final AtomicInteger connectCalls = new AtomicInteger();
+        private final AtomicInteger cancelCalls = new AtomicInteger();
 
         @Override public boolean hasValidCredentials() { return credentials; }
         @Override public boolean isAuthorized() { return authorized; }
         @Override public boolean isOperationRunning() { return false; }
         @Override public int mappingCount() { return mappings; }
-        @Override public void connect(Consumer<Boolean> busy, Runnable stateChanged) {
+        @Override public com.pessoal.agenda.ui.view.GoogleAccountConnectionFlow.ConnectionAttempt connect(
+                Consumer<Boolean> busy, Runnable stateChanged) {
             connectCalls.incrementAndGet();
             busy.accept(true);
+            if (keepConnectionPending) {
+                return () -> {
+                    cancelCalls.incrementAndGet();
+                    keepConnectionPending = false;
+                    busy.accept(false);
+                    stateChanged.run();
+                };
+            }
             authorized = true;
             busy.accept(false);
             stateChanged.run();
+            return () -> {};
         }
         @Override public void disconnect() { authorized = false; }
         @Override public void clearMappings() { mappings = 0; }

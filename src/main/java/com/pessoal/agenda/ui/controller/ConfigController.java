@@ -26,6 +26,7 @@ import javafx.scene.layout.VBox;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
@@ -145,11 +146,16 @@ public class ConfigController {
             @Override public int mappingCount() {
                 return AppContextHolder.get().googleTasksMappingRepository().count();
             }
-            @Override public void connect(Consumer<Boolean> busy, Runnable stateChanged) {
-                GoogleAccountConnectionFlow.start(
+            @Override public GoogleAccountConnectionFlow.ConnectionAttempt connect(
+                    Consumer<Boolean> busy, Runnable stateChanged) {
+                return GoogleAccountConnectionFlow.start(
                         auth, ctx::setStatus, busy,
                         () -> {
                             ctx.setStatus("Conectado ao Google Tasks.");
+                            stateChanged.run();
+                        },
+                        () -> {
+                            ctx.setStatus("Conexão com o Google cancelada. Você pode tentar novamente.");
                             stateChanged.run();
                         },
                         error -> {
@@ -195,6 +201,11 @@ public class ConfigController {
         Button disconnect = new Button("Desconectar");
         disconnect.setId("google-settings-disconnect");
         disconnect.getStyleClass().add("danger-button");
+        Button cancelConnection = new Button("Cancelar conexão");
+        cancelConnection.setId("google-settings-cancel-connect");
+        cancelConnection.getStyleClass().add("danger-button");
+        cancelConnection.setVisible(false);
+        cancelConnection.setManaged(false);
         Button openSync = new Button("Abrir sincronização");
         openSync.setId("google-settings-open-sync");
         openSync.getStyleClass().add("secondary-button");
@@ -208,6 +219,8 @@ public class ConfigController {
 
         Control[] controls = {connect, disconnect, openSync, clearMappings, refresh};
         boolean[] busy = {false};
+        AtomicReference<GoogleAccountConnectionFlow.ConnectionAttempt> connectionAttempt =
+                new AtomicReference<>();
         Runnable refreshState = () -> {
             boolean credentialsReady = actions.hasValidCredentials();
             boolean connected = actions.isAuthorized();
@@ -229,10 +242,21 @@ public class ConfigController {
         Consumer<Boolean> setBusy = value -> {
             busy[0] = value;
             for (Control control : controls) control.setDisable(value);
+            cancelConnection.setVisible(value);
+            cancelConnection.setManaged(value);
+            cancelConnection.setDisable(false);
             if (!value) refreshState.run();
         };
 
-        connect.setOnAction(event -> actions.connect(setBusy, refreshState));
+        connect.setOnAction(event -> connectionAttempt.set(
+                actions.connect(setBusy, refreshState)));
+        cancelConnection.setOnAction(event -> {
+            GoogleAccountConnectionFlow.ConnectionAttempt attempt = connectionAttempt.get();
+            if (attempt == null) return;
+            cancelConnection.setDisable(true);
+            ctx.setStatus("Cancelando conexão com o Google...");
+            attempt.cancel();
+        });
         disconnect.setOnAction(event -> {
             if (actions.isOperationRunning()) {
                 ctx.setStatus("Aguarde a operação Google em andamento terminar.");
@@ -276,7 +300,7 @@ public class ConfigController {
         refresh.setOnAction(event -> refreshState.run());
 
         FlowPane actionsBar = new FlowPane(10, 8,
-                connect, disconnect, openSync, clearMappings, refresh);
+                connect, cancelConnection, disconnect, openSync, clearMappings, refresh);
         actionsBar.setAlignment(Pos.CENTER_LEFT);
         actionsBar.setMaxWidth(Double.MAX_VALUE);
 
@@ -306,7 +330,8 @@ public class ConfigController {
         boolean isAuthorized();
         boolean isOperationRunning();
         int mappingCount();
-        void connect(Consumer<Boolean> busy, Runnable stateChanged);
+        GoogleAccountConnectionFlow.ConnectionAttempt connect(
+                Consumer<Boolean> busy, Runnable stateChanged);
         void disconnect() throws Exception;
         void clearMappings();
         void openSync();

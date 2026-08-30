@@ -53,9 +53,11 @@ public class GoogleTasksSyncWindow {
     private Label  statusLabel;
     private Label  connectionLabel;
     private Button connectBtn;
+    private Button cancelConnectBtn;
     private Button disconnectBtn;
     private Button syncBtn;
     private Button reviewBtn;
+    private GoogleAccountConnectionFlow.ConnectionAttempt authorizationAttempt;
 
     // Google side
     private ComboBox<TaskList>    listCombo;
@@ -99,7 +101,10 @@ public class GoogleTasksSyncWindow {
         Scene scene = new Scene(root, 1060, 660);
         ThemeManager.getInstance().applyTo(scene);
         stage.setScene(scene);
-        stage.setOnHidden(e -> openStage = null);
+        stage.setOnHidden(e -> {
+            cancelAuthorization();
+            openStage = null;
+        });
 
         openStage = stage;
         loadLocalTasks();
@@ -123,13 +128,21 @@ public class GoogleTasksSyncWindow {
         registerGoogleControl(connectBtn);
         connectBtn.setOnAction(e -> doConnect());
 
+        cancelConnectBtn = new Button("Cancelar conexão");
+        cancelConnectBtn.setId("google-cancel-connect");
+        cancelConnectBtn.getStyleClass().add("danger-button");
+        cancelConnectBtn.setVisible(false);
+        cancelConnectBtn.setManaged(false);
+        cancelConnectBtn.setOnAction(e -> cancelAuthorization());
+
         disconnectBtn = new Button("✕  Desconectar");
         disconnectBtn.getStyleClass().add("danger-button");
         registerGoogleControl(disconnectBtn);
         disconnectBtn.setOnAction(e -> doDisconnect());
 
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox header = new HBox(12, title, spacer, connectionLabel, connectBtn, disconnectBtn);
+        HBox header = new HBox(12, title, spacer, connectionLabel,
+                connectBtn, cancelConnectBtn, disconnectBtn);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(14, 18, 12, 18));
         header.getStyleClass().add("header-bar");
@@ -356,20 +369,42 @@ public class GoogleTasksSyncWindow {
     // ── Lógica de conexão ────────────────────────────────────────────────────
 
     private void doConnect() {
-        GoogleAccountConnectionFlow.start(
+        authorizationAttempt = GoogleAccountConnectionFlow.start(
                 auth,
                 this::setStatus,
-                this::setGoogleControlsBusy,
+                this::setAuthorizationBusy,
                 () -> {
-                updateConnectionLabel();
-                refreshConnectButtons();
-                setStatus("✓ Conectado ao Google Tasks!");
-                loadGoogleTaskLists();
+                    authorizationAttempt = null;
+                    updateConnectionLabel();
+                    refreshConnectButtons();
+                    setStatus("✓ Conectado ao Google Tasks!");
+                    loadGoogleTaskLists();
+                },
+                () -> {
+                    authorizationAttempt = null;
+                    refreshConnectButtons();
+                    setStatus("Conexão cancelada. Você pode tentar novamente.");
                 },
                 error -> {
+                    authorizationAttempt = null;
                     refreshConnectButtons();
                     showError("Erro de autorização", error);
                 });
+    }
+
+    private void setAuthorizationBusy(boolean busy) {
+        setGoogleControlsBusy(busy);
+        cancelConnectBtn.setVisible(busy);
+        cancelConnectBtn.setManaged(busy);
+        cancelConnectBtn.setDisable(false);
+    }
+
+    private void cancelAuthorization() {
+        if (authorizationAttempt == null || cancelConnectBtn == null
+                || !cancelConnectBtn.isVisible()) return;
+        cancelConnectBtn.setDisable(true);
+        setStatus("Cancelando conexão com o Google...");
+        authorizationAttempt.cancel();
     }
 
     private void doDisconnect() {

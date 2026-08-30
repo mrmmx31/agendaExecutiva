@@ -4,11 +4,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.net.http.HttpTimeoutException;
+import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CancellationException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -47,6 +49,27 @@ class GoogleTasksTransportTest {
                 () -> GoogleAuthService.extractAuthorizationCode(
                         "GET /?code=sensitive-code&state=other-state HTTP/1.1",
                         "expected-state"));
+    }
+
+    @Test
+    void authorizationSessionClosesCallbackServerWhenCancelled() throws Exception {
+        GoogleAuthService.AuthorizationSession session =
+                GoogleAuthService.getInstance().newAuthorizationSession();
+        ServerSocket callbackServer = new ServerSocket(0);
+        session.attach(callbackServer);
+
+        session.cancel();
+
+        assertTrue(session.isCancelled());
+        assertTrue(callbackServer.isClosed());
+
+        ServerSocket lateServer = new ServerSocket(0);
+        try {
+            assertThrows(CancellationException.class, () -> session.attach(lateServer));
+            assertTrue(lateServer.isClosed());
+        } finally {
+            lateServer.close();
+        }
     }
 
     @Test

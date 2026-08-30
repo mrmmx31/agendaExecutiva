@@ -12,6 +12,9 @@ import java.time.Duration;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
@@ -128,12 +131,25 @@ public class GoogleAuthService {
     public void authorize(Consumer<String> progressCallback,
                           Consumer<String> authorizationUrlCallback,
                           boolean openBrowser) throws Exception {
+        newAuthorizationSession().authorize(
+                progressCallback, authorizationUrlCallback, openBrowser);
+    }
+
+    public AuthorizationSession newAuthorizationSession() {
+        return new AuthorizationSession();
+    }
+
+    private void authorize(Consumer<String> progressCallback,
+                           Consumer<String> authorizationUrlCallback,
+                           boolean openBrowser,
+                           AuthorizationSession session) throws Exception {
         if (!hasValidCredentials()) {
             throw new IllegalStateException(
                 "Credenciais não encontradas em: " + CREDENTIALS_PATH);
         }
 
         try (ServerSocket callbackServer = new ServerSocket(0)) {
+            session.attach(callbackServer);
             String redirectUri = "http://localhost:" + callbackServer.getLocalPort();
             String state = newAuthorizationState();
             String authUrl = buildAuthorizationUrl(authUri, clientId, redirectUri, state);
@@ -165,10 +181,13 @@ public class GoogleAuthService {
             }
 
             if (progressCallback != null) progressCallback.accept("Aguardando autorização do Google...");
-            String code = waitForAuthCode(callbackServer, state);
+            String code = waitForAuthCode(callbackServer, state, session);
 
+            session.throwIfCancelled();
             if (progressCallback != null) progressCallback.accept("Trocando código por tokens...");
             exchangeCodeForTokens(code, redirectUri);
+        } finally {
+            session.detach();
         }
 
         if (progressCallback != null) progressCallback.accept("Conectado com sucesso!");
@@ -198,7 +217,8 @@ public class GoogleAuthService {
 
     // ── Internals ────────────────────────────────────────────────────────────
 
-    private String waitForAuthCode(ServerSocket server, String expectedState) throws Exception {
+    private String waitForAuthCode(ServerSocket server, String expectedState,
+                                   AuthorizationSession session) throws Exception {
         server.setSoTimeout(120_000); // 2 minutos
         try (Socket client = server.accept()) {
             BufferedReader reader = new BufferedReader(
@@ -206,6 +226,64 @@ public class GoogleAuthService {
             String code = extractAuthorizationCode(reader.readLine(), expectedState);
             writeAuthorizationSuccess(client);
             return code;
+        } catch (SocketException error) {
+            if (session.isCancelled()) {
+                throw new CancellationException("Autorização cancelada pelo usuário.");
+            }
+            throw error;
+        }
+    }
+
+    public final class AuthorizationSession {
+        private final AtomicBoolean cancelled = new AtomicBoolean();
+        private final AtomicReference<ServerSocket> callbackServer = new AtomicReference<>();
+
+        private AuthorizationSession() {}
+
+        public void authorize(Consumer<String> progressCallback,
+                              Consumer<String> authorizationUrlCallback,
+                              boolean openBrowser) throws Exception {
+            GoogleAuthService.this.authorize(
+                    progressCallback, authorizationUrlCallback, openBrowser, this);
+        }
+
+        public void cancel() {
+            cancelled.set(true);
+            closeQuietly(callbackServer.getAndSet(null));
+        }
+
+        public boolean isCancelled() {
+            return cancelled.get();
+        }
+
+        void attach(ServerSocket server) {
+            if (!callbackServer.compareAndSet(null, server)) {
+                closeQuietly(server);
+                throw new IllegalStateException("Sessão de autorização já iniciada.");
+            }
+            if (cancelled.get()) {
+                closeQuietly(callbackServer.getAndSet(null));
+                throw new CancellationException("Autorização cancelada pelo usuário.");
+            }
+        }
+
+        void throwIfCancelled() {
+            if (cancelled.get()) {
+                throw new CancellationException("Autorização cancelada pelo usuário.");
+            }
+        }
+
+        private void detach() {
+            callbackServer.set(null);
+        }
+
+        private void closeQuietly(ServerSocket server) {
+            if (server == null) return;
+            try {
+                server.close();
+            } catch (IOException ignored) {
+                // O fechamento é apenas o sinal cooperativo de cancelamento.
+            }
         }
     }
 

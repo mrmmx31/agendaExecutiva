@@ -346,24 +346,24 @@ public class GoogleTasksSyncService {
             taskRepository.updateFromGoogle(local.id(), normalizedTitle(google.title()),
                     blankToNull(google.notes()), remoteDueDate(google));
             counters.updatedLocal++;
-            log.add("Texto atualizado localmente: " + change.title());
+            log.add("Texto atualizado localmente: " + displayTitle(google.title()));
         } else if (change.updateRemoteText()) {
             gateway.updateTask(googleListId, google.id(), local.title(),
                     local.notes(), local.dueDate());
             counters.updatedGoogle++;
-            log.add("Texto atualizado no Google: " + change.title());
+            log.add("Texto atualizado no Google: " + displayTitle(local.title()));
         }
 
         if (change.updateLocalStatus()) {
             if (google.completed()) taskRepository.markDone(local.id());
             else taskRepository.reopen(local.id());
             counters.statusChangedLocal++;
-            log.add("Status atualizado localmente: " + change.title());
+            log.add("Status atualizado localmente: " + displayTitle(google.title()));
         } else if (change.updateRemoteStatus()) {
             if (local.done()) gateway.completeTask(googleListId, google.id());
             else gateway.reopenTask(googleListId, google.id());
             counters.statusChangedGoogle++;
-            log.add("Status atualizado no Google: " + change.title());
+            log.add("Status atualizado no Google: " + displayTitle(local.title()));
         }
 
         boolean changed = change.updateLocalText() || change.updateRemoteText()

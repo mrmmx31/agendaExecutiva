@@ -201,6 +201,7 @@ class GoogleTasksSyncServiceTest {
 
         assertEquals(1, changed.updatedLocal());
         assertEquals("Alterado no Google", taskRepository.findById(localId).orElseThrow().title());
+        assertEquals(List.of("Texto atualizado localmente: Alterado no Google"), changed.log());
         assertFalse(repeated.hasChanges());
         assertEquals(0, gateway.updateCalls.get());
     }
@@ -340,6 +341,8 @@ class GoogleTasksSyncServiceTest {
         assertEquals(1, remoteResult.statusChangedGoogle());
         assertFalse(gateway.tasks.get(0).completed());
         assertEquals(1, gateway.reopenCalls.get());
+        assertEquals(List.of("Status atualizado no Google: Reabrir remoto"),
+                remoteResult.log());
 
         gateway.tasks.add(task("google-2", "Reabrir local", null, TODAY, true));
         service.syncBidirectional("list-1");
@@ -350,6 +353,8 @@ class GoogleTasksSyncServiceTest {
 
         assertEquals(1, localResult.statusChangedLocal());
         assertFalse(taskRepository.findById(secondMapping.localTaskId()).orElseThrow().done());
+        assertEquals(List.of("Status atualizado localmente: Reabrir local"),
+                localResult.log());
     }
 
     @Test

@@ -7,21 +7,25 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | Registra atualização local para Google |
-| Data | 2026-08-30 08:55:32 -0400 |
+| Mensagem | Corrige título exibido no log da sincronização |
+| Data | 2026-08-30 09:10:52 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
 SPEC.md
+src/main/java/com/pessoal/agenda/service/GoogleTasksSyncService.java
+src/test/java/com/pessoal/agenda/service/GoogleTasksSyncServiceTest.java
 ```
 
 ## Diff Resumido
 
 ```diff
- SPEC.md | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ SPEC.md                                                      | 12 ++++++++++--
+ .../com/pessoal/agenda/service/GoogleTasksSyncService.java   |  8 ++++----
+ .../pessoal/agenda/service/GoogleTasksSyncServiceTest.java   |  5 +++++
+ 3 files changed, 19 insertions(+), 6 deletions(-)
 ```
 
 ---

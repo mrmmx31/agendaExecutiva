@@ -1101,6 +1101,14 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 
 **Resultado:** somente o texto de status passa a ceder largura e exibir reticências, mantendo o conteúdo completo em tooltip. Botões do cabeçalho, sincronização, ações manuais, log e rodapé preservam sua largura preferida; as ações manuais continuam quebrando linha. Teste JavaFX em rodapé de 310 px confirma que `Atualizar` e `Fechar` permanecem integrais e sem sobreposição. A suíte padrão aprovou 123 testes e o perfil JavaFX aprovou 188.
 
+### GSYNC-03.5 — Título correto no log bidirecional
+
+**Status:** Concluído em 2026-08-30.
+
+**Problema:** na atualização Google → local, a operação era aplicada corretamente, mas o log exibia o título local anterior porque a mensagem reutilizava o objeto capturado antes da mutação.
+
+**Resultado:** mensagens de texto e status agora usam explicitamente o título do lado que originou a alteração: Google nas atualizações locais e local nas atualizações remotas. Um teste de regressão exige que uma edição remota registre o novo título recebido. A suíte padrão aprovou 123 testes e o perfil JavaFX aprovou 188, sem acessar a conta ou a rede Google.
+
 ### GSYNC-04 — Interface e validação controlada
 
 **Status:** Concluído em 2026-08-27.
@@ -1124,7 +1132,7 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 
 **Status operacional:** Em andamento em 2026-08-30, 63% (5 de 8 verificações concluídas). Este percentual não reduz os 100% do pacote automatizado.
 
-**Evidência segura registrada:** após a conexão e a primeira sincronização executadas pelo usuário, `PRAGMA quick_check` permaneceu `ok`. O banco contém 22 vínculos em duas listas, sem IDs Google duplicados, tarefas locais duplicadamente vinculadas ou referências locais órfãs. Em comparação ao backup pré-teste, cinco vínculos são novos: três pertencem a tarefas locais preexistentes, evidência compatível com exportação, e dois pertencem a tarefas locais novas, evidência compatível com importação. Nenhuma tarefa local preexistente foi removida. Existem 17 vínculos ativos e cinco vínculos preexistentes agora marcados como conflito, que ainda exigem revisão explícita. A repetição na lista `Minhas tarefas` apresentou zero criações, atualizações, mudanças de status e revisões; terminou com `nenhuma alteração detectada`, mantendo contagens e integridade locais inalteradas. A primeira etapa do `LIVE-06` importou o item descartável com exatamente `1 criar local` e zero nas demais ações. O banco permaneceu íntegro e confirmou uma única tarefa local, um único vínculo `ACTIVE` e nenhuma duplicação para o ID Google. O título retornado pelo Google continha um espaço inicial, preservado igualmente na tarefa e no snapshot. Em seguida, a edição local para `TESTE Agenda 2026-08-30 02 LOCAL` produziu exatamente `1 atualizar Google`. Nova inspeção confirmou `quick_check = ok`, unicidade do item e snapshot `ACTIVE` idêntico ao título local, sem criação adicional.
+**Evidência segura registrada:** após a conexão e a primeira sincronização executadas pelo usuário, `PRAGMA quick_check` permaneceu `ok`. O banco contém 22 vínculos em duas listas, sem IDs Google duplicados, tarefas locais duplicadamente vinculadas ou referências locais órfãs. Em comparação ao backup pré-teste, cinco vínculos são novos: três pertencem a tarefas locais preexistentes, evidência compatível com exportação, e dois pertencem a tarefas locais novas, evidência compatível com importação. Nenhuma tarefa local preexistente foi removida. Existem 17 vínculos ativos e cinco vínculos preexistentes agora marcados como conflito, que ainda exigem revisão explícita. A repetição na lista `Minhas tarefas` apresentou zero criações, atualizações, mudanças de status e revisões; terminou com `nenhuma alteração detectada`, mantendo contagens e integridade locais inalteradas. A primeira etapa do `LIVE-06` importou o item descartável com exatamente `1 criar local` e zero nas demais ações. O banco permaneceu íntegro e confirmou uma única tarefa local, um único vínculo `ACTIVE` e nenhuma duplicação para o ID Google. O título retornado pelo Google continha um espaço inicial, preservado igualmente na tarefa e no snapshot. Em seguida, a edição local para `TESTE Agenda 2026-08-30 02 LOCAL` produziu exatamente `1 atualizar Google`. Nova inspeção confirmou `quick_check = ok`, unicidade do item e snapshot `ACTIVE` idêntico ao título local, sem criação adicional. A edição inversa para `TESTE Agenda 2026-08-30 03 GOOGLE` produziu exatamente `1 atualizar local`; tarefa e snapshot assumiram o novo título, permaneceram únicos e `ACTIVE`. O log exibiu indevidamente o título anterior, originando a correção `GSYNC-03.5`, sem perda ou divergência de dados.
 
 **Checklist ao vivo:**
 
@@ -1137,7 +1145,7 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 - [ ] LIVE-07 — Revisar os cinco conflitos existentes e validar uma exclusão controlada
 - [ ] LIVE-08 — Cancelar uma autorização pendente, tentar novamente e validar reconexão
 
-**Próxima ação:** continuar `LIVE-06` no sentido Google → local. Editar somente o mesmo item no Google Tasks para o título `TESTE Agenda 2026-08-30 03 GOOGLE` e sincronizar a mesma lista. A prévia esperada é exatamente `1 atualizar local` e zero nas demais ações; qualquer contagem diferente deve ser cancelada sem aplicar.
+**Próxima ação:** continuar `LIVE-06` no sentido local → Google para status. Marcar somente a tarefa local `TESTE Agenda 2026-08-30 03 GOOGLE` como concluída e sincronizar a mesma lista. A prévia esperada é exatamente `1 status Google` e zero nas demais ações; qualquer contagem diferente deve ser cancelada sem aplicar.
 
 ## 27. Implementação da interrupção e retomada
 

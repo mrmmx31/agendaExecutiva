@@ -1,20 +1,23 @@
 package com.pessoal.agenda.ui.view;
 
+import com.pessoal.agenda.app.AppContextHolder;
 import com.pessoal.agenda.model.Task;
 import com.pessoal.agenda.model.TaskSession;
 import com.pessoal.agenda.repository.TaskSessionRepository;
+import com.pessoal.agenda.service.FocusContextService;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
@@ -29,12 +32,14 @@ public class TaskTimerWindow {
 
     private final Task task;
     private final TaskSessionRepository repo;
+    private final FocusContextService focusContextService;
     private Stage stage;
 
     // UI
     private Button playPauseBtn;
     private Button stopBtn;
     private Button resetBtn;
+    private Button interruptBtn;
     private Button compactBtn;
     private Label timerLabel;
     private Label compactTimerLabel;
@@ -43,6 +48,7 @@ public class TaskTimerWindow {
     private ListView<TaskSession> historyList;
     private Stage compactStage;
     private ToggleButton compactPlayPauseBtn;
+    private Button compactInterruptBtn;
     private boolean alwaysOnTopEnabled = false;
     private boolean transitioningToCompact = false;
     private boolean transitioningToMain = false;
@@ -56,7 +62,15 @@ public class TaskTimerWindow {
     private java.util.function.Consumer<Long> tickListener;
 
     public TaskTimerWindow(Task task, TaskSessionRepository repo, Runnable refreshCallback) {
-        this.task = task; this.repo = repo; this.refreshCallback = refreshCallback;
+        this(task, repo, refreshCallback, AppContextHolder.get().focusContextService());
+    }
+
+    TaskTimerWindow(Task task, TaskSessionRepository repo, Runnable refreshCallback,
+                    FocusContextService focusContextService) {
+        this.task = task;
+        this.repo = repo;
+        this.refreshCallback = refreshCallback;
+        this.focusContextService = focusContextService;
         this.tickListener = sec -> {
             var timerService = com.pessoal.agenda.service.TaskTimerService.get();
             if (timerService.getActiveTaskId() != null && timerService.getActiveTaskId().equals(task.id())) {
@@ -78,11 +92,11 @@ public class TaskTimerWindow {
             return;
         }
 
-        stage = new Stage();
+        stage = WindowManager.createModelessStage();
         openWindows.put(task.id(), stage);
-        WindowManager.register(stage);
-        stage.initModality(Modality.NONE);
         stage.setTitle("Timer — " + task.title());
+        stage.setMinWidth(760);
+        stage.setMinHeight(500);
 
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app-root");
@@ -90,6 +104,7 @@ public class TaskTimerWindow {
         // ── Barra superior elegante ──
         Label title = new Label("Timer da tarefa");
         title.getStyleClass().add("page-title");
+        ResponsiveWindowLayout.makeFlexible(title);
         Label typeBadge = new Label(task.priority() != null ? "  " + task.priority().label() + "  " : "  NORMAL  ");
         typeBadge.getStyleClass().addAll("study-badge", "badge-type");
         HBox headerBar = new HBox(10, title, typeBadge);
@@ -109,14 +124,23 @@ public class TaskTimerWindow {
 
         // Coluna esquerda: metadados, controles, notas
         VBox left = new VBox(16);
-        left.setPrefWidth(360);
+        left.setPrefWidth(420);
+        left.setMinWidth(0);
+        left.setMaxWidth(Double.MAX_VALUE);
 
         GridPane metaGrid = new GridPane();
         metaGrid.setHgap(8);
         metaGrid.setVgap(6);
+        ColumnConstraints metaNameColumn = new ColumnConstraints();
+        metaNameColumn.setMinWidth(82);
+        ColumnConstraints metaValueColumn = new ColumnConstraints();
+        metaValueColumn.setHgrow(Priority.ALWAYS);
+        metaGrid.getColumnConstraints().addAll(metaNameColumn, metaValueColumn);
         metaGrid.add(new Label("Tarefa:"), 0, 0);
         Label taskTitleLbl = new Label(task.title());
         taskTitleLbl.getStyleClass().add("section-title");
+        taskTitleLbl.setWrapText(true);
+        taskTitleLbl.setMaxWidth(Double.MAX_VALUE);
         metaGrid.add(taskTitleLbl, 1, 0);
         metaGrid.add(new Label("Categoria:"), 0, 1);
         Label catLbl = new Label(task.category() == null ? "Geral" : task.category());
@@ -139,11 +163,17 @@ public class TaskTimerWindow {
         resetBtn = new Button("⟲");
         resetBtn.getStyleClass().addAll("secondary-button", "icon-button");
         resetBtn.setPrefWidth(56);
+        interruptBtn = new Button("Fui interrompido");
+        interruptBtn.setId("task-timer-interrupt");
+        interruptBtn.getStyleClass().add("secondary-button");
+        interruptBtn.setTooltip(new Tooltip("Pausar e guardar onde você parou"));
         compactBtn = new Button("🗕");
+        compactBtn.setId("task-timer-compact");
         compactBtn.getStyleClass().addAll("secondary-button", "icon-button");
         compactBtn.setPrefWidth(56);
         compactBtn.setTooltip(new Tooltip("Modo mini flutuante"));
-        HBox controls = new HBox(8, playPauseBtn, stopBtn, resetBtn, compactBtn, timerLabel);
+        FlowPane controls = new FlowPane(8, 6,
+                playPauseBtn, stopBtn, resetBtn, interruptBtn, compactBtn, timerLabel);
         controls.setAlignment(Pos.CENTER_LEFT);
 
         CheckBox pinTopCheck = new CheckBox("Sempre no topo");
@@ -166,12 +196,19 @@ public class TaskTimerWindow {
 
         // Coluna direita: histórico e total
         VBox right = new VBox(12);
-        right.setPrefWidth(260);
+        right.setPrefWidth(320);
+        right.setMinWidth(0);
+        right.setMaxWidth(Double.MAX_VALUE);
         Label histTitle = new Label("Histórico de sessões");
         histTitle.getStyleClass().add("section-title");
         historyList = new ListView<>();
         historyList.setPrefHeight(260);
         historyList.setCellFactory(lv -> new ListCell<>() {
+            {
+                setWrapText(true);
+                prefWidthProperty().bind(lv.widthProperty().subtract(24));
+            }
+
             @Override
             protected void updateItem(TaskSession item, boolean empty) {
                 super.updateItem(item, empty);
@@ -193,7 +230,7 @@ public class TaskTimerWindow {
 
         main.getChildren().addAll(left, right);
         HBox.setHgrow(left, Priority.ALWAYS);
-        HBox.setHgrow(right, Priority.NEVER);
+        HBox.setHgrow(right, Priority.ALWAYS);
 
         root.setCenter(main);
 
@@ -201,9 +238,10 @@ public class TaskTimerWindow {
         playPauseBtn.setOnAction(e -> toggle());
         stopBtn.setOnAction(e -> stopAndSave());
         resetBtn.setOnAction(e -> resetCounter());
+        interruptBtn.setOnAction(e -> interruptFocus());
         compactBtn.setOnAction(e -> openCompactWindow());
 
-        Scene sc = new Scene(root, 700, 440);
+        Scene sc = new Scene(root, 860, 540);
         ThemeManager.getInstance().applyTo(sc);
         stage.setScene(sc);
         stage.setAlwaysOnTop(alwaysOnTopEnabled);
@@ -225,7 +263,7 @@ public class TaskTimerWindow {
 
         loadHistory();
         updateTotalLabel();
-        stage.show();
+        WindowManager.show(stage);
     }
 
     private void openCompactWindow() {
@@ -234,21 +272,22 @@ public class TaskTimerWindow {
         }
         transitioningToCompact = true;
         stage.hide();
-        compactStage.show();
+        WindowManager.show(compactStage);
         compactStage.toFront();
         applyAlwaysOnTop();
         syncPlayButtons();
     }
 
     private Stage buildCompactStage() {
-        Stage mini = new Stage();
-        mini.initModality(Modality.NONE);
+        Stage mini = WindowManager.createModelessStage();
         mini.initStyle(StageStyle.UNDECORATED);
         mini.setTitle("Timer mini — " + task.title());
 
         Label miniTitle = new Label("⏱ " + task.title());
         miniTitle.getStyleClass().add("t-heading-sm");
-        miniTitle.setWrapText(true);
+        miniTitle.setTextOverrun(OverrunStyle.ELLIPSIS);
+        miniTitle.setMaxWidth(150);
+        miniTitle.setTooltip(new Tooltip(task.title()));
 
         compactTimerLabel = new Label("00:00:00");
         compactTimerLabel.getStyleClass().add("page-title");
@@ -262,6 +301,13 @@ public class TaskTimerWindow {
         miniStopBtn.getStyleClass().add("danger-button");
         miniStopBtn.setPrefWidth(46);
         miniStopBtn.setOnAction(e -> stopAndSave());
+
+        compactInterruptBtn = new Button("↪");
+        compactInterruptBtn.setId("compact-task-timer-interrupt");
+        compactInterruptBtn.getStyleClass().addAll("secondary-button", "icon-button");
+        compactInterruptBtn.setTooltip(new Tooltip("Fui interrompido"));
+        compactInterruptBtn.setPrefWidth(46);
+        compactInterruptBtn.setOnAction(e -> interruptFocus());
 
         Button expandBtn = new Button("⤢");
         expandBtn.getStyleClass().add("secondary-button");
@@ -279,16 +325,15 @@ public class TaskTimerWindow {
             applyAlwaysOnTop();
         });
 
-        HBox row1 = new HBox(6, compactPlayPauseBtn, miniStopBtn, expandBtn);
+        HBox row1 = new HBox(6, compactPlayPauseBtn, miniStopBtn, compactInterruptBtn);
         row1.setAlignment(Pos.CENTER);
-        HBox row2 = new HBox(6, pinBtn);
+        HBox row2 = new HBox(6, pinBtn, expandBtn);
         row2.setAlignment(Pos.CENTER_RIGHT);
 
         VBox root = new VBox(8, miniTitle, compactTimerLabel, row1, row2);
         root.setPadding(new Insets(10));
         root.setAlignment(Pos.CENTER);
-        root.getStyleClass().add("section-card");
-        root.setStyle("-fx-border-color: -t-pri-bd; -fx-border-width: 1.2; -fx-background-radius: 10; -fx-border-radius: 10;");
+        root.getStyleClass().addAll("section-card", "compact-timer-root");
 
         final double[] dragOffsetX = new double[1];
         final double[] dragOffsetY = new double[1];
@@ -304,6 +349,7 @@ public class TaskTimerWindow {
         Scene miniScene = new Scene(root, 170, 165);
         ThemeManager.getInstance().applyTo(miniScene);
         mini.setScene(miniScene);
+        WindowManager.preservePlacement(mini);
         mini.setAlwaysOnTop(alwaysOnTopEnabled);
         mini.setOnHiding(e -> {
             if (transitioningToMain) {
@@ -320,7 +366,7 @@ public class TaskTimerWindow {
         if (compactStage == null || stage == null) return;
         transitioningToMain = true;
         compactStage.hide();
-        stage.show();
+        WindowManager.show(stage);
         stage.toFront();
         stage.requestFocus();
         applyAlwaysOnTop();
@@ -348,6 +394,40 @@ public class TaskTimerWindow {
         timerService.pause();
         syncPlayButtons();
         if (refreshCallback != null) Platform.runLater(refreshCallback);
+    }
+
+    private synchronized void interruptFocus() {
+        var timerService = com.pessoal.agenda.service.TaskTimerService.get();
+        boolean activeHere = java.util.Objects.equals(task.id(), timerService.getActiveTaskId());
+        if (!activeHere) return;
+
+        boolean resumeIfCancelled = timerService.isRunning();
+        if (resumeIfCancelled) timerService.pause();
+        syncPlayButtons();
+        notifyRefresh();
+
+        String currentNote = currentResumeNote();
+        boolean saved = FocusInterruptionDialog.show(task, currentNote,
+                note -> focusContextService.interrupt(task.id(), note));
+
+        if (!saved && resumeIfCancelled
+                && java.util.Objects.equals(task.id(), timerService.getActiveTaskId())
+                && !timerService.isRunning()) {
+            timerService.resume();
+        }
+        syncPlayButtons();
+        notifyRefresh();
+    }
+
+    private String currentResumeNote() {
+        try {
+            return focusContextService.current()
+                    .filter(context -> context.taskId() == task.id())
+                    .map(context -> context.resumeNote())
+                    .orElse("");
+        } catch (RuntimeException error) {
+            return "";
+        }
     }
 
     // Não há mais tick local
@@ -379,6 +459,7 @@ public class TaskTimerWindow {
         long s = Math.max(0, elapsedSeconds);
         int minutes = s <= 0 ? 0 : (int) Math.ceil(s / 60.0);
         Dialog<ButtonType> dlg = new Dialog<>();
+        WindowManager.prepare(dlg);
         dlg.setTitle("Salvar sessão"); dlg.setHeaderText("Salvar sessão de trabalho para a tarefa?");
         ButtonType saveBtn = new ButtonType("Salvar", ButtonBar.ButtonData.OK_DONE);
         dlg.getDialogPane().getButtonTypes().addAll(saveBtn, ButtonType.CANCEL);
@@ -435,10 +516,16 @@ public class TaskTimerWindow {
         boolean activeHere = timerService.getActiveTaskId() != null && timerService.getActiveTaskId().equals(task.id());
         boolean runningHere = activeHere && timerService.isRunning();
         if (playPauseBtn != null) playPauseBtn.setText(runningHere ? "⏸" : "▶");
+        if (interruptBtn != null) interruptBtn.setDisable(!activeHere);
         if (compactPlayPauseBtn != null) {
             compactPlayPauseBtn.setSelected(runningHere);
             compactPlayPauseBtn.setText(runningHere ? "⏸" : "▶");
         }
+        if (compactInterruptBtn != null) compactInterruptBtn.setDisable(!activeHere);
+    }
+
+    private void notifyRefresh() {
+        if (refreshCallback != null) Platform.runLater(refreshCallback);
     }
 
     private void applyAlwaysOnTop() {
@@ -497,6 +584,7 @@ public class TaskTimerWindow {
         }
 
         Dialog<ButtonType> dlg = new Dialog<>();
+        WindowManager.prepare(dlg);
         dlg.setTitle("Editar sessão de hoje");
         dlg.setHeaderText("Atualize o tempo e as observações da sessão selecionada.");
         ButtonType saveBtn = new ButtonType("Salvar alterações", ButtonBar.ButtonData.OK_DONE);
@@ -524,5 +612,3 @@ public class TaskTimerWindow {
         });
     }
 }
-
-

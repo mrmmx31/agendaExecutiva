@@ -95,6 +95,23 @@ public class TaskTimerService {
         }
         notifyStateListeners();
     }
+
+    public synchronized void restore(long taskId, long restoredElapsedSeconds,
+                                     boolean resumeImmediately) {
+        if (taskId <= 0 || restoredElapsedSeconds < 0) {
+            throw new IllegalArgumentException("Estado de timer inválido");
+        }
+        if (timerFuture != null) {
+            timerFuture.cancel(false);
+            timerFuture = null;
+        }
+        activeTaskId = taskId;
+        elapsedSeconds.set(restoredElapsedSeconds);
+        running = false;
+        notifyTickListeners(restoredElapsedSeconds);
+        if (resumeImmediately) resume();
+        else notifyStateListeners();
+    }
     public void addStateListener(Runnable listener) {
         synchronized (stateListeners) { stateListeners.add(listener); }
     }
@@ -111,8 +128,8 @@ public class TaskTimerService {
         }
     }
 
-    public Long getActiveTaskId() { return activeTaskId; }
-    public boolean isRunning() { return running; }
+    public synchronized Long getActiveTaskId() { return activeTaskId; }
+    public synchronized boolean isRunning() { return running; }
     public long getElapsedSeconds() { return elapsedSeconds.get(); }
 
     // Novo: permite múltiplos listeners
@@ -121,5 +138,13 @@ public class TaskTimerService {
     }
     public void removeTickListener(Consumer<Long> listener) {
         synchronized (tickListeners) { tickListeners.remove(listener); }
+    }
+
+    private void notifyTickListeners(long seconds) {
+        java.util.List<Consumer<Long>> copy;
+        synchronized (tickListeners) { copy = new java.util.ArrayList<>(tickListeners); }
+        for (Consumer<Long> listener : copy) {
+            try { listener.accept(seconds); } catch (Exception ignored) {}
+        }
     }
 }

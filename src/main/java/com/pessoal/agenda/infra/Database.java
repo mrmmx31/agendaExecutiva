@@ -15,22 +15,30 @@ public class Database {
     private final String jdbcUrl;
 
     public Database() {
-        this.jdbcUrl = resolveJdbcUrl();
+        this(defaultDatabasePath());
     }
 
-    private String resolveJdbcUrl() {
-        Path appDir = Path.of(System.getProperty("user.home"), ".agenda-pessoal");
+    public Database(Path databaseFile) {
+        Path absoluteFile = databaseFile.toAbsolutePath();
         try {
-            Files.createDirectories(appDir);
+            Files.createDirectories(absoluteFile.getParent());
         } catch (IOException e) {
             throw new RuntimeException("Nao foi possivel criar diretorio de dados", e);
         }
-        return "jdbc:sqlite:" + appDir.resolve("agenda.db");
+        this.jdbcUrl = "jdbc:sqlite:" + absoluteFile;
+    }
+
+    private static Path defaultDatabasePath() {
+        return Path.of(System.getProperty("user.home"), ".agenda-pessoal", "agenda.db");
     }
 
     /** Abre uma nova conexao JDBC. O chamador e responsavel por fechar. */
     public Connection connect() throws SQLException {
-        return DriverManager.getConnection(jdbcUrl);
+        Connection connection = DriverManager.getConnection(jdbcUrl);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("PRAGMA foreign_keys = ON");
+        }
+        return connection;
     }
 
     // ── Helpers compartilhados por repositorios ────────────────────────────
@@ -307,6 +315,7 @@ public class Database {
         // Categorias para checklist, estudos e ideias
         applyAlterIfMissing("ALTER TABLE checklist_items ADD COLUMN category TEXT NOT NULL DEFAULT 'Geral'");
         applyAlterIfMissing("ALTER TABLE study_sessions ADD COLUMN category TEXT NOT NULL DEFAULT 'Geral'");
+        applyAlterIfMissing("ALTER TABLE study_sessions ADD COLUMN task_id INTEGER");
         applyAlterIfMissing("ALTER TABLE project_ideas ADD COLUMN category TEXT NOT NULL DEFAULT 'Geral'");
         // Horário, prioridade e status nas tarefas
         applyAlterIfMissing("ALTER TABLE tasks ADD COLUMN start_time TEXT");
@@ -359,6 +368,141 @@ public class Database {
                 UNIQUE(local_task_id),
                 UNIQUE(google_list_id, google_task_id)
             )""");
+        applyAlterIfMissing("ALTER TABLE google_tasks_mapping ADD COLUMN synced_title TEXT");
+        applyAlterIfMissing("ALTER TABLE google_tasks_mapping ADD COLUMN synced_notes TEXT");
+        applyAlterIfMissing("ALTER TABLE google_tasks_mapping ADD COLUMN synced_due_date TEXT");
+        applyAlterIfMissing("ALTER TABLE google_tasks_mapping ADD COLUMN synced_done INTEGER");
+        applyAlterIfMissing("ALTER TABLE google_tasks_mapping ADD COLUMN google_updated_at TEXT");
+        applyAlterIfMissing("ALTER TABLE google_tasks_mapping ADD COLUMN sync_state TEXT NOT NULL DEFAULT 'ACTIVE'");
+
+        applyDailyPlanMigration();
+        applyInboxCaptureMigration();
+        applyFocusContextMigration();
+        applyTimerRecoveryMigration();
+        applyLocalMetricsMigration();
+    }
+
+    private void applyDailyPlanMigration() {
+        try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
+            conn.setAutoCommit(false);
+            try {
+                stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS daily_plans (
+                        plan_date TEXT PRIMARY KEY,
+                        capacity TEXT NOT NULL DEFAULT 'NORMAL'
+                            CHECK (capacity IN ('NORMAL', 'REDUCED')),
+                        created_at TEXT NOT NULL,
+                        closed_at TEXT,
+                        closing_note TEXT
+                    )""");
+                stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS daily_plan_items (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        plan_date TEXT NOT NULL,
+                        task_id INTEGER NOT NULL,
+                        role TEXT NOT NULL CHECK (role IN ('ESSENTIAL', 'SUPPORT')),
+                        position INTEGER NOT NULL,
+                        FOREIGN KEY (plan_date) REFERENCES daily_plans(plan_date) ON DELETE CASCADE,
+                        FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+                        UNIQUE(plan_date, task_id),
+                        UNIQUE(plan_date, role, position),
+                        CHECK (
+                            (role = 'ESSENTIAL' AND position = 0)
+                            OR (role = 'SUPPORT' AND position BETWEEN 0 AND 1)
+                        )
+                    )""");
+                stmt.execute("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_plan_one_essential
+                    ON daily_plan_items(plan_date)
+                    WHERE role = 'ESSENTIAL'
+                    """);
+                conn.commit();
+            } catch (SQLException migrationError) {
+                conn.rollback();
+                throw migrationError;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erro ao migrar planos diarios", e);
+        }
+    }
+
+    private void applyInboxCaptureMigration() {
+        try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
+            conn.setAutoCommit(false);
+            try {
+                stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS inbox_captures (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        raw_text TEXT NOT NULL CHECK (length(trim(raw_text)) > 0),
+                        kind TEXT NOT NULL DEFAULT 'UNCLASSIFIED'
+                            CHECK (kind IN (
+                                'UNCLASSIFIED', 'TASK', 'IDEA',
+                                'INTERRUPTION_NOTE', 'ARCHIVED'
+                            )),
+                        created_at TEXT NOT NULL,
+                        triaged_at TEXT,
+                        target_id INTEGER CHECK (target_id IS NULL OR target_id > 0),
+                        CHECK (
+                            (kind = 'UNCLASSIFIED' AND triaged_at IS NULL AND target_id IS NULL)
+                            OR (kind <> 'UNCLASSIFIED' AND triaged_at IS NOT NULL)
+                        )
+                    )""");
+                stmt.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_inbox_captures_kind_created
+                    ON inbox_captures(kind, created_at DESC, id DESC)
+                    """);
+                conn.commit();
+            } catch (SQLException migrationError) {
+                conn.rollback();
+                throw migrationError;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erro ao migrar caixa de entrada universal", e);
+        }
+    }
+
+    private void applyFocusContextMigration() {
+        applyCreateIfMissing("""
+                CREATE TABLE IF NOT EXISTS focus_context (
+                    task_id INTEGER PRIMARY KEY,
+                    resume_note TEXT NOT NULL CHECK (length(trim(resume_note)) > 0),
+                    interrupted_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+                )
+                """);
+    }
+
+    private void applyTimerRecoveryMigration() {
+        applyCreateIfMissing("""
+                CREATE TABLE IF NOT EXISTS timer_recovery (
+                    singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+                    task_id INTEGER NOT NULL,
+                    elapsed_seconds INTEGER NOT NULL CHECK (elapsed_seconds >= 0),
+                    was_running INTEGER NOT NULL CHECK (was_running IN (0, 1)),
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+                )
+                """);
+    }
+
+    private void applyLocalMetricsMigration() {
+        applyCreateIfMissing("""
+                CREATE TABLE IF NOT EXISTS local_metric_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    metric_type TEXT NOT NULL CHECK (metric_type IN (
+                        'FOCUS_START_SECONDS',
+                        'QUICK_CAPTURE_ACTIONS',
+                        'INTERRUPTION_RESUME_ACTIONS'
+                    )),
+                    metric_value INTEGER NOT NULL CHECK (metric_value >= 0),
+                    occurred_at TEXT NOT NULL
+                )
+                """);
+        applyCreateIfMissing("""
+                CREATE INDEX IF NOT EXISTS idx_local_metric_type_time
+                ON local_metric_events(metric_type, occurred_at DESC, id DESC)
+                """);
     }
 
     /** Executa CREATE TABLE IF NOT EXISTS — usa o mesmo mecanismo idempotente. */
@@ -374,4 +518,3 @@ public class Database {
         } catch (SQLException ignored) { /* coluna ja existe — ignorar */ }
     }
 }
-

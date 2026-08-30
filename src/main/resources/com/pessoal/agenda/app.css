@@ -98,9 +98,81 @@
     -t-warn-bg   : #fff3e0;
     -t-purple    : #7b1fa2;
     -t-purple-bg : #f3e5f5;
+
+    /* Base nativa do JavaFX. Evita fallback para texto preto do Modena. */
+    -fx-base: -t-surface;
+    -fx-background: -t-app-bg;
+    -fx-control-inner-background: -t-inp-bg;
+    -fx-control-inner-background-alt: -t-surface-c;
+    -fx-text-base-color: -t-text;
+    -fx-text-background-color: -t-text;
+    -fx-dark-text-color: -t-text;
+    -fx-mid-text-color: -t-text-s;
+    -fx-light-text-color: -t-text-inv;
+    -fx-accent: -t-pri;
+    -fx-focus-color: -t-pri;
+    -fx-faint-focus-color: transparent;
 }
 
 .app-root { -fx-background-color: -t-app-bg; }
+.secondary-window-root { -fx-background-color: -t-app-bg; }
+.secondary-window-root .header-bar {
+    -fx-padding: 14 20 14 20;
+    -fx-min-height: 58px;
+}
+.print-preview-toolbar {
+    -fx-padding: 10 14 8 14;
+    -fx-background-color: -t-surface-d;
+    -fx-border-color: -t-bd;
+    -fx-border-width: 0 0 1 0;
+}
+.print-preview-hint {
+    -fx-font-size: 9.5px;
+    -fx-text-fill: -t-text-m2;
+    -fx-font-style: italic;
+}
+.compact-timer-root {
+    -fx-border-color: -t-pri-bd;
+    -fx-border-width: 1.2;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+}
+
+/* Base para controles sem classe específica. */
+.label, .check-box, .radio-button, .hyperlink {
+    -fx-text-fill: -t-text;
+}
+.button, .toggle-button, .choice-box, .menu-button, .split-menu-button {
+    -fx-background-color: -t-surface-c;
+    -fx-border-color: -t-bd;
+    -fx-text-fill: -t-text;
+}
+.button:hover, .toggle-button:hover, .choice-box:hover, .menu-button:hover {
+    -fx-background-color: -t-hover;
+}
+.context-menu, .menu-item, .menu {
+    -fx-background-color: -t-surface;
+}
+.menu-item .label, .menu .label {
+    -fx-text-fill: -t-text;
+}
+.menu-item:focused, .menu-item:hover {
+    -fx-background-color: -t-selected;
+}
+.separator .line {
+    -fx-border-color: -t-bd;
+}
+.split-pane > .split-pane-divider {
+    -fx-background-color: -t-bd;
+}
+.titled-pane > .title {
+    -fx-background-color: -t-surface-d;
+    -fx-text-fill: -t-text;
+}
+.titled-pane > .content {
+    -fx-background-color: -t-surface;
+    -fx-border-color: -t-bd;
+}
 
 /* ── Cabeçalho ─────────────────────────────────────────────────────────── */
 .header-bar {
@@ -136,6 +208,9 @@
     -fx-text-base-color: -t-tab-sfg;
     -fx-border-color: transparent transparent -t-pri transparent;
     -fx-border-width: 0 0 3 0;
+}
+.main-tabs > .tab-content-area {
+    -fx-background-color: -t-app-bg;
 }
 
 /* ── Cards de seção ─────────────────────────────────────────────────────── */
@@ -265,6 +340,8 @@
     -fx-border-radius: 5;
     -fx-border-width: 1;
     -fx-font-size: 12.5px;
+    -fx-text-fill: -t-text;
+    -fx-prompt-text-fill: -t-text-m2;
 }
 .input-control:focused {
     -fx-border-color: -t-pri;
@@ -336,10 +413,25 @@
 .focus-now-card {
     -fx-border-color: -t-pri-bd;
     -fx-border-width: 1 1 1 4;
-    -fx-background-color: linear-gradient(to right, -t-pri-lt 0%, -t-surface 100%);
+    -fx-background-color: -t-surface;
+}
+.focus-now-card.resume-pending {
+    -fx-border-color: -t-warn;
+    -fx-background-color: -t-warn-bg;
+}
+.focus-now-card.resume-pending .focus-now-mode {
+    -fx-text-fill: -t-warn;
+}
+.focus-now-card.resume-pending .focus-now-detail {
+    -fx-font-weight: 600;
+}
+.focus-now-mode {
+    -fx-font-size: 10.5px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -t-pri;
 }
 .focus-now-title {
-    -fx-font-size: 15px;
+    -fx-font-size: 17px;
     -fx-font-weight: 800;
     -fx-text-fill: -t-text-b;
 }
@@ -349,6 +441,142 @@
 }
 .focus-now-action {
     -fx-max-width: 9999px;
+}
+.focus-now-actions {
+    -fx-padding: 6 0 0 0;
+}
+.dashboard-hint {
+    -fx-font-size: 10px;
+    -fx-text-fill: -t-text-m2;
+    -fx-font-style: italic;
+}
+.daily-plan-card {
+    -fx-border-color: -t-bd;
+}
+.daily-plan-state {
+    -fx-padding: 2 0 0 0;
+}
+.daily-plan-step-indicator {
+    -fx-font-size: 10.5px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -t-pri;
+}
+.daily-plan-state-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -t-text-b;
+}
+.daily-plan-caption {
+    -fx-font-size: 10.5px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -t-text-m;
+}
+.daily-plan-essential {
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -t-text-b;
+}
+.daily-plan-detail {
+    -fx-font-size: 12px;
+    -fx-text-fill: -t-text-s;
+}
+.daily-plan-validation {
+    -fx-font-size: 11.5px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -t-err;
+}
+.daily-plan-actions {
+    -fx-padding: 6 0 0 0;
+}
+.daily-plan-option-title {
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -t-text-b;
+}
+.daily-plan-option-detail {
+    -fx-font-size: 10.5px;
+    -fx-text-fill: -t-text-m2;
+}
+.daily-plan-capacity {
+    -fx-max-width: 170px;
+    -fx-padding: 3 8 3 8;
+    -fx-background-color: -t-pri-lt;
+    -fx-background-radius: 5;
+    -fx-text-fill: -t-pri;
+    -fx-font-size: 10.5px;
+    -fx-font-weight: 700;
+}
+.daily-plan-error {
+    -fx-padding: 8;
+    -fx-background-color: -t-err-bg;
+    -fx-background-radius: 5;
+}
+.quick-capture-title {
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -t-text-b;
+}
+.quick-capture-root .text-area {
+    -fx-font-size: 13px;
+}
+.quick-capture-confirmation {
+    -fx-padding: 10;
+    -fx-background-color: -t-warn-bg;
+    -fx-border-color: -t-warn;
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+}
+.inbox-triage-root .split-pane {
+    -fx-background-color: -t-app-bg;
+    -fx-padding: 0 18 0 18;
+}
+.inbox-triage-root .split-pane-divider {
+    -fx-background-color: -t-bd;
+    -fx-padding: 0 1 0 1;
+}
+.inbox-triage-detail-pane {
+    -fx-background-color: -t-surface-a;
+}
+.inbox-triage-root .list-cell {
+    -fx-padding: 9;
+}
+.reduced-capacity-dashboard .reduced-attention,
+.reduced-capacity-dashboard .reduced-attention .section-card {
+    -fx-effect: null;
+    -fx-border-color: -t-bd-lt;
+}
+.reduced-capacity-dashboard .reduced-attention .section-title,
+.reduced-capacity-dashboard .dashboard-overview > .title {
+    -fx-text-fill: -t-text-m;
+}
+.reduced-capacity-dashboard .dashboard-cards .kpi-value {
+    -fx-text-fill: -t-text-s;
+}
+.dashboard-workspace {
+    -fx-min-height: 480px;
+    -fx-background-color: transparent;
+}
+.dashboard-workspace > .tab-header-area > .tab-header-background {
+    -fx-background-color: -t-tab-hdr;
+}
+.dashboard-workspace > .tab-header-area .tab {
+    -fx-background-color: -t-tab-bg;
+    -fx-padding: 6 18 6 18;
+}
+.dashboard-workspace > .tab-header-area .tab:selected {
+    -fx-background-color: -t-tab-sel;
+    -fx-border-color: transparent transparent -t-pri transparent;
+    -fx-border-width: 0 0 3 0;
+}
+.dashboard-workspace > .tab-content-area {
+    -fx-background-color: transparent;
+    -fx-padding: 10 0 0 0;
+}
+.dashboard-overview > .title {
+    -fx-background-color: -t-surface;
+    -fx-border-color: -t-bd;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
 }
 
 /* ── Toggle de visualização ─────────────────────────────────────────────── */
@@ -496,6 +724,7 @@
 .config-study-type{ -fx-border-color: #0097a7; }
 .config-idea      { -fx-border-color: #6a1b9a; }
 .config-theme     { -fx-border-color: -t-accent; }
+.config-notifications { -fx-border-color: #00796b; }
 
 /* ── Estado vazio ───────────────────────────────────────────────────────── */
 .empty-state-label {
@@ -659,6 +888,7 @@
     -fx-background-color: -t-selected;
     -fx-text-fill: -t-text-b;
 }
+.ideas-list .list-cell .label { -fx-text-fill: -t-text; }
 
 /* TableView theme-aware com seleção consistente em qualquer alternância. */
 .table-view {
@@ -770,6 +1000,20 @@
 .combo-box .list-cell { -fx-text-fill: -t-text; -fx-background-color: transparent; }
 .combo-box .arrow-button { -fx-background-color: transparent; }
 .combo-box .arrow { -fx-background-color: -t-text-m; }
+.choice-box .label, .menu-button .label { -fx-text-fill: -t-text; }
+
+/* Listas sem a classe clean-list também devem acompanhar o tema. */
+.list-view {
+    -fx-background-color: -t-surface-b;
+    -fx-border-color: -t-bd;
+}
+.list-view .list-cell {
+    -fx-background-color: -t-surface-b;
+    -fx-text-fill: -t-text;
+}
+.list-view .list-cell:odd { -fx-background-color: -t-surface-c; }
+.list-view .list-cell:filled:selected { -fx-background-color: -t-selected; }
+.list-view .list-cell:filled:selected .label { -fx-text-fill: -t-text-b; }
 
 /* DatePicker */
 .date-picker-popup { -fx-background-color: -t-surface; -fx-border-color: -t-bd; }
@@ -799,6 +1043,16 @@
 .text-area .content { -fx-background-color: -t-inp-bg; }
 .text-area:focused .content { -fx-background-color: -t-surface; }
 
+/* Estrutura nativa do HTMLEditor; o documento WebView é tratado pela janela. */
+.html-editor, .html-editor .tool-bar {
+    -fx-background-color: -t-surface-a;
+    -fx-border-color: -t-bd;
+}
+.html-editor .combo-box, .html-editor .button, .html-editor .toggle-button {
+    -fx-background-color: -t-surface-c;
+    -fx-text-fill: -t-text;
+}
+
 /* Tooltip */
 .tooltip {
     -fx-background-color: -t-surface-c;
@@ -813,7 +1067,8 @@
 /* CheckBox */
 .check-box .box { -fx-background-color: -t-inp-bg; -fx-border-color: -t-inp-bd; -fx-border-radius: 3; -fx-background-radius: 3; }
 .check-box:selected .box { -fx-background-color: -t-pri; -fx-border-color: -t-pri; }
-.check-box .mark { -fx-background-color: -t-text-inv; }
+.check-box .mark { -fx-background-color: transparent; }
+.check-box:selected .mark { -fx-background-color: -t-text-inv; }
 .check-box .label { -fx-text-fill: -t-text; }
 
 /* ── Classes utilitárias de texto (theme-aware) ─────────────────────────── */
@@ -836,6 +1091,20 @@
 .panel-footer{ -fx-background-color: -t-surface-d; -fx-border-color: -t-bd; -fx-border-width: 1 0 0 0; }
 .panel-danger{ -fx-background-color: -t-err-bg; -fx-border-color: -t-err-dk; -fx-background-radius: 5; -fx-border-radius: 5; }
 .row-done-bg { -fx-background-color: -t-surface-a; -fx-border-color: -t-bd-lt; -fx-border-width: 0 0 0 3; -fx-background-radius: 4; -fx-border-radius: 4; }
+
+.protocol-step-row {
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-border-width: 1;
+}
+.protocol-step-row-open {
+    -fx-background-color: -t-surface;
+    -fx-border-color: -t-bd-lt;
+}
+.protocol-step-row-done {
+    -fx-background-color: -t-surface-a;
+    -fx-border-color: -t-success-bg;
+}
 .row-plain   { -fx-background-color: -t-surface;   -fx-border-color: -t-bd-lt; -fx-border-width: 0 0 1 0; }
 .row-stripe  { -fx-background-color: -t-surface-c; -fx-border-color: -t-bd-lt; -fx-border-width: 0 0 1 0; }
 .border-bottom{ -fx-border-color: transparent transparent -t-bd-lt transparent; -fx-border-width: 0 0 1 0; }
@@ -846,5 +1115,3 @@
 .status-pending { -fx-background-color: -t-warn-bg;    -fx-text-fill: -t-warn;    -fx-background-radius: 10; -fx-padding: 2 8 2 8; }
 .card-done      { -fx-background-color: -t-success-bg; -fx-border-color: -t-success-bg; -fx-border-radius: 5; -fx-background-radius: 5; }
 .card-danger    { -fx-background-color: -t-err-bg;     -fx-border-color: -t-err-dk; -fx-border-radius: 5;    -fx-background-radius: 5; }
-
-

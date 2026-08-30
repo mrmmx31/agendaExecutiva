@@ -3,9 +3,16 @@ package com.pessoal.agenda.ui.view;
 import com.pessoal.agenda.app.AppContextHolder;
 import com.pessoal.agenda.service.GoogleAuthService;
 import com.pessoal.agenda.service.GoogleTasksService;
+import com.pessoal.agenda.service.GoogleTasksSyncService;
+import com.pessoal.agenda.service.GoogleTasksSyncService.PreparedSync;
+import com.pessoal.agenda.service.GoogleTasksSyncService.Resolution;
+import com.pessoal.agenda.service.GoogleTasksSyncService.ReviewItem;
+import com.pessoal.agenda.service.GoogleTasksSyncService.SyncPreview;
+import com.pessoal.agenda.service.GoogleSyncErrorPresenter;
 import com.pessoal.agenda.service.GoogleTasksService.GTask;
 import com.pessoal.agenda.service.GoogleTasksService.SyncResult;
 import com.pessoal.agenda.service.GoogleTasksService.TaskList;
+import com.pessoal.agenda.repository.GoogleTasksMappingRepository.SyncState;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -15,12 +22,12 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.util.StringConverter;
 
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * Janela de sincronização BIDIRECIONAL com o Google Tasks.
@@ -37,7 +44,10 @@ public class GoogleTasksSyncWindow {
 
     private final GoogleAuthService  auth;
     private final GoogleTasksService gTasks;
+    private final GoogleTasksSyncService syncService;
     private final Runnable           onSyncCallback;
+    private static final GoogleOperationGuard OPERATION_GUARD = new GoogleOperationGuard();
+    private final List<Control> googleControls = new ArrayList<>();
 
     private Stage  stage;
     private Label  statusLabel;
@@ -45,6 +55,7 @@ public class GoogleTasksSyncWindow {
     private Button connectBtn;
     private Button disconnectBtn;
     private Button syncBtn;
+    private Button reviewBtn;
 
     // Google side
     private ComboBox<TaskList>    listCombo;
@@ -63,6 +74,11 @@ public class GoogleTasksSyncWindow {
     public GoogleTasksSyncWindow(Runnable onSyncCallback) {
         this.auth          = GoogleAuthService.getInstance();
         this.gTasks        = new GoogleTasksService();
+        this.syncService = new GoogleTasksSyncService(
+                gTasks,
+                AppContextHolder.get().taskRepository(),
+                AppContextHolder.get().googleTasksMappingRepository(),
+                AppContextHolder.get().googleTasksSyncRepository());
         this.onSyncCallback = onSyncCallback;
     }
 
@@ -71,11 +87,10 @@ public class GoogleTasksSyncWindow {
             openStage.toFront(); openStage.requestFocus(); return;
         }
 
-        stage = new Stage();
+        stage = WindowManager.createModelessStage();
         stage.setTitle("☁  Google Tasks — Sincronização Bidirecional");
         stage.setMinWidth(920);
         stage.setMinHeight(560);
-        stage.initModality(Modality.NONE);
 
         VBox root = new VBox(0);
         root.getStyleClass().add("app-root");
@@ -89,7 +104,7 @@ public class GoogleTasksSyncWindow {
         openStage = stage;
         loadLocalTasks();
         if (auth.isAuthorized()) loadGoogleTaskLists();
-        stage.show();
+        WindowManager.show(stage);
     }
 
     // ── Header ───────────────────────────────────────────────────────────────
@@ -97,16 +112,20 @@ public class GoogleTasksSyncWindow {
     private HBox buildHeader() {
         Label title = new Label("☁  Google Tasks — Sincronização Bidirecional");
         title.getStyleClass().add("page-title");
+        ResponsiveWindowLayout.makeFlexible(title);
+        HBox.setHgrow(title, Priority.ALWAYS);
 
         connectionLabel = new Label();
         updateConnectionLabel();
 
         connectBtn = new Button("🔗  Conectar conta Google");
         connectBtn.getStyleClass().add("primary-button");
+        registerGoogleControl(connectBtn);
         connectBtn.setOnAction(e -> doConnect());
 
         disconnectBtn = new Button("✕  Desconectar");
         disconnectBtn.getStyleClass().add("danger-button");
+        registerGoogleControl(disconnectBtn);
         disconnectBtn.setOnAction(e -> doDisconnect());
 
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -121,44 +140,65 @@ public class GoogleTasksSyncWindow {
 
     // ── Barra de sincronização central ───────────────────────────────────────
 
-    private HBox buildSyncBar() {
+    private VBox buildSyncBar() {
         Label listLabel = new Label("Lista Google:");
         listLabel.setStyle("-fx-font-weight: 600;");
 
         listCombo = new ComboBox<>();
         listCombo.setPrefWidth(220);
         listCombo.getStyleClass().add("input-control");
+        registerGoogleControl(listCombo);
         listCombo.setPromptText("Selecione uma lista...");
-        listCombo.setOnAction(e -> { if (listCombo.getValue() != null) loadGoogleTasks(); });
+        listCombo.setOnAction(e -> {
+            if (listCombo.getValue() != null) {
+                refreshReviewCount();
+                loadGoogleTasks();
+            }
+        });
 
         Button refreshListsBtn = new Button("↻");
         refreshListsBtn.getStyleClass().add("secondary-button");
+        registerGoogleControl(refreshListsBtn);
         refreshListsBtn.setTooltip(new Tooltip("Recarregar listas do Google"));
         refreshListsBtn.setOnAction(e -> loadGoogleTaskLists());
 
         syncBtn = new Button("🔄  Sincronizar Agora");
         syncBtn.getStyleClass().add("primary-button");
+        syncBtn.setId("google-sync-now");
+        registerGoogleControl(syncBtn);
         syncBtn.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;");
         syncBtn.setOnAction(e -> doSync());
 
         // Botões de ação manual
         Button importSelBtn = new Button("⬇  Importar selecionada");
         importSelBtn.getStyleClass().add("secondary-button");
+        registerGoogleControl(importSelBtn);
         importSelBtn.setOnAction(e -> importSelected());
 
         Button exportSelBtn = new Button("⬆  Exportar selecionada");
         exportSelBtn.getStyleClass().add("secondary-button");
+        registerGoogleControl(exportSelBtn);
         exportSelBtn.setOnAction(e -> exportSelected());
 
         Button dedupGoogleBtn = new Button("🔍  Remover duplicatas do Google");
         dedupGoogleBtn.getStyleClass().add("secondary-button");
+        registerGoogleControl(dedupGoogleBtn);
         dedupGoogleBtn.setOnAction(e -> removeGoogleDuplicates());
 
+        reviewBtn = new Button("Revisar pendências");
+        reviewBtn.setId("google-review-items");
+        reviewBtn.getStyleClass().add("secondary-button");
+        registerGoogleControl(reviewBtn);
+        reviewBtn.setOnAction(e -> reviewPendingItems());
+
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox bar = new HBox(10, listLabel, listCombo, refreshListsBtn, spacer,
-                importSelBtn, exportSelBtn, dedupGoogleBtn,
-                new Separator(javafx.geometry.Orientation.VERTICAL), syncBtn);
-        bar.setAlignment(Pos.CENTER_LEFT);
+        HBox selectionRow = new HBox(10, listLabel, listCombo, refreshListsBtn, spacer, syncBtn);
+        selectionRow.setAlignment(Pos.CENTER_LEFT);
+
+        FlowPane manualActions = ResponsiveWindowLayout.actionFlow(
+                importSelBtn, exportSelBtn, dedupGoogleBtn, reviewBtn);
+
+        VBox bar = new VBox(8, selectionRow, manualActions);
         bar.setPadding(new Insets(10, 16, 10, 16));
         bar.setStyle("-fx-background-color: -t-surface; -fx-border-color: -t-border; -fx-border-width: 0 0 1 0;");
         return bar;
@@ -188,6 +228,7 @@ public class GoogleTasksSyncWindow {
                         + (t.completed() ? "-t-success;" : "-t-text;"));
                 Label titleLbl = new Label(t.title() != null ? t.title() : "(sem título)");
                 titleLbl.getStyleClass().add("study-plan-detail");
+                ResponsiveWindowLayout.makeFlexible(titleLbl);
                 if (t.completed()) titleLbl.setStyle("-fx-opacity:0.5;-fx-strikethrough:true;");
                 HBox.setHgrow(titleLbl, Priority.ALWAYS);
 
@@ -231,6 +272,7 @@ public class GoogleTasksSyncWindow {
                         + (t.done() ? "-t-success;" : "-t-text;"));
                 Label titleLbl = new Label(t.title());
                 titleLbl.getStyleClass().add("study-plan-detail");
+                ResponsiveWindowLayout.makeFlexible(titleLbl);
                 if (t.done()) titleLbl.setStyle("-fx-opacity:0.5;-fx-strikethrough:true;");
                 HBox.setHgrow(titleLbl, Priority.ALWAYS);
 
@@ -296,6 +338,7 @@ public class GoogleTasksSyncWindow {
 
         Button refreshLocalBtn = new Button("↻  Atualizar");
         refreshLocalBtn.getStyleClass().add("secondary-button");
+        registerGoogleControl(refreshLocalBtn);
         refreshLocalBtn.setOnAction(e -> { loadLocalTasks(); if (auth.isAuthorized()) loadGoogleTasks(); });
 
         Button closeBtn = new Button("Fechar");
@@ -315,7 +358,7 @@ public class GoogleTasksSyncWindow {
     private void doConnect() {
         if (!auth.hasValidCredentials()) {
             showError("Credenciais não encontradas",
-                "Arquivo não encontrado: ~/.agenda/google-credentials.json");
+                "Arquivo ausente ou inválido: ~/.agenda/google-credentials.json");
             return;
         }
         setStatus("Iniciando autorização OAuth...");
@@ -327,7 +370,7 @@ public class GoogleTasksSyncWindow {
                 setStatus("✓ Conectado ao Google Tasks!");
                 loadGoogleTaskLists();
             },
-            err -> showError("Erro de autorização", err.getMessage())
+            err -> showError("Erro de autorização", err)
         );
     }
 
@@ -343,7 +386,7 @@ public class GoogleTasksSyncWindow {
                 refreshConnectButtons();
                 setStatus("Desconectado.");
             } catch (Exception e) {
-                showError("Erro ao desconectar", e.getMessage());
+                showError("Erro ao desconectar", e);
             }
         });
     }
@@ -372,47 +415,248 @@ public class GoogleTasksSyncWindow {
         if (selected == null) { setStatus("Selecione uma lista do Google Tasks primeiro."); return; }
         if (!auth.isAuthorized()) { setStatus("Conecte ao Google primeiro."); return; }
 
-        syncBtn.setDisable(true);
         setStatus("🔄 Sincronizando com '" + selected.title() + "'...");
         appendLog("─── Iniciando sync: " + selected.title() + " ───");
 
         runBackground(
-            () -> gTasks.syncBidirectional(
-                    selected.id(),
-                    AppContextHolder.get().taskRepository(),
-                    AppContextHolder.get().googleTasksMappingRepository()),
+            () -> syncService.prepareSync(selected.id()),
+            prepared -> {
+                SyncPreview preview = prepared.preview();
+                appendLog(formatPreviewSummary(preview));
+                int logLimit = Math.min(preview.details().size(), 20);
+                for (int index = 0; index < logLimit; index++) {
+                    appendLog("  " + preview.details().get(index));
+                }
+                if (preview.details().size() > logLimit) {
+                    appendLog("  ... e mais " + (preview.details().size() - logLimit));
+                }
+                if (!preview.hasActions()) {
+                    applyPreparedSync(selected, prepared);
+                    return;
+                }
+                if (confirmPreview(selected, preview)) {
+                    applyPreparedSync(selected, prepared);
+                } else {
+                    setStatus("Sincronização cancelada antes de alterar dados.");
+                    appendLog("Prévia cancelada; nenhuma mudança aplicada.");
+                }
+            },
+            err -> {
+                updateConnectionLabel();
+                refreshConnectButtons();
+                appendLog("Falha ao preparar sincronização: "
+                        + GoogleSyncErrorPresenter.logMessage(err));
+                showError("Erro na sincronização", err);
+            }
+        );
+    }
+
+    private void applyPreparedSync(TaskList selected, PreparedSync prepared) {
+        setStatus("Aplicando mudanças em '" + selected.title() + "'...");
+        runBackground(
+            () -> syncService.applyPrepared(prepared),
             result -> {
                 // Atualiza a UI
                 loadLocalTasks();
                 loadGoogleTasks();
+                refreshReviewCount();
                 if (onSyncCallback != null) onSyncCallback.run();
-                syncBtn.setDisable(false);
 
                 // Mostra resultado
-                String summary = String.format(
-                    "✓ Sync concluído — ⬇ %d criado(s) local / ⬆ %d criado(s) Google" +
-                    " / ✓ %d concluído(s) local / ✓ %d concluído(s) Google%s",
-                    result.createdLocal(), result.createdGoogle(),
-                    result.completedLocal(), result.completedGoogle(),
-                    result.errors() > 0 ? " / ✗ " + result.errors() + " erro(s)" : "");
-                setStatus(summary);
+                setStatus(formatSyncSummary(result));
 
                 for (String line : result.log()) appendLog(line);
-                appendLog("─── Fim do sync ───\n");
+                appendLog("─── Fim do sync: " + selected.title() + " ───\n");
 
                 if (!result.hasChanges() && result.errors() == 0) {
                     appendLog("(nenhuma alteração detectada)");
                 }
             },
             err -> {
-                syncBtn.setDisable(false);
-                appendLog("✗ ERRO FATAL: " + err.getMessage());
-                showError("Erro na sincronização", err.getMessage());
+                updateConnectionLabel();
+                refreshConnectButtons();
+                appendLog("Falha na sincronização: "
+                        + GoogleSyncErrorPresenter.logMessage(err));
+                showError("Erro na sincronização", err);
             }
         );
     }
 
+    private boolean confirmPreview(TaskList selected, SyncPreview preview) {
+        Alert confirmation = Dialogs.build(Alert.AlertType.CONFIRMATION,
+                "Prévia da sincronização",
+                "Lista: " + selected.title(), previewDialogText(preview));
+        ButtonType apply = new ButtonType("Aplicar mudanças", ButtonBar.ButtonData.OK_DONE);
+        confirmation.getButtonTypes().setAll(apply, ButtonType.CANCEL);
+        confirmation.getDialogPane().setPrefWidth(560);
+        return confirmation.showAndWait().orElse(ButtonType.CANCEL) == apply;
+    }
+
+    private static String previewDialogText(SyncPreview preview) {
+        StringBuilder text = new StringBuilder(formatPreviewSummary(preview));
+        int limit = Math.min(preview.details().size(), 12);
+        for (int index = 0; index < limit; index++) {
+            text.append("\n• ").append(preview.details().get(index));
+        }
+        if (preview.details().size() > limit) {
+            text.append("\n• ... e mais ").append(preview.details().size() - limit);
+        }
+        text.append("\n\nNada será alterado até confirmar.");
+        return text.toString();
+    }
+
+    static String formatPreviewSummary(SyncPreview preview) {
+        return String.format(
+                "Prévia: %d criar local, %d criar Google, %d atualizar local, " +
+                "%d atualizar Google, %d status local, %d status Google, %d revisar.",
+                preview.createLocal(), preview.createGoogle(),
+                preview.updateLocal(), preview.updateGoogle(),
+                preview.statusLocal(), preview.statusGoogle(), preview.reviewRequired());
+    }
+
     // ── Ações manuais ────────────────────────────────────────────────────────
+
+    private void refreshReviewCount() {
+        if (reviewBtn == null || listCombo == null || listCombo.getValue() == null) return;
+        int count = syncService.listReviewItems(listCombo.getValue().id()).size();
+        reviewBtn.setText(count == 0
+                ? "Revisar pendências" : "Revisar pendências (" + count + ")");
+    }
+
+    private void reviewPendingItems() {
+        TaskList selectedList = listCombo.getValue();
+        if (selectedList == null) {
+            setStatus("Selecione uma lista do Google Tasks primeiro.");
+            return;
+        }
+        if (!auth.isAuthorized()) {
+            setStatus("Conecte ao Google antes de resolver uma revisão.");
+            return;
+        }
+        List<ReviewItem> items = syncService.listReviewItems(selectedList.id());
+        if (items.isEmpty()) {
+            setStatus("Nenhum conflito ou exclusão aguarda revisão.");
+            return;
+        }
+
+        Dialog<ReviewDecision> dialog = Dialogs.prepare(new Dialog<>());
+        dialog.setTitle("Revisar sincronização");
+        dialog.setHeaderText("Escolha qual estado deve prevalecer");
+        ButtonType apply = new ButtonType("Aplicar decisão", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().setAll(apply, ButtonType.CANCEL);
+
+        ComboBox<ReviewItem> itemCombo = new ComboBox<>(FXCollections.observableArrayList(items));
+        itemCombo.setId("google-review-item");
+        itemCombo.setMaxWidth(Double.MAX_VALUE);
+        itemCombo.setConverter(new StringConverter<>() {
+            @Override public String toString(ReviewItem item) {
+                return item == null ? "" : reviewStateLabel(item.state()) + ": " + item.title();
+            }
+            @Override public ReviewItem fromString(String text) { return null; }
+        });
+
+        ToggleGroup choice = new ToggleGroup();
+        RadioButton localChoice = new RadioButton();
+        localChoice.setId("google-review-use-local");
+        localChoice.setToggleGroup(choice);
+        localChoice.setUserData(Resolution.USE_LOCAL);
+        RadioButton googleChoice = new RadioButton();
+        googleChoice.setId("google-review-use-google");
+        googleChoice.setToggleGroup(choice);
+        googleChoice.setUserData(Resolution.USE_GOOGLE);
+        Label consequence = new Label();
+        consequence.setId("google-review-consequence");
+        consequence.setWrapText(true);
+        consequence.getStyleClass().add("secondary-text");
+
+        VBox content = new VBox(10, itemCombo, localChoice, googleChoice, consequence);
+        content.setPadding(new Insets(8, 0, 0, 0));
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setPrefWidth(520);
+        javafx.scene.Node applyNode = dialog.getDialogPane().lookupButton(apply);
+        applyNode.setDisable(true);
+
+        Runnable updateChoices = () -> {
+            ReviewItem item = itemCombo.getValue();
+            choice.selectToggle(null);
+            consequence.setText("");
+            if (item == null) return;
+            localChoice.setText(resolutionLabel(item.state(), Resolution.USE_LOCAL));
+            googleChoice.setText(resolutionLabel(item.state(), Resolution.USE_GOOGLE));
+        };
+        itemCombo.valueProperty().addListener((obs, old, value) -> updateChoices.run());
+        choice.selectedToggleProperty().addListener((obs, old, toggle) -> {
+            applyNode.setDisable(toggle == null || itemCombo.getValue() == null);
+            if (toggle != null && itemCombo.getValue() != null) {
+                consequence.setText(resolutionConsequence(itemCombo.getValue().state(),
+                        (Resolution) toggle.getUserData()));
+            }
+        });
+        dialog.setResultConverter(button -> {
+            if (button != apply || itemCombo.getValue() == null
+                    || choice.getSelectedToggle() == null) return null;
+            return new ReviewDecision(itemCombo.getValue(),
+                    (Resolution) choice.getSelectedToggle().getUserData());
+        });
+        itemCombo.getSelectionModel().selectFirst();
+        updateChoices.run();
+
+        dialog.showAndWait().ifPresent(decision -> {
+            setStatus("Aplicando decisão para '" + decision.item().title() + "'...");
+            runBackground(
+                    () -> syncService.resolveReview(
+                            decision.item().mappingId(), decision.resolution()),
+                    result -> {
+                        loadLocalTasks();
+                        loadGoogleTasks();
+                        refreshReviewCount();
+                        if (onSyncCallback != null) onSyncCallback.run();
+                        setStatus("Revisão resolvida: " + decision.item().title());
+                        appendLog("Revisão resolvida: " + decision.item().title()
+                                + " - " + resolutionLabel(
+                                decision.item().state(), decision.resolution()));
+                    },
+                    error -> showError("Erro ao resolver revisão", error));
+        });
+    }
+
+    static String resolutionLabel(SyncState state, Resolution resolution) {
+        return switch (state) {
+            case CONFLICT -> resolution == Resolution.USE_LOCAL
+                    ? "Usar versão local" : "Usar versão Google";
+            case REMOTE_DELETED -> resolution == Resolution.USE_LOCAL
+                    ? "Recriar no Google" : "Excluir também a tarefa local";
+            case LOCAL_DELETED -> resolution == Resolution.USE_LOCAL
+                    ? "Excluir também no Google" : "Restaurar a tarefa local";
+            case ACTIVE -> "Nenhuma decisão necessária";
+        };
+    }
+
+    static String resolutionConsequence(SyncState state, Resolution resolution) {
+        return switch (state) {
+            case CONFLICT -> resolution == Resolution.USE_LOCAL
+                    ? "Título, notas, data e status locais substituirão a versão Google."
+                    : "Título, notas, data e status Google substituirão a versão local.";
+            case REMOTE_DELETED -> resolution == Resolution.USE_LOCAL
+                    ? "A tarefa local será mantida e aparecerá na próxima prévia para recriação."
+                    : "A exclusão do Google será aceita e a tarefa local será excluída.";
+            case LOCAL_DELETED -> resolution == Resolution.USE_LOCAL
+                    ? "A exclusão local será aceita e a tarefa Google será excluída."
+                    : "A versão Google será importada novamente como tarefa local.";
+            case ACTIVE -> "Este item já está sincronizado.";
+        };
+    }
+
+    private static String reviewStateLabel(SyncState state) {
+        return switch (state) {
+            case CONFLICT -> "Conflito";
+            case REMOTE_DELETED -> "Excluída no Google";
+            case LOCAL_DELETED -> "Excluída localmente";
+            case ACTIVE -> "Sincronizada";
+        };
+    }
+
+    private record ReviewDecision(ReviewItem item, Resolution resolution) {}
 
     private void removeGoogleDuplicates() {
         TaskList selected = listCombo.getValue();
@@ -466,11 +710,11 @@ public class GoogleTasksSyncWindow {
                             appendLog("🗑 " + removed + " duplicata(s) removida(s) do Google Tasks.");
                             loadGoogleTasks();
                         },
-                        err -> showError("Erro ao remover duplicatas", err.getMessage())
+                        err -> showError("Erro ao remover duplicatas", err)
                     );
                 });
             },
-            err -> showError("Erro ao buscar duplicatas", err.getMessage())
+            err -> showError("Erro ao buscar duplicatas", err)
         );
     }
 
@@ -478,14 +722,23 @@ public class GoogleTasksSyncWindow {
         GTask selected = gTaskList.getSelectionModel().getSelectedItem();
         if (selected == null) { setStatus("Selecione uma tarefa do Google para importar."); return; }
         if (!auth.isAuthorized()) { setStatus("Conecte ao Google primeiro."); return; }
+        TaskList sourceList = listCombo.getValue();
+        if (sourceList == null) { setStatus("Selecione uma lista do Google Tasks primeiro."); return; }
 
-        LocalDate due = selected.dueDate() != null ? selected.dueDate() : LocalDate.now();
-        String notes  = selected.notes() != null && !selected.notes().isBlank() ? selected.notes() : null;
-        AppContextHolder.get().taskRepository().save(selected.title(), notes, due, "Google Tasks");
-        setStatus("Importada: " + selected.title());
-        appendLog("⬇ Importada manualmente: " + selected.title());
-        loadLocalTasks();
-        if (onSyncCallback != null) onSyncCallback.run();
+        runBackground(
+                () -> syncService.importGoogleTask(sourceList.id(), selected),
+                result -> {
+                    if (result.created()) {
+                        setStatus("Importada: " + selected.title());
+                        appendLog("⬇ Importada manualmente: " + selected.title());
+                    } else {
+                        setStatus("Esta tarefa já estava importada.");
+                        appendLog("↔ Importação ignorada; mapeamento já existente: " + selected.title());
+                    }
+                    loadLocalTasks();
+                    if (onSyncCallback != null) onSyncCallback.run();
+                },
+                error -> showError("Erro ao importar", error));
     }
 
     private void exportSelected() {
@@ -496,18 +749,18 @@ public class GoogleTasksSyncWindow {
         if (targetList == null) { setStatus("Selecione uma lista do Google Tasks primeiro."); return; }
 
         runBackground(
-            () -> gTasks.createTask(targetList.id(), selected.title(), selected.notes(), selected.dueDate()),
-            gId -> {
-                if (gId != null) {
-                    AppContextHolder.get().googleTasksMappingRepository()
-                            .upsert(selected.id(), targetList.id(), gId);
-                }
-                setStatus("⬆ Exportada: " + selected.title());
-                appendLog("⬆ Exportada manualmente: " + selected.title());
+            () -> syncService.exportLocalTask(targetList.id(), selected),
+            created -> {
+                setStatus(created
+                        ? "⬆ Exportada: " + selected.title()
+                        : "Esta tarefa já estava exportada.");
+                appendLog(created
+                        ? "⬆ Exportada manualmente: " + selected.title()
+                        : "↔ Exportação ignorada; mapeamento já existente: " + selected.title());
                 loadGoogleTasks();
                 loadLocalTasks();
             },
-            err -> showError("Erro ao exportar", err.getMessage())
+            err -> showError("Erro ao exportar", err)
         );
     }
 
@@ -523,7 +776,7 @@ public class GoogleTasksSyncWindow {
                 if (!lists.isEmpty()) { listCombo.setValue(lists.get(0)); loadGoogleTasks(); }
                 setStatus("Listas: " + lists.size());
             },
-            err -> showError("Erro ao carregar listas", err.getMessage())
+            err -> showError("Erro ao carregar listas", err)
         );
     }
 
@@ -533,7 +786,7 @@ public class GoogleTasksSyncWindow {
         runBackground(
             () -> gTasks.listTasks(selected.id(), true),
             tasks -> { gTaskItems.setAll(tasks); gTaskList.refresh(); },
-            err -> showError("Erro ao carregar tarefas Google", err.getMessage())
+            err -> showError("Erro ao carregar tarefas Google", err)
         );
     }
 
@@ -565,22 +818,64 @@ public class GoogleTasksSyncWindow {
         });
     }
 
+    static String formatSyncSummary(SyncResult result) {
+        return String.format(
+                "✓ Sync concluído — ⬇ %d criado(s) local / ⬆ %d criado(s) Google" +
+                " / ✓ %d status local / ✓ %d status Google" +
+                " / ↻ %d atualizado(s) local / ↻ %d atualizado(s) Google" +
+                " / %d Google + %d local verificados%s%s",
+                result.createdLocal(), result.createdGoogle(),
+                result.statusChangedLocal(), result.statusChangedGoogle(),
+                result.updatedLocal(), result.updatedGoogle(),
+                result.processedGoogle(), result.processedLocal(),
+                result.reviewRequired() > 0
+                        ? " / ! " + result.reviewRequired() + " para revisão" : "",
+                result.errors() > 0 ? " / ✗ " + result.errors() + " erro(s)" : "");
+    }
+
+    private void showError(String title, Throwable error) {
+        showError(title, GoogleSyncErrorPresenter.userMessage(error));
+    }
+
     private <T> void runBackground(
             java.util.concurrent.Callable<T> action,
             java.util.function.Consumer<T>    onSuccess,
             java.util.function.Consumer<Throwable> onError) {
 
+        if (!OPERATION_GUARD.tryStart()) {
+            setStatus("Aguarde a operação Google em andamento terminar.");
+            return;
+        }
+        setGoogleControlsBusy(true);
         Task<T> task = new Task<>() {
             @Override protected T call() throws Exception { return action.call(); }
         };
-        task.setOnSucceeded(e -> onSuccess.accept(task.getValue()));
+        task.setOnSucceeded(e -> {
+            finishGoogleOperation();
+            onSuccess.accept(task.getValue());
+        });
         task.setOnFailed(e -> {
             Throwable ex = task.getException();
-            System.err.println("[GoogleTasks] Erro: " + ex.getMessage());
+            finishGoogleOperation();
+            System.err.println("[GoogleTasks] " + GoogleSyncErrorPresenter.logMessage(ex));
             onError.accept(ex);
         });
         Thread t = new Thread(task);
         t.setDaemon(true);
         t.start();
+    }
+
+    private void registerGoogleControl(Control control) {
+        googleControls.add(control);
+    }
+
+    private void setGoogleControlsBusy(boolean busy) {
+        for (Control control : googleControls) control.setDisable(busy);
+    }
+
+    private void finishGoogleOperation() {
+        OPERATION_GUARD.finish();
+        setGoogleControlsBusy(false);
+        refreshConnectButtons();
     }
 }

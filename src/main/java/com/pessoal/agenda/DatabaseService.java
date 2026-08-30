@@ -1,7 +1,8 @@
 package com.pessoal.agenda;
 
-import java.io.IOException;
-import java.nio.file.Files;
+import com.pessoal.agenda.infra.Database;
+import com.pessoal.agenda.repository.TaskRepository;
+
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DatabaseService {
+    private final Database database;
     private final String jdbcUrl;
 
     public static final List<String> TASK_CATEGORIES = List.of(
@@ -23,17 +25,18 @@ public class DatabaseService {
     );
 
     public DatabaseService() {
-        this.jdbcUrl = "jdbc:sqlite:" + buildDatabasePath();
+        this(defaultDatabasePath());
     }
 
-    private String buildDatabasePath() {
-        Path appDir = Path.of(System.getProperty("user.home"), ".agenda-pessoal");
-        try {
-            Files.createDirectories(appDir);
-        } catch (IOException e) {
-            throw new RuntimeException("Nao foi possivel criar pasta de dados", e);
-        }
-        return appDir.resolve("agenda.db").toString();
+    public DatabaseService(Path databasePath) {
+        if (databasePath == null) throw new IllegalArgumentException("Caminho do banco é obrigatório");
+        Path absolutePath = databasePath.toAbsolutePath();
+        this.database = new Database(absolutePath);
+        this.jdbcUrl = "jdbc:sqlite:" + absolutePath;
+    }
+
+    private static Path defaultDatabasePath() {
+        return Path.of(System.getProperty("user.home"), ".agenda-pessoal", "agenda.db");
     }
 
     public void initialize() {
@@ -513,16 +516,21 @@ public class DatabaseService {
         List<String> alerts = new ArrayList<>();
 
         String overdueTasksSql = """
-                SELECT title, due_date, schedule_type, end_date, priority,
-                       CASE
-                         WHEN schedule_type = 'SINGLE' THEN due_date
-                         ELSE COALESCE(end_date, due_date)
-                       END AS alert_date
-                FROM tasks
-                WHERE done = 0 AND status != 'CANCELADA' AND (
-                  (schedule_type = 'SINGLE' AND due_date < date('now'))
-                  OR (schedule_type IN ('RANGE','WEEKLY') AND end_date IS NOT NULL AND end_date < date('now'))
+                WITH overdue_tasks AS (
+                  SELECT title, due_date, schedule_type, end_date, priority,
+                         CASE
+                           WHEN schedule_type = 'SINGLE' THEN due_date
+                           ELSE COALESCE(end_date, due_date)
+                         END AS alert_date
+                  FROM tasks
+                  WHERE done = 0 AND status != 'CANCELADA' AND (
+                    (schedule_type = 'SINGLE' AND due_date < date(?))
+                    OR (schedule_type IN ('RANGE','WEEKLY') AND end_date IS NOT NULL AND end_date < date(?))
+                  )
                 )
+                SELECT *, CAST(julianday(date(?)) - julianday(alert_date) AS INTEGER) AS pending_days
+                FROM overdue_tasks
+                WHERE alert_date >= date(?,'-7 days') OR priority='CRITICA'
                 ORDER BY CASE priority
                            WHEN 'CRITICA' THEN 0
                            WHEN 'ALTA' THEN 1
@@ -539,13 +547,17 @@ public class DatabaseService {
                 """;
 
         try (Connection connection = DriverManager.getConnection(jdbcUrl)) {
-            try (PreparedStatement ps = connection.prepareStatement(overdueTasksSql);
-                 ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    String d = "SINGLE".equals(rs.getString("schedule_type"))
-                            ? rs.getString("due_date")
-                            : rs.getString("due_date") + " → " + rs.getString("end_date");
-                    alerts.add("Tarefa atrasada: %s (venc.: %s)".formatted(rs.getString("title"), d));
+            try (PreparedStatement ps = connection.prepareStatement(overdueTasksSql)) {
+                String referenceDate = LocalDate.now().toString();
+                for (int index = 1; index <= 4; index++) ps.setString(index, referenceDate);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        String d = "SINGLE".equals(rs.getString("schedule_type"))
+                                ? rs.getString("due_date")
+                                : rs.getString("due_date") + " → " + rs.getString("end_date");
+                        alerts.add("Tarefa pendente há %d dia(s): %s (data: %s)".formatted(
+                                rs.getInt("pending_days"), rs.getString("title"), d));
+                    }
                 }
             }
 
@@ -560,7 +572,7 @@ public class DatabaseService {
         }
 
         if (alerts.isEmpty()) {
-            alerts.add("Sem atrasos no momento.");
+            alerts.add("Sem pendências recentes neste painel.");
         }
 
         return alerts;
@@ -720,14 +732,14 @@ public class DatabaseService {
         }
     }
 
-    // Utilitário: busca Task por id (para uso no controller)
+    // Utilitário legado para o timer embutido na lista da Agenda.
     public com.pessoal.agenda.model.Task findTaskById(Long id) {
-        // TODO: Ajuste para o construtor real de Task
-        return null;
+        if (id == null) return null;
+        return new TaskRepository(database).findById(id).orElse(null);
     }
 
     // Utilitário: retorna instância de TaskSessionRepository
     public com.pessoal.agenda.repository.TaskSessionRepository getTaskSessionRepository() {
-        return new com.pessoal.agenda.repository.TaskSessionRepository(new com.pessoal.agenda.infra.Database());
+        return new com.pessoal.agenda.repository.TaskSessionRepository(database);
     }
 }

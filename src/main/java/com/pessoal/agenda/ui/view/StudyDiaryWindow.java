@@ -23,12 +23,12 @@ import javax.sound.sampled.LineEvent;
 import javax.sound.sampled.LineListener;
 import javax.sound.sampled.AudioFormat;
 import javafx.scene.web.WebView;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 /**
  * Janela de Diário de Estudo — abre em duplo-clique num plano.
@@ -82,6 +82,7 @@ public class StudyDiaryWindow {
     private TextField        entryPageStartField;
     private TextField        entryPageEndField;
     private HTMLEditor       richEditor;           // ← editor rico (substituiu TextArea)
+    private WebView          editorWebView;
     private Label            entryFormModeLabel;
     private Button           entrySubmitBtn;
     private HBox             pagesRowContainer;
@@ -104,7 +105,10 @@ public class StudyDiaryWindow {
     // ── HTML base para editor em branco ────────────────────────────────────
     private static final String BLANK_HTML =
             "<html><body style='font-family:\"Segoe UI\",Inter,sans-serif;" +
-            "font-size:13px;color:#0d1b2a;margin:6px 8px;'></body></html>";
+            "font-size:13px;margin:6px 8px;'></body></html>";
+
+    private final Consumer<ThemeManager.Theme> editorThemeListener =
+            theme -> Platform.runLater(this::applyEditorTheme);
 
     public StudyDiaryWindow(StudyPlan plan,
                             StudyPlanRepository planRepo,
@@ -134,11 +138,10 @@ public class StudyDiaryWindow {
             return;
         }
 
-        Stage stage = new Stage();
+        Stage stage = WindowManager.createModelessStage();
         this.stage = stage;
         stage.setTitle("Diário Científico — " + currentPlan.title());
         stage.setMinWidth(1060); stage.setMinHeight(720);
-        stage.initModality(Modality.NONE);
 
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app-root");
@@ -147,10 +150,12 @@ public class StudyDiaryWindow {
 
         Scene scene = new Scene(root, 1240, 780);
         ThemeManager.getInstance().applyTo(scene);
+        ThemeManager.getInstance().addThemeChangeListener(editorThemeListener);
 
         stage.setScene(scene);
         stage.setOnHiding(e -> {
             openWindows.remove(currentPlan.id());
+            ThemeManager.getInstance().removeThemeChangeListener(editorThemeListener);
             // stop timer executor and sound executor
             try {
                 if (timerFuture != null) timerFuture.cancel(false);
@@ -168,7 +173,8 @@ public class StudyDiaryWindow {
         if (timerExecutor == null) timerExecutor = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> { Thread t = new Thread(r, "study-timer"); t.setDaemon(true); return t; });
         if (soundExecutor == null) soundExecutor = java.util.concurrent.Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "study-sound"); t.setDaemon(true); return t; });
         loadEntries();
-        stage.show();
+        WindowManager.show(stage);
+        Platform.runLater(this::initializeEditorThemeBridge);
         // when shown, if window is focused, clear active session indicator
         stage.focusedProperty().addListener((obs, o, focused) -> {
             if (focused) {
@@ -201,6 +207,8 @@ public class StudyDiaryWindow {
     private VBox buildHeader() {
         Label titleLbl = new Label(currentPlan.title());
         titleLbl.getStyleClass().add("page-title");
+        ResponsiveWindowLayout.makeFlexible(titleLbl);
+        HBox.setHgrow(titleLbl, Priority.ALWAYS);
         Label typeLbl   = new Label("  " + currentPlan.studyTypeName() + "  ");
         typeLbl.getStyleClass().addAll("study-badge", "badge-type");
         Label statusLbl = new Label("  " + currentPlan.status().label() + "  ");
@@ -219,7 +227,7 @@ public class StudyDiaryWindow {
 
         headerDatesLabel  = new Label(buildDatesString()); headerDatesLabel.getStyleClass().add("study-dates-label");
         headerStatsLabel  = new Label("Carregando…");      headerStatsLabel.getStyleClass().add("diary-stats-label");
-        HBox infoRow = new HBox(20, headerDatesLabel, headerStatsLabel);
+        FlowPane infoRow = new FlowPane(20, 4, headerDatesLabel, headerStatsLabel);
         infoRow.setAlignment(Pos.CENTER_LEFT);
 
         HBox updateRow = buildProgressUpdateRow();
@@ -273,6 +281,11 @@ public class StudyDiaryWindow {
         indexListView = new ListView<>(entries);
         indexListView.getStyleClass().add("clean-list");
         indexListView.setCellFactory(lv -> new ListCell<>() {
+            private final Label summary = new Label();
+            {
+                ResponsiveWindowLayout.makeFlexible(summary);
+            }
+
             @Override protected void updateItem(StudyEntry item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) { setText(null); setGraphic(null); return; }
@@ -281,7 +294,9 @@ public class StudyDiaryWindow {
                 String t     = item.hasTitle() ? item.entryTitle() : "(sem título)";
                 String pages = item.hasPages() ? "  pp." + item.pageStart() + "–" + item.pageEnd() : "";
                 String dur   = item.durationMinutes() > 0 ? "  " + item.durationMinutes() + " min" : "";
-                setText(date + "  " + t + pages + dur);
+                summary.setText(date + "  " + t + pages + dur);
+                setText(null);
+                setGraphic(summary);
             }
         });
         VBox.setVgrow(indexListView, Priority.ALWAYS);
@@ -363,6 +378,8 @@ public class StudyDiaryWindow {
                 "Ctrl+B = negrito  ·  Ctrl+I = itálico  ·  Ctrl+U = sublinhado  ·  " +
                 "Ctrl+V = colar com formatação");
         editorHint.getStyleClass().add("study-plan-detail");
+        ResponsiveWindowLayout.makeFlexible(editorHint);
+        HBox.setHgrow(editorHint, Priority.ALWAYS);
 
         HBox extraToolbar = new HBox(12, pasteNoFmtBtn, editorHint);
         extraToolbar.setAlignment(Pos.CENTER_LEFT);
@@ -533,6 +550,7 @@ public class StudyDiaryWindow {
             int minutes = (int) Math.round(timerSeconds.get() / 60.0);
             if (minutes <= 0) minutes = 1;
             Dialog<ButtonType> dlg = new Dialog<>();
+            WindowManager.prepare(dlg);
             dlg.setTitle("Confirmar sessão");
             dlg.setHeaderText("Salvar sessão de estudo?");
 
@@ -736,6 +754,26 @@ public class StudyDiaryWindow {
                 "document.execCommand('insertText', false, '" + safe + "')");
     }
 
+    private void initializeEditorThemeBridge() {
+        editorWebView = (WebView) richEditor.lookup(".web-view");
+        if (editorWebView == null) return;
+        editorWebView.getEngine().documentProperty().addListener((obs, oldDoc, newDoc) -> {
+            if (newDoc != null) Platform.runLater(this::applyEditorTheme);
+        });
+        applyEditorTheme();
+    }
+
+    private void applyEditorTheme() {
+        if (editorWebView == null || editorWebView.getEngine().getDocument() == null) return;
+        boolean dark = ThemeManager.getInstance().getTheme() == ThemeManager.Theme.ESCURO;
+        String background = dark ? "#161b22" : "#ffffff";
+        String text = dark ? "#e6edf3" : "#0d1b2a";
+        editorWebView.getEngine().executeScript(
+                "document.documentElement.style.backgroundColor='" + background + "';"
+                + "document.body.style.backgroundColor='" + background + "';"
+                + "document.body.style.color='" + text + "';");
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     // ATUALIZAÇÃO DE PROGRESSO
     // ══════════════════════════════════════════════════════════════════════
@@ -792,4 +830,3 @@ public class StudyDiaryWindow {
         try { return Integer.parseInt(s.trim()); } catch (Exception e) { return 0; }
     }
 }
-

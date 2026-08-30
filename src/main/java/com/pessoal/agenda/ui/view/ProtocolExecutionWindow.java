@@ -9,8 +9,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.time.format.DateTimeFormatter;
@@ -75,8 +73,7 @@ public class ProtocolExecutionWindow {
             existing.toFront(); existing.requestFocus(); return;
         }
 
-        stage = new Stage();
-        stage.initModality(Modality.APPLICATION_MODAL);
+        stage = WindowManager.createModalStage();
         stage.setTitle(protocol.executionType().icon() + "  " + protocol.name());
         stage.setMinWidth(920);
         stage.setMinHeight(580);
@@ -96,7 +93,7 @@ public class ProtocolExecutionWindow {
         openWindows.put(protocol.id(), stage);
         loadCurrentExecution();
         loadHistory();
-        stage.show();
+        WindowManager.show(stage);
     }
 
     // ── Header (header-bar) ─────────────────────────────────────────────────
@@ -114,7 +111,8 @@ public class ProtocolExecutionWindow {
         // Nome do protocolo
         Label nameLbl = new Label(protocol.name());
         nameLbl.getStyleClass().add("page-title");
-        nameLbl.setWrapText(true);
+        ResponsiveWindowLayout.makeFlexible(nameLbl);
+        HBox.setHgrow(nameLbl, Priority.ALWAYS);
 
         // Categoria
         Label catBadge = new Label("  " + (protocol.category() != null ? protocol.category() : "Geral") + "  ");
@@ -248,8 +246,8 @@ public class ProtocolExecutionWindow {
         cancelExecBtn.getStyleClass().add("danger-button");
         cancelExecBtn.setOnAction(e -> cancelCurrentExecution());
 
-        HBox actionBar = new HBox(8, completeBtn, restartBtn, createSpacer(), cancelExecBtn);
-        actionBar.setAlignment(Pos.CENTER_LEFT);
+        FlowPane actionBar = ResponsiveWindowLayout.actionFlow(
+                completeBtn, restartBtn, cancelExecBtn);
         actionBar.setPadding(new Insets(8, 0, 0, 0));
         actionBar.setStyle("-fx-border-color: -t-bd-lt; -fx-border-width: 1 0 0 0;");
 
@@ -284,8 +282,6 @@ public class ProtocolExecutionWindow {
                 if (empty || e == null) { setText(null); setGraphic(null); return; }
 
                 String icon  = e.isCompleted() ? "✓" : e.isCancelled() ? "✗" : "●";
-                Color  color = e.isCompleted() ? Color.web("-t-success")
-                             : e.isCancelled() ? Color.web("#e74c3c") : Color.web("#e67e22");
                 String iter  = e.executionType() == ProtocolExecutionType.EXPERIMENTO
                              ? "  Iter. " + e.iterationNumber() : "";
                 String dt    = e.startedAt() != null ? e.startedAt().format(DT_FMT) : "?";
@@ -293,8 +289,8 @@ public class ProtocolExecutionWindow {
                              ? "  " + e.checkedSteps() + "/" + e.totalSteps() + " passos" : "";
 
                 Label iconLbl = new Label(icon);
-                iconLbl.setTextFill(color);
                 iconLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+                applyHistoryIconStyle(iconLbl, e);
 
                 Label mainLbl = new Label(dt + iter + steps);
                 mainLbl.getStyleClass().add("study-plan-detail");
@@ -465,12 +461,24 @@ public class ProtocolExecutionWindow {
                     timeStampLbl, undoBtn);
             row.setAlignment(Pos.CENTER_LEFT);
             row.setPadding(new Insets(6, 10, 6, 10));
-            row.setStyle("-fx-background-color: " + (done ? "-t-surface-a" : "white") + ";"
-                    + " -fx-background-radius: 5;"
-                    + " -fx-border-color: " + (done ? "-t-success-bg" : "-t-bd-lt") + ";"
-                    + " -fx-border-radius: 5; -fx-border-width: 1;");
+            applyStepRowStyle(row, done);
             stepsContainer.getChildren().add(row);
         }
+    }
+
+    static void applyStepRowStyle(Region row, boolean done) {
+        row.getStyleClass().removeAll("protocol-step-row-open", "protocol-step-row-done");
+        if (!row.getStyleClass().contains("protocol-step-row")) {
+            row.getStyleClass().add("protocol-step-row");
+        }
+        row.getStyleClass().add(done ? "protocol-step-row-done" : "protocol-step-row-open");
+    }
+
+    static void applyHistoryIconStyle(Label icon, ProtocolExecution execution) {
+        icon.getStyleClass().removeAll("t-success", "t-danger", "t-warn");
+        icon.getStyleClass().add(execution.isCompleted()
+                ? "t-success"
+                : execution.isCancelled() ? "t-danger" : "t-warn");
     }
 
     private void reloadExecution() {
@@ -576,13 +584,5 @@ public class ProtocolExecutionWindow {
         lbl.setStyle("-fx-font-size: 11px; -fx-text-fill: -t-text-s;"
                 + " -fx-font-family: 'JetBrains Mono','Consolas',monospace;");
         parent.getChildren().add(lbl);
-    }
-
-    // ── Spacer helper ────────────────────────────────────────────────────────
-
-    private static Region createSpacer() {
-        Region r = new Region();
-        HBox.setHgrow(r, Priority.ALWAYS);
-        return r;
     }
 }

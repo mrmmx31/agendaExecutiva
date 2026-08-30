@@ -5,6 +5,10 @@ import com.pessoal.agenda.app.AppContextHolder;
 import com.pessoal.agenda.app.SharedContext;
 import com.pessoal.agenda.model.Category;
 import com.pessoal.agenda.model.CategoryDomain;
+import com.pessoal.agenda.model.QuickCaptureShortcut;
+import com.pessoal.agenda.service.PendencyNotificationService;
+import com.pessoal.agenda.service.QuickCapturePreferences;
+import com.pessoal.agenda.service.LocalMetricsService;
 import com.pessoal.agenda.ui.view.ThemeManager;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -14,6 +18,9 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+
 /**
  * Controller da aba de Configurações.
  * Gerencia as categorias de todos os domínios do sistema e o tema visual.
@@ -21,9 +28,45 @@ import javafx.scene.layout.VBox;
 public class ConfigController {
 
     private final SharedContext ctx;
+    private final Runnable notificationSettingsChanged;
+    private final Runnable quickCaptureShortcutChanged;
+    private final PendencyNotificationService notificationService;
+    private final LocalMetricsService localMetricsService;
+    private final Runnable localMetricsChanged;
 
     public ConfigController(SharedContext ctx) {
+        this(ctx, () -> {}, () -> {});
+    }
+
+    public ConfigController(SharedContext ctx, Runnable notificationSettingsChanged) {
+        this(ctx, notificationSettingsChanged, () -> {});
+    }
+
+    public ConfigController(SharedContext ctx, Runnable notificationSettingsChanged,
+                            Runnable quickCaptureShortcutChanged) {
+        this(ctx, notificationSettingsChanged, quickCaptureShortcutChanged,
+                PendencyNotificationService.getInstance(),
+                AppContextHolder.get().localMetricsService(), ctx::triggerDashboardRefresh);
+    }
+
+    public ConfigController(SharedContext ctx, Runnable notificationSettingsChanged,
+                            Runnable quickCaptureShortcutChanged,
+                            PendencyNotificationService notificationService) {
+        this(ctx, notificationSettingsChanged, quickCaptureShortcutChanged,
+                notificationService, null, () -> {});
+    }
+
+    ConfigController(SharedContext ctx, Runnable notificationSettingsChanged,
+                     Runnable quickCaptureShortcutChanged,
+                     PendencyNotificationService notificationService,
+                     LocalMetricsService localMetricsService,
+                     Runnable localMetricsChanged) {
         this.ctx = ctx;
+        this.notificationSettingsChanged = notificationSettingsChanged;
+        this.quickCaptureShortcutChanged = quickCaptureShortcutChanged;
+        this.notificationService = notificationService;
+        this.localMetricsService = localMetricsService;
+        this.localMetricsChanged = localMetricsChanged;
     }
 
     public Tab buildTab() {
@@ -51,11 +94,13 @@ public class ConfigController {
         HBox.setHgrow(ideaSection,       Priority.ALWAYS);
 
         Label header = new Label(
-                "Gerencie as categorias e tipos que organizam cada módulo do sistema. " +
-                "As categorias e tipos ficam disponíveis como filtros e opções de seleção nas abas.");
+                "Ajuste a aparência, a intensidade dos lembretes e as categorias usadas para organizar seus registros.");
         header.setWrapText(true);
 
-        VBox content = new VBox(14, header, buildThemeSection(), row1, row2, row3);
+        VBox content = new VBox(14, header, buildThemeSection(), buildNotificationSection(),
+                buildQuickCaptureSection());
+        if (localMetricsService != null) content.getChildren().add(buildLocalMetricsSection());
+        content.getChildren().addAll(row1, row2, row3);
         content.setPadding(new Insets(16));
 
         ScrollPane scroll = new ScrollPane(content);
@@ -63,6 +108,243 @@ public class ConfigController {
         scroll.getStyleClass().add("edge-to-edge");
         tab.setContent(scroll);
         return tab;
+    }
+
+    VBox buildLocalMetricsSection() {
+        if (localMetricsService == null) {
+            throw new IllegalStateException("Serviço de métricas locais não configurado");
+        }
+        Label title = new Label("Métricas locais de uso");
+        title.getStyleClass().add("section-title");
+        Label privacy = new Label(
+                "Somente tempos, contagens e horários ficam armazenados neste dispositivo.");
+        privacy.getStyleClass().add("t-muted");
+        privacy.setWrapText(true);
+
+        CheckBox enabled = new CheckBox("Mostrar e registrar métricas locais");
+        enabled.setId("local-metrics-enabled");
+        enabled.setSelected(localMetricsService.isEnabled());
+        Button clear = new Button("Apagar histórico local");
+        clear.setId("local-metrics-clear");
+        clear.getStyleClass().add("danger-button");
+
+        enabled.setOnAction(event -> {
+            localMetricsService.setEnabled(enabled.isSelected());
+            localMetricsChanged.run();
+            ctx.setStatus(enabled.isSelected()
+                    ? "Métricas locais ativadas."
+                    : "Métricas locais desativadas. Nenhum novo registro será criado.");
+        });
+        clear.setOnAction(event -> Dialogs.confirm(
+                        "Apagar métricas locais",
+                        "Apagar todo o histórico local de métricas?",
+                        "A configuração de ativação será mantida.")
+                .filter(button -> button == ButtonType.OK)
+                .ifPresent(button -> {
+                    localMetricsService.clear();
+                    localMetricsChanged.run();
+                    ctx.setStatus("Histórico local de métricas apagado.");
+                }));
+
+        HBox controls = new HBox(12, enabled, clear);
+        controls.setAlignment(Pos.CENTER_LEFT);
+        VBox section = new VBox(10, title, privacy, controls);
+        section.setId("config-local-metrics");
+        section.getStyleClass().add("config-section");
+        section.setPadding(new Insets(12, 14, 12, 14));
+        return section;
+    }
+
+    VBox buildNotificationSection() {
+        PendencyNotificationService service = notificationService;
+
+        Label titleLabel = new Label("Lembretes e estímulos");
+        titleLabel.getStyleClass().add("section-title");
+
+        CheckBox enabled = new CheckBox("Lembretes periódicos");
+        enabled.setId("notifications-enabled");
+        enabled.setSelected(service.isEnabled());
+        CheckBox sound = new CheckBox("Som");
+        sound.setId("notifications-sound");
+        sound.setSelected(service.isSoundEnabled());
+        CheckBox animation = new CheckBox("Animar indicador de pendências");
+        animation.setId("notifications-animation");
+        animation.setSelected(service.isBadgeAnimationEnabled());
+
+        Button testSound = new Button("Testar som");
+        testSound.setId("notifications-test-sound");
+        testSound.getStyleClass().add("secondary-button");
+
+        ComboBox<Integer> interval = new ComboBox<>();
+        interval.setId("notifications-interval");
+        interval.getItems().addAll(5, 15, 30, 60);
+        interval.setValue(service.getIntervalMinutes());
+        interval.setConverter(new javafx.util.StringConverter<>() {
+            @Override public String toString(Integer value) {
+                return value == null ? "" : value + " minutos";
+            }
+            @Override public Integer fromString(String value) {
+                return Integer.valueOf(value.replaceAll("\\D", ""));
+            }
+        });
+
+        CheckBox quietHours = new CheckBox("Horário silencioso");
+        quietHours.setId("notifications-quiet-enabled");
+        quietHours.setSelected(service.isQuietHoursEnabled());
+        ComboBox<LocalTime> quietStart = buildTimeSelector(
+                "notifications-quiet-start", service.getQuietHoursStart());
+        ComboBox<LocalTime> quietEnd = buildTimeSelector(
+                "notifications-quiet-end", service.getQuietHoursEnd());
+
+        Runnable syncDisabledState = () -> {
+            boolean remindersDisabled = !enabled.isSelected();
+            sound.setDisable(remindersDisabled);
+            animation.setDisable(remindersDisabled);
+            interval.setDisable(remindersDisabled);
+            testSound.setDisable(remindersDisabled || !sound.isSelected());
+            quietHours.setDisable(remindersDisabled);
+            quietStart.setDisable(remindersDisabled || !quietHours.isSelected());
+            quietEnd.setDisable(remindersDisabled || !quietHours.isSelected());
+        };
+        syncDisabledState.run();
+
+        enabled.setOnAction(e -> {
+            service.setEnabled(enabled.isSelected());
+            syncDisabledState.run();
+            notificationSettingsChanged.run();
+            ctx.setStatus(enabled.isSelected()
+                    ? "Lembretes periódicos ativados."
+                    : "Lembretes desligados. Contagens continuam visíveis.");
+        });
+        sound.setOnAction(e -> {
+            service.setSoundEnabled(sound.isSelected());
+            syncDisabledState.run();
+            ctx.setStatus(sound.isSelected() ? "Som dos lembretes ativado." : "Som dos lembretes desativado.");
+        });
+        animation.setOnAction(e -> {
+            service.setBadgeAnimationEnabled(animation.isSelected());
+            notificationSettingsChanged.run();
+            ctx.setStatus(animation.isSelected() ? "Animação do indicador ativada." : "Indicador mantido estático.");
+        });
+        interval.setOnAction(e -> {
+            Integer value = interval.getValue();
+            if (value != null) {
+                service.setIntervalMinutes(value);
+                ctx.setStatus("Intervalo dos lembretes: " + value + " minutos.");
+            }
+        });
+        testSound.setOnAction(e -> ctx.setStatus(soundTestStatus(service.testSound())));
+        quietHours.setOnAction(e -> {
+            service.setQuietHoursEnabled(quietHours.isSelected());
+            syncDisabledState.run();
+            ctx.setStatus(quietHours.isSelected()
+                    ? "Horário silencioso ativado."
+                    : "Horário silencioso desativado.");
+        });
+        Runnable saveQuietHours = () -> {
+            service.setQuietHours(quietStart.getValue(), quietEnd.getValue());
+            ctx.setStatus("Horário silencioso: " + formatTime(quietStart.getValue())
+                    + " até " + formatTime(quietEnd.getValue()) + ".");
+        };
+        quietStart.setOnAction(e -> saveQuietHours.run());
+        quietEnd.setOnAction(e -> saveQuietHours.run());
+
+        Label intervalLabel = new Label("Intervalo");
+        HBox primaryControls = new HBox(
+                18, enabled, sound, animation, intervalLabel, interval, testSound);
+        primaryControls.setAlignment(Pos.CENTER_LEFT);
+        Label quietStartLabel = new Label("Das");
+        Label quietEndLabel = new Label("até");
+        HBox quietControls = new HBox(
+                10, quietHours, quietStartLabel, quietStart, quietEndLabel, quietEnd);
+        quietControls.setAlignment(Pos.CENTER_LEFT);
+
+        VBox section = new VBox(10, titleLabel, primaryControls, quietControls);
+        section.getStyleClass().addAll("config-section", "config-notifications");
+        section.setPadding(new Insets(12, 14, 12, 14));
+        return section;
+    }
+
+    private ComboBox<LocalTime> buildTimeSelector(String id, LocalTime selected) {
+        ComboBox<LocalTime> selector = new ComboBox<>();
+        selector.setId(id);
+        for (int hour = 0; hour < 24; hour++) {
+            selector.getItems().add(LocalTime.of(hour, 0));
+            selector.getItems().add(LocalTime.of(hour, 30));
+        }
+        selector.setValue(selected);
+        selector.setPrefWidth(92);
+        selector.setConverter(new javafx.util.StringConverter<>() {
+            @Override public String toString(LocalTime value) {
+                return value == null ? "" : formatTime(value);
+            }
+            @Override public LocalTime fromString(String value) {
+                return LocalTime.parse(value, DateTimeFormatter.ofPattern("HH:mm"));
+            }
+        });
+        return selector;
+    }
+
+    private String formatTime(LocalTime value) {
+        return value.format(DateTimeFormatter.ofPattern("HH:mm"));
+    }
+
+    private String soundTestStatus(PendencyNotificationService.SoundTestResult result) {
+        return switch (result) {
+            case PLAYED -> "Som de teste reproduzido uma vez.";
+            case ALREADY_PLAYING -> "O som anterior ainda está em reprodução.";
+            case REMINDERS_DISABLED -> "Teste indisponível: lembretes estão desligados.";
+            case SOUND_DISABLED -> "Teste indisponível: ative o som dos lembretes.";
+            case SNOOZED -> "Som não reproduzido: lembretes estão pausados.";
+            case QUIET_HOURS -> "Som não reproduzido: horário silencioso ativo.";
+        };
+    }
+
+    private VBox buildQuickCaptureSection() {
+        QuickCapturePreferences preferences = AppContextHolder.get().quickCapturePreferences();
+
+        Label titleLabel = new Label("Captura rápida");
+        titleLabel.getStyleClass().add("section-title");
+
+        Label shortcutLabel = new Label("Atalho");
+        ComboBox<QuickCaptureShortcut> shortcut = new ComboBox<>();
+        shortcut.setId("quick-capture-shortcut");
+        shortcut.getItems().setAll(QuickCaptureShortcut.values());
+        shortcut.setConverter(new javafx.util.StringConverter<>() {
+            @Override public String toString(QuickCaptureShortcut value) {
+                return value == null ? "" : value.label();
+            }
+            @Override public QuickCaptureShortcut fromString(String value) {
+                return shortcut.getItems().stream()
+                        .filter(option -> option.label().equals(value))
+                        .findFirst().orElse(QuickCapturePreferences.DEFAULT_SHORTCUT);
+            }
+        });
+        shortcut.setValue(preferences.getShortcut());
+        shortcut.setOnAction(event -> {
+            QuickCaptureShortcut selected = shortcut.getValue();
+            if (selected == null) return;
+            preferences.setShortcut(selected);
+            quickCaptureShortcutChanged.run();
+            ctx.setStatus(selected == QuickCaptureShortcut.DISABLED
+                    ? "Atalho da captura rápida desativado."
+                    : "Atalho da captura rápida: " + selected.label() + ".");
+        });
+
+        Button restore = new Button("Restaurar padrão");
+        restore.setId("quick-capture-shortcut-restore");
+        restore.getStyleClass().add("secondary-button");
+        restore.setOnAction(event -> {
+            preferences.restoreDefault();
+            shortcut.setValue(QuickCapturePreferences.DEFAULT_SHORTCUT);
+        });
+
+        HBox controls = new HBox(10, shortcutLabel, shortcut, restore);
+        controls.setAlignment(Pos.CENTER_LEFT);
+        VBox section = new VBox(10, titleLabel, controls);
+        section.getStyleClass().addAll("config-section", "config-quick-capture");
+        section.setPadding(new Insets(12, 14, 12, 14));
+        return section;
     }
 
     /** Seção de seleção de tema visual */
@@ -167,4 +449,3 @@ public class ConfigController {
         return section;
     }
 }
-

@@ -13,7 +13,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
@@ -100,8 +99,7 @@ public class ProjectIdeaDetailWindow {
             }
         }
 
-        Stage stage = new Stage();
-        stage.initModality(Modality.NONE);
+        Stage stage = WindowManager.createModelessStage();
         stage.setTitle("Ideia / Projeto — " + idea.title());
         stage.setMinWidth(780); stage.setMinHeight(680);
         openWindows.put(idea.id(), stage);
@@ -121,7 +119,7 @@ public class ProjectIdeaDetailWindow {
         Scene scene = new Scene(root, 820, 740);
         ThemeManager.getInstance().applyTo(scene);
         stage.setScene(scene);
-        stage.show();
+        WindowManager.show(stage);
     }
 
     // ── Cabeçalho da janela ──────────────────────────────────────────────────
@@ -132,7 +130,10 @@ public class ProjectIdeaDetailWindow {
         Label sub = new Label(idea.typeLabel() + "  ·  " + idea.priorityLabel()
                 + "  ·  " + idea.impactLabel());
         sub.getStyleClass().add("page-subtitle");
+        ResponsiveWindowLayout.makeFlexible(sub);
         VBox titles = new VBox(2, title, sub);
+        titles.setMinWidth(0);
+        HBox.setHgrow(titles, Priority.ALWAYS);
         HBox hdr = new HBox(titles);
         hdr.getStyleClass().add("header-bar");
         hdr.setPadding(new Insets(14, 20, 14, 20));
@@ -222,15 +223,27 @@ public class ProjectIdeaDetailWindow {
         targetDatePicker.getStyleClass().add("input-control");
         targetDatePicker.setPromptText("dd/MM/yyyy");
 
-        HBox row3 = new HBox(10,
-                labeledControl("Categoria",          categoryCombo),
-                labeledControl("Pertence a",         parentIdeaCombo),
-                labeledControl("Viabilidade (1-5)",  feasibilitySpinner),
-                labeledControl("Horas estimadas",    hoursSpinner),
-                labeledControl("Início planejado",   startDatePicker),
-                labeledControl("Prazo-alvo",         targetDatePicker));
-        HBox.setHgrow(categoryCombo, Priority.ALWAYS);
-        HBox.setHgrow(parentIdeaCombo, Priority.ALWAYS);
+        GridPane row3 = new GridPane();
+        row3.setHgap(10);
+        row3.setVgap(8);
+        javafx.scene.Node[] metadataControls = {
+                labeledControl("Categoria", categoryCombo),
+                labeledControl("Pertence a", parentIdeaCombo),
+                labeledControl("Viabilidade (1-5)", feasibilitySpinner),
+                labeledControl("Horas estimadas", hoursSpinner),
+                labeledControl("Início planejado", startDatePicker),
+                labeledControl("Prazo-alvo", targetDatePicker)
+        };
+        for (int i = 0; i < metadataControls.length; i++) {
+            row3.add(metadataControls[i], i % 3, i / 3);
+            GridPane.setHgrow(metadataControls[i], Priority.ALWAYS);
+        }
+        for (int i = 0; i < 3; i++) {
+            ColumnConstraints column = new ColumnConstraints();
+            column.setPercentWidth(100.0 / 3.0);
+            column.setHgrow(Priority.ALWAYS);
+            row3.getColumnConstraints().add(column);
+        }
         form.getChildren().add(row3);
 
         // ── Seção: Descrição / Hipótese / Abstract ─────────────────────────
@@ -417,7 +430,7 @@ public class ProjectIdeaDetailWindow {
             HBox row = new HBox(8, cb, textLbl, delBtn);
             row.setAlignment(Pos.CENTER_LEFT);
             row.setPadding(new Insets(5, 8, 5, 10));
-            row.setStyle("-fx-background-color: " + (i % 2 == 0 ? "-t-surface-a" : "white")
+            row.setStyle("-fx-background-color: " + (i % 2 == 0 ? "-t-surface-a" : "-t-surface")
                     + "; -fx-background-radius: 4;");
             checklistItemsBox.getChildren().add(row);
         }
@@ -618,4 +631,3 @@ public class ProjectIdeaDetailWindow {
         new ProjectIdeaDetailWindow(blank, repo, onSaved).show();
     }
 }
-

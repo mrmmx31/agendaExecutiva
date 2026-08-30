@@ -1,13 +1,20 @@
 package com.pessoal.agenda;
 
 import com.pessoal.agenda.app.SharedContext;
+import com.pessoal.agenda.app.AppContextHolder;
 import com.pessoal.agenda.service.PendencyNotificationService;
+import com.pessoal.agenda.service.TaskTimerService;
+import com.pessoal.agenda.service.TaskTimerRecoveryService;
 import com.pessoal.agenda.ui.controller.*;
 import com.pessoal.agenda.ui.view.ThemeManager;
+import com.pessoal.agenda.ui.view.InboxTriageWindow;
+import com.pessoal.agenda.ui.view.QuickCaptureShortcutBinding;
+import com.pessoal.agenda.ui.view.QuickCaptureWindow;
+import com.pessoal.agenda.ui.view.ReminderShortcutBinding;
+import com.pessoal.agenda.ui.view.StatusAlertAnimator;
+import com.pessoal.agenda.ui.view.TaskTimerWindow;
+import com.pessoal.agenda.ui.view.TimerRecoveryDialog;
 import com.pessoal.agenda.ui.view.WindowManager;
-import javafx.animation.Animation;
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -20,16 +27,12 @@ import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.Tooltip;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyCodeCombination;
-import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.util.Duration;
 
 import java.time.YearMonth;
 
@@ -58,21 +61,39 @@ public class AgendaApp extends Application {
     private StudyController      studyCtrl;
     private IdeasController      ideasCtrl;
     private ConfigController     configCtrl;
+    private QuickCaptureWindow quickCaptureWindow;
+    private InboxTriageWindow inboxTriageWindow;
+    private QuickCaptureShortcutBinding quickCaptureShortcutBinding;
+    private Button inboxButton;
+    private TaskTimerRecoveryService timerRecoveryService;
 
     // ── Barra de status ────────────────────────────────────────────────────
     private final Label statusLabel = new Label("Sistema pronto para uso.");
     private final Label statusAlertBadge = new Label("SEM ALERTAS");
     private final Tooltip statusAlertTooltip = new Tooltip();
     private final ContextMenu statusAlertPopover = new ContextMenu();
-    private Timeline statusAlertBlink;
+    private StatusAlertAnimator statusAlertAnimator;
     private int badgeOverdueAlerts = 0;
     private int badgeTodayCount = 0;
     private int badgeProtocolCount = 0;
+    private final Runnable timerStateRefresh = () -> Platform.runLater(() -> {
+        if (dashboardCtrl != null) refreshDashboardKpis();
+    });
 
     // ══════════════════════════════════════════════════════════════════════
     @Override
     public void start(Stage stage) {
+        WindowManager.initialize(stage);
         databaseService.initialize();
+        AppContextHolder.get().localMetricsService().beginSession();
+        quickCaptureWindow = new QuickCaptureWindow(
+                AppContextHolder.get().inboxCaptureService(), actions -> {
+                    AppContextHolder.get().localMetricsService().recordQuickCapture(actions);
+                    refreshInboxCount();
+                });
+        inboxTriageWindow = new InboxTriageWindow(
+                AppContextHolder.get().inboxCaptureService(), this::handleInboxChanged);
+        timerRecoveryService = AppContextHolder.get().taskTimerRecoveryService();
 
         // Contexto compartilhado com callback de status
         ctx = new SharedContext(statusLabel::setText);
@@ -80,16 +101,24 @@ public class AgendaApp extends Application {
         // Callbacks coordenados pelo AgendaApp
         ctx.setDashboardRefreshCallback(this::refreshDashboardKpis);
         ctx.setAlertRefreshCallback(this::refreshAlertsAndUpcoming);
+        ctx.setInboxRefreshCallback(this::handleInboxChanged);
 
         // Inicialização dos controllers
-        dashboardCtrl = new DashboardController(ctx, databaseService);
+        dashboardCtrl = new DashboardController(ctx, databaseService,
+                AppContextHolder.get().dailyPlanService(),
+                AppContextHolder.get().dayReviewService(),
+                AppContextHolder.get().localMetricsService(),
+                AppContextHolder.get().taskRepository(),
+                AppContextHolder.get().focusContextService());
         agendaCtrl    = new AgendaTabController(ctx, databaseService);
         checklistCtrl = new ChecklistController(ctx);
         financeCtrl   = new FinanceController(ctx, databaseService);
         salesCtrl     = new SalesController(ctx, databaseService);
         studyCtrl     = new StudyController(ctx);
         ideasCtrl     = new IdeasController(ctx, databaseService);
-        configCtrl    = new ConfigController(ctx);
+        configCtrl    = new ConfigController(
+                ctx, this::updateCriticalBadge, this::refreshQuickCaptureShortcut);
+        TaskTimerService.get().addStateListener(timerStateRefresh);
 
         // Montagem do TabPane
         TabPane tabPane = new TabPane();
@@ -122,7 +151,7 @@ public class AgendaApp extends Application {
 
         Scene scene = new Scene(root, 1260, 820);
         ThemeManager.getInstance().applyTo(scene);
-        registerShortcut(scene);
+        registerShortcuts(scene);
 
         // Hook global: aplica tema automaticamente a TODA nova janela/diálogo que abrir
         ThemeManager.getInstance().initGlobalWindowHook();
@@ -131,6 +160,8 @@ public class AgendaApp extends Application {
         stage.setScene(scene);
         stage.setOnCloseRequest(e -> {
             PendencyNotificationService.getInstance().stop();
+            timerRecoveryService.stopTracking();
+            TaskTimerService.get().removeStateListener(timerStateRefresh);
             WindowManager.closeAll();
             Platform.exit();
         });
@@ -138,14 +169,36 @@ public class AgendaApp extends Application {
 
         // Carga inicial de todos os dados
         refreshAllData(YearMonth.now());
+        Platform.runLater(this::offerTimerRecovery);
 
-        // Lembretes periódicos: a cada 5 minutos, se houver alertas críticos.
-        PendencyNotificationService.getInstance().start(5 * 60 * 1000L, () -> {
+        PendencyNotificationService.getInstance().start(() -> {
             refreshAlertsAndUpcoming();
             refreshDashboardKpis();
             updateCriticalBadge();
             ctx.setStatus("Lembrete: você tem pendências críticas para revisar.");
         });
+    }
+
+    private void offerTimerRecovery() {
+        var pending = timerRecoveryService.pending();
+        if (pending.isEmpty()) {
+            timerRecoveryService.startTracking();
+            return;
+        }
+
+        TimerRecoveryDialog.Decision decision = TimerRecoveryDialog.show(pending.get());
+        if (decision == TimerRecoveryDialog.Decision.RECOVER) {
+            var recovered = timerRecoveryService.recover();
+            new TaskTimerWindow(recovered.task(),
+                    AppContextHolder.get().taskSessionRepository(),
+                    ctx::triggerDashboardRefresh).show();
+            ctx.setStatus("Timer recuperado e pausado: " + recovered.task().title());
+        } else {
+            timerRecoveryService.discard();
+            ctx.setStatus("Intervalo anterior descartado.");
+        }
+        timerRecoveryService.startTracking();
+        refreshDashboardKpis();
     }
 
     // ── Coordenação de refreshes ───────────────────────────────────────────
@@ -161,6 +214,7 @@ public class AgendaApp extends Application {
         refreshDashboardKpis();
         refreshAlertsAndUpcoming();
         updateCriticalBadge();
+        refreshInboxCount();
     }
 
     private void refreshDashboardKpis() {
@@ -175,20 +229,66 @@ public class AgendaApp extends Application {
         updateCriticalBadge();
     }
 
-    private void registerShortcut(Scene scene) {
-        Runnable remindAction = () -> {
-            refreshAlertsAndUpcoming();
-            refreshDashboardKpis();
-            PendencyNotificationService.getInstance().forceCheck();
-            ctx.setStatus("Lembrete manual disparado (atalho Ctrl/Cmd+S ou Ctrl/Cmd+Shift+S).");
-        };
+    private void registerShortcuts(Scene scene) {
+        Runnable remindAction = () -> triggerManualReminder("atalho Ctrl/Cmd+Shift+R");
 
-        KeyCombination remindNow = new KeyCodeCombination(KeyCode.S, KeyCombination.SHORTCUT_DOWN);
-        KeyCombination remindNowAlt = new KeyCodeCombination(
-                KeyCode.S, KeyCombination.SHORTCUT_DOWN, KeyCombination.SHIFT_DOWN);
+        new ReminderShortcutBinding(scene, remindAction).bind();
 
-        scene.getAccelerators().put(remindNow, remindAction);
-        scene.getAccelerators().put(remindNowAlt, remindAction);
+        quickCaptureShortcutBinding = new QuickCaptureShortcutBinding(
+                scene,
+                AppContextHolder.get().quickCapturePreferences(),
+                this::openQuickCapture);
+        quickCaptureShortcutBinding.refresh();
+    }
+
+    private void refreshQuickCaptureShortcut() {
+        if (quickCaptureShortcutBinding != null) {
+            quickCaptureShortcutBinding.refresh();
+        }
+    }
+
+    private void openQuickCapture() {
+        quickCaptureWindow.show();
+    }
+
+    private void handleInboxChanged() {
+        refreshInboxCount();
+        agendaCtrl.refresh();
+        ideasCtrl.refresh();
+        refreshDashboardKpis();
+    }
+
+    private void refreshInboxCount() {
+        if (inboxButton == null) return;
+        try {
+            int count = AppContextHolder.get().inboxCaptureService().countUnclassified();
+            inboxButton.setText(count > 0 ? "Caixa de entrada (" + count + ")" : "Caixa de entrada");
+        } catch (RuntimeException error) {
+            inboxButton.setText("Caixa de entrada");
+        }
+    }
+
+    private void triggerManualReminder(String source) {
+        refreshAlertsAndUpcoming();
+        refreshDashboardKpis();
+        PendencyNotificationService notificationService = PendencyNotificationService.getInstance();
+        if (!notificationService.isEnabled()) {
+            ctx.setStatus("Lembretes estão desligados nas Configurações.");
+            return;
+        }
+        if (notificationService.isSnoozed()) {
+            ctx.setStatus("Pendências atualizadas. Lembretes continuam pausados.");
+            return;
+        }
+        notificationService.forceCheck();
+        if (notificationService.isSoundEnabled()
+                && notificationService.isQuietHoursEnabled()
+                && notificationService.isQuietHours()) {
+            ctx.setStatus("Lembrete visual solicitado por " + source
+                    + "; som omitido pelo horário silencioso.");
+        } else {
+            ctx.setStatus("Lembrete manual solicitado por " + source + ".");
+        }
     }
 
     private void updateCriticalBadge() {
@@ -221,7 +321,7 @@ public class AgendaApp extends Application {
                 + "A = Alertas de atraso: " + overdueAlerts + "\n"
                 + "H = Tarefas de hoje: " + todayCount + "\n"
                 + "P = Protocolos periódicos: " + protocolCount + "\n\n"
-                + "Dica: use Ctrl/Cmd+S para lembrar agora.");
+                + "Clique no indicador para revisar ou pausar lembretes.");
         statusAlertBadge.getStyleClass().remove("status-alert-ok");
         statusAlertBadge.getStyleClass().remove("status-alert-critical");
         statusAlertBadge.getStyleClass().remove("status-alert-warning");
@@ -230,24 +330,26 @@ public class AgendaApp extends Application {
         } else {
             statusAlertBadge.getStyleClass().add("status-alert-warning");
         }
-        startBadgeBlink();
+        PendencyNotificationService notificationService = PendencyNotificationService.getInstance();
+        if (notificationService.isBadgeAttentionAllowed()) {
+            startBadgeBlink();
+        } else {
+            stopBadgeBlink();
+            statusAlertBadge.setOpacity(1.0);
+        }
     }
 
     private void startBadgeBlink() {
-        if (statusAlertBlink != null && statusAlertBlink.getStatus() == Animation.Status.RUNNING) return;
-        statusAlertBlink = new Timeline(
-                new KeyFrame(Duration.ZERO, e -> statusAlertBadge.setOpacity(1.0)),
-                new KeyFrame(Duration.millis(600), e -> statusAlertBadge.setOpacity(0.45)),
-                new KeyFrame(Duration.millis(1200), e -> statusAlertBadge.setOpacity(1.0))
-        );
-        statusAlertBlink.setCycleCount(Animation.INDEFINITE);
-        statusAlertBlink.play();
+        if (statusAlertAnimator == null) {
+            statusAlertAnimator = new StatusAlertAnimator(statusAlertBadge);
+        }
+        statusAlertAnimator.play();
     }
 
     private void stopBadgeBlink() {
-        if (statusAlertBlink != null) {
-            statusAlertBlink.stop();
-            statusAlertBlink = null;
+        if (statusAlertAnimator != null) {
+            statusAlertAnimator.stop();
+            statusAlertAnimator = null;
         }
     }
 
@@ -261,7 +363,7 @@ public class AgendaApp extends Application {
         subtitle.getStyleClass().add("page-subtitle");
 
         Button refreshAllBtn = new Button("Atualizar tudo");
-        refreshAllBtn.getStyleClass().add("primary-button");
+        refreshAllBtn.getStyleClass().add("secondary-button");
         refreshAllBtn.setOnAction(e -> {
             refreshAllData(YearMonth.from(agendaCtrl.getCurrentDate()));
             ctx.setStatus("Dados atualizados com sucesso.");
@@ -271,9 +373,20 @@ public class AgendaApp extends Application {
         focusBtn.getStyleClass().add("secondary-button");
         focusBtn.setOnAction(e -> tabPane.getSelectionModel().select(0));
 
+        Button captureBtn = new Button("Capturar");
+        captureBtn.setId("global-quick-capture");
+        captureBtn.getStyleClass().add("primary-button");
+        captureBtn.setOnAction(e -> openQuickCapture());
+
+        inboxButton = new Button("Caixa de entrada");
+        inboxButton.setId("global-inbox-triage");
+        inboxButton.getStyleClass().add("secondary-button");
+        inboxButton.setOnAction(e -> inboxTriageWindow.show());
+
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox header = new HBox(12, new VBox(4, title, subtitle), spacer, focusBtn, refreshAllBtn);
+        HBox header = new HBox(12, new VBox(4, title, subtitle), spacer,
+                focusBtn, refreshAllBtn, inboxButton, captureBtn);
         header.getStyleClass().add("header-bar");
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(16, 18, 14, 18));
@@ -313,15 +426,28 @@ public class AgendaApp extends Application {
         today.setDisable(true);
         MenuItem protocol = new MenuItem("Protocolos (P): " + badgeProtocolCount);
         protocol.setDisable(true);
-        MenuItem remindNow = new MenuItem("Lembrar agora (Ctrl/Cmd+S ou Ctrl/Cmd+Shift+S)");
-        remindNow.setOnAction(ev -> {
-            refreshAlertsAndUpcoming();
-            refreshDashboardKpis();
-            PendencyNotificationService.getInstance().forceCheck();
-            ctx.setStatus("Lembrete manual disparado pelo badge.");
+        MenuItem remindNow = new MenuItem("Lembrar agora");
+        remindNow.setOnAction(ev -> triggerManualReminder("indicador de pendências"));
+        PendencyNotificationService notificationService = PendencyNotificationService.getInstance();
+        remindNow.setDisable(!notificationService.isEnabled());
+        boolean snoozed = notificationService.isSnoozed();
+        MenuItem snooze = new MenuItem(snoozed
+                ? "Retomar lembretes"
+                : "Pausar lembretes por 30 minutos");
+        snooze.setDisable(!notificationService.isEnabled());
+        snooze.setOnAction(ev -> {
+            if (snoozed) {
+                notificationService.clearSnooze();
+                updateCriticalBadge();
+                ctx.setStatus("Lembretes retomados.");
+            } else {
+                notificationService.snoozeForMinutes(30);
+                stopBadgeBlink();
+                statusAlertBadge.setOpacity(1.0);
+                ctx.setStatus("Lembretes pausados por 30 minutos. As pendências continuam visíveis.");
+            }
         });
         statusAlertPopover.getItems().addAll(title, new javafx.scene.control.SeparatorMenuItem(), overdue, today, protocol,
-                new javafx.scene.control.SeparatorMenuItem(), remindNow);
+                new javafx.scene.control.SeparatorMenuItem(), remindNow, snooze);
     }
 }
-

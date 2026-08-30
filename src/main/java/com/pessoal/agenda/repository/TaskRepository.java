@@ -15,7 +15,32 @@ public class TaskRepository {
 
     /** Compatibilidade retroativa. */
     public void save(String title, String notes, LocalDate dueDate, String category) {
-        save(title, notes, dueDate, category, ScheduleType.SINGLE, null, null);
+        saveReturningId(title, notes, dueDate, category);
+    }
+
+    public long saveReturningId(String title, String notes, LocalDate dueDate, String category) {
+        String sql = """
+                INSERT INTO tasks(
+                    title, notes, due_date, done, category, schedule_type,
+                    end_date, recurrence_days, start_time, end_time,
+                    priority, status, linked_protocol_id
+                ) VALUES(?,?,?,0,?,'SINGLE',NULL,NULL,NULL,NULL,'NORMAL','PENDENTE',NULL)
+                """;
+        try (Connection connection = db.connect();
+             PreparedStatement statement = connection.prepareStatement(
+                     sql, Statement.RETURN_GENERATED_KEYS)) {
+            statement.setString(1, title);
+            statement.setString(2, notes);
+            statement.setString(3, dueDate.toString());
+            statement.setString(4, category != null ? category : "Geral");
+            statement.executeUpdate();
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                if (!keys.next()) throw new SQLException("Tarefa criada não retornou ID");
+                return keys.getLong(1);
+            }
+        } catch (SQLException error) {
+            throw new RuntimeException("Erro ao criar tarefa", error);
+        }
     }
 
     /** Compatibilidade com agendamento (sem tempo/prioridade). */
@@ -48,6 +73,15 @@ public class TaskRepository {
 
     public void markDone(long id) {
         db.execute("UPDATE tasks SET done=1, status='CONCLUIDA' WHERE id=?", id);
+    }
+
+    public void reopen(long id) {
+        db.execute("UPDATE tasks SET done=0, status='PENDENTE' WHERE id=?", id);
+    }
+
+    public void updateFromGoogle(long id, String title, String notes, LocalDate dueDate) {
+        db.execute("UPDATE tasks SET title=?, notes=?, due_date=? WHERE id=?",
+                title, notes, dueDate.toString(), id);
     }
 
     public void update(long id, String title, String notes, LocalDate dueDate, String category,
@@ -220,4 +254,3 @@ public class TaskRepository {
             rs.getObject("linked_protocol_id") != null ? rs.getLong("linked_protocol_id") : null);
     }
 }
-

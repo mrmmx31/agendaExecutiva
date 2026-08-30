@@ -935,6 +935,7 @@ public class ChecklistController {
         javafx.scene.layout.GridPane.setHgrow(dlgStatusCombo, javafx.scene.layout.Priority.ALWAYS);
 
         Dialog<ButtonType> printDlg = new Dialog<>();
+        Dialogs.prepare(printDlg);
         printDlg.setTitle("Opções de Impressão");
         printDlg.setHeaderText("Protocolos Operacionais — Filtros para impressão");
         printDlg.getDialogPane().setContent(grid);

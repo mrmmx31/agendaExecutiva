@@ -12,14 +12,15 @@ import javafx.scene.control.*;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -49,9 +50,7 @@ public class SessionHistoryWindow {
     }
 
     public void show() {
-        stage = new Stage();
-        WindowManager.register(stage);
-        stage.initModality(Modality.NONE);
+        stage = WindowManager.createModelessStage();
         stage.setTitle("Histórico de sessões");
 
         BorderPane root = new BorderPane();
@@ -60,6 +59,7 @@ public class SessionHistoryWindow {
         // ── Barra superior elegante igual ao form principal ──
         Label title = new Label("Histórico de sessões");
         title.getStyleClass().add("page-title");
+        ResponsiveWindowLayout.makeFlexible(title);
         HBox headerBar = new HBox(title);
         headerBar.getStyleClass().add("header-bar");
         headerBar.setPadding(new Insets(16, 28, 16, 28));
@@ -95,6 +95,7 @@ public class SessionHistoryWindow {
         taskFilter.setPromptText("Filtrar por tarefa (texto no assunto)");
         taskFilter.getStyleClass().add("input-control");
         taskFilter.setMinWidth(140);
+        taskFilter.setPrefWidth(240);
         if (taskId != null) { taskFilter.setText("#" + taskId); taskFilter.setDisable(true); }
 
         Button refreshBtn = new Button("Atualizar");
@@ -109,14 +110,16 @@ public class SessionHistoryWindow {
         Label ateLabel = new Label("Até:");
         ateLabel.setMinWidth(28);
 
-        HBox filtersRow = new HBox(14,
-            periodoLabel, periodBox,
-            deLabel, fromPicker, ateLabel, toPicker,
-            taskFilter, refreshBtn, exportBtn
-        );
+        HBox periodControl = new HBox(8, periodoLabel, periodBox);
+        periodControl.setAlignment(Pos.CENTER_LEFT);
+        HBox fromControl = new HBox(6, deLabel, fromPicker);
+        fromControl.setAlignment(Pos.CENTER_LEFT);
+        HBox toControl = new HBox(6, ateLabel, toPicker);
+        toControl.setAlignment(Pos.CENTER_LEFT);
+        FlowPane filtersRow = new FlowPane(14, 8,
+                periodControl, fromControl, toControl, taskFilter, refreshBtn, exportBtn);
         filtersRow.setAlignment(Pos.CENTER_LEFT);
         filtersRow.setPadding(new Insets(12, 28, 12, 28));
-        HBox.setHgrow(taskFilter, Priority.ALWAYS);
 
         VBox topPanel = new VBox(headerBar, filtersRow);
         topPanel.setSpacing(0);
@@ -126,6 +129,7 @@ public class SessionHistoryWindow {
         TableView<TaskSession> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         table.getStyleClass().add("clean-list");
+        table.setPlaceholder(new Label("Nenhuma sessão encontrada para os filtros selecionados."));
         TableColumn<TaskSession, String> dateCol = new TableColumn<>("Data");
         dateCol.setCellValueFactory(cell -> new SimpleStringProperty(
             cell.getValue().sessionDate() != null ? cell.getValue().sessionDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : ""));
@@ -141,18 +145,22 @@ public class SessionHistoryWindow {
         notesCol.setCellValueFactory(cell -> new SimpleStringProperty(
             cell.getValue().notes() != null ? cell.getValue().notes() : ""));
         notesCol.setMinWidth(120);
-        table.getColumns().addAll(dateCol, subjCol, minsCol, notesCol);
+        table.getColumns().add(dateCol);
+        table.getColumns().add(subjCol);
+        table.getColumns().add(minsCol);
+        table.getColumns().add(notesCol);
         table.setItems(data);
         VBox.setVgrow(table, Priority.ALWAYS);
 
         // ── Rodapé ──
-        HBox bottom = new HBox(18);
+        FlowPane bottom = new FlowPane(18, 6);
         bottom.setAlignment(Pos.CENTER_LEFT);
         bottom.setPadding(new Insets(10, 28, 0, 28));
         Label totalLabel = new Label("Total: 0 min");
         totalLabel.getStyleClass().add("section-title");
         Label hint = new Label("Clique duas vezes em uma linha para abrir a sessão/tarefa.");
         hint.getStyleClass().add("form-label");
+        ResponsiveWindowLayout.makeFlexible(hint);
         bottom.getChildren().addAll(totalLabel, hint);
 
         VBox centerVBox = new VBox(8, table, bottom);
@@ -162,7 +170,9 @@ public class SessionHistoryWindow {
         root.setTop(topPanel);
         root.setCenter(centerVBox);
 
-        Scene sc = new Scene(root);
+        stage.setMinWidth(820);
+        stage.setMinHeight(560);
+        Scene sc = new Scene(root, 1040, 680);
         ThemeManager.getInstance().applyTo(sc);
         stage.setScene(sc);
 
@@ -193,16 +203,20 @@ public class SessionHistoryWindow {
             row.setOnMouseClicked(ev -> {
                 if (ev.getClickCount() == 2 && !row.isEmpty()) {
                     TaskSession s = row.getItem();
-                    Long tid = extractTaskIdFromSubject(s.subject());
+                    Long tid = s.taskId() > 0 ? s.taskId() : extractTaskIdFromSubject(s.subject());
                     if (tid != null) {
-                        Platform.runLater(() -> new TaskTimerWindow(AppContextHolder.get().taskService().findById(tid).orElseThrow(), AppContextHolder.get().taskSessionRepository()).show());
+                        AppContextHolder.get().taskService().findById(tid).ifPresentOrElse(
+                                task -> new TaskTimerWindow(task,
+                                        AppContextHolder.get().taskSessionRepository()).show(),
+                                () -> Dialogs.warning("Tarefa não encontrada",
+                                        "A tarefa ligada a esta sessão já não existe."));
                     }
                 }
             });
             return row;
         });
         Platform.runLater(doLoad);
-        stage.show();
+        WindowManager.show(stage);
     }
 
     private void editTodaySession(TaskSession session, Runnable reloadAction) {
@@ -212,6 +226,7 @@ public class SessionHistoryWindow {
         }
 
         Dialog<ButtonType> dlg = new Dialog<>();
+        WindowManager.prepare(dlg);
         dlg.setTitle("Editar sessão de hoje");
         dlg.setHeaderText("Ajuste o tempo e as observações da sessão.");
         ButtonType saveBtn = new ButtonType("Salvar alterações", ButtonBar.ButtonData.OK_DONE);
@@ -237,7 +252,7 @@ public class SessionHistoryWindow {
         });
     }
 
-    private static Long extractTaskIdFromSubject(String subj) {
+    static Long extractTaskIdFromSubject(String subj) {
         if (subj == null) return null;
         // try to find pattern '#<digits>'
         int idx = subj.indexOf('#');
@@ -259,13 +274,13 @@ public class SessionHistoryWindow {
         CompletableFuture.supplyAsync(() -> {
             try {
                 if (taskId != null) {
-                    return repo.findByTaskId(taskId);
+                    return repo.findByTaskId(taskId, from, to);
                 }
                 if (taskFilter != null && taskFilter.trim().startsWith("#")) {
                     // try parse id
                     String digits = taskFilter.trim().substring(1).replaceAll("\\D", "");
                     if (!digits.isEmpty()) {
-                        try { long tid = Long.parseLong(digits); return repo.findByTaskId(tid); } catch (NumberFormatException ex) {}
+                        try { long tid = Long.parseLong(digits); return repo.findByTaskId(tid, from, to); } catch (NumberFormatException ex) {}
                     }
                 }
                 // default date-range query
@@ -274,6 +289,8 @@ public class SessionHistoryWindow {
                 return repo.findByDateRange(f, t);
             } catch (Throwable ex) {
                 ex.printStackTrace();
+                Platform.runLater(() -> Dialogs.error("Erro ao carregar sessões",
+                        "Não foi possível carregar o histórico: " + ex.getMessage()));
                 return List.<TaskSession>of();
             }
         }).thenAccept(list -> Platform.runLater(() -> {
@@ -296,11 +313,13 @@ public class SessionHistoryWindow {
             dlg.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("CSV","*.csv"));
             var file = dlg.showSaveDialog(stage);
             if (file == null) return;
-            try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
+            try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(
+                    file.toPath(), StandardCharsets.UTF_8))) {
                 pw.println("date,subject,minutes,notes");
                 for (TaskSession s : data) {
-                    String notes = s.notes() == null ? "" : s.notes().replaceAll("[\\r\\n]"," ").replaceAll(",",";");
-                    pw.printf("%s,%s,%d,%s\n", s.sessionDate(), s.subject().replaceAll(",",";"), s.durationMinutes(), notes);
+                    pw.printf("%s,%s,%d,%s%n",
+                            csvCell(s.sessionDate()), csvCell(s.subject()),
+                            s.durationMinutes(), csvCell(s.notes()));
                 }
             }
         } catch (Throwable ex) {
@@ -309,5 +328,10 @@ public class SessionHistoryWindow {
             Platform.runLater(() ->
                 Dialogs.error("Erro ao exportar CSV", "Não foi possível exportar CSV: " + ex.getMessage()));
         }
+    }
+
+    static String csvCell(Object value) {
+        String text = value == null ? "" : value.toString();
+        return "\"" + text.replace("\"", "\"\"") + "\"";
     }
 }

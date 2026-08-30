@@ -13,7 +13,6 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
@@ -101,8 +100,7 @@ public class ProjectChecklistWindow {
 
         loadItems();
 
-        Stage stage = new Stage();
-        stage.initModality(Modality.NONE);
+        Stage stage = WindowManager.createModelessStage();
         stage.setTitle("Checklist — " + idea.title());
         stage.setMinWidth(640);
         stage.setMinHeight(540);
@@ -129,7 +127,7 @@ public class ProjectChecklistWindow {
         Scene scene = new Scene(root, 880, 660);
         ThemeManager.getInstance().applyTo(scene);
         stage.setScene(scene);
-        stage.show();
+        WindowManager.show(stage);
     }
 
     // ── Carregamento ──────────────────────────────────────────────────────────
@@ -152,8 +150,11 @@ public class ProjectChecklistWindow {
                 + "  ·  " + idea.typeLabel()
                 + "  ·  " + idea.priorityLabel());
         subtitle.getStyleClass().add("page-subtitle");
+        ResponsiveWindowLayout.makeFlexible(subtitle);
 
         VBox texts = new VBox(2, title, subtitle);
+        texts.setMinWidth(0);
+        HBox.setHgrow(texts, Priority.ALWAYS);
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -218,7 +219,7 @@ public class ProjectChecklistWindow {
 
     // ── Barra de ferramentas com toggle Lista/Kanban + filtros ─────────────────
 
-    private HBox buildViewToolbar() {
+    private VBox buildViewToolbar() {
         // Toggle: Lista / Kanban
         ToggleGroup viewGroup = new ToggleGroup();
         ToggleButton listBtn   = new ToggleButton("☰  Lista");
@@ -252,8 +253,6 @@ public class ProjectChecklistWindow {
         HBox filterBar = new HBox(2, allBtn, pendBtn, doneBtn);
         filterBar.getStyleClass().add("view-toggle-bar");
 
-        Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
-
         Button checkAllBtn   = new Button("✔  Marcar Todos");
         Button uncheckAllBtn = new Button("☐  Desmarcar Todos");
         Button clearDoneBtn  = new Button("🗑  Limpar Concluídos");
@@ -277,10 +276,14 @@ public class ProjectChecklistWindow {
         printBtn.setStyle("-fx-font-size: 11px;");
         printBtn.setOnAction(e -> printChecklist());
 
-        HBox bar = new HBox(8, viewToggle, sep, filterBar, spacer,
+        HBox selectors = new HBox(8, viewToggle, sep, filterBar);
+        selectors.setAlignment(Pos.CENTER_LEFT);
+
+        FlowPane actions = ResponsiveWindowLayout.actionFlow(
                 checkAllBtn, uncheckAllBtn, clearDoneBtn, printBtn, addBtn);
+
+        VBox bar = new VBox(6, selectors, actions);
         bar.setPadding(new Insets(8, 14, 8, 14));
-        bar.setAlignment(Pos.CENTER_LEFT);
         bar.setStyle("-fx-background-color: -t-surface-a;"
                 + " -fx-border-color: transparent transparent -t-bd-lt transparent;"
                 + " -fx-border-width: 0 0 1 0;");
@@ -328,6 +331,7 @@ public class ProjectChecklistWindow {
         javafx.scene.layout.GridPane.setHgrow(dlgColFilter,   Priority.ALWAYS);
 
         Dialog<ButtonType> printDlg = new Dialog<>();
+        WindowManager.prepare(printDlg);
         printDlg.setTitle("Opções de Impressão");
         printDlg.setHeaderText("Checklist — " + idea.title());
         printDlg.getDialogPane().setContent(grid);
@@ -384,6 +388,7 @@ public class ProjectChecklistWindow {
         content.setPadding(new Insets(10));
 
         Dialog<ButtonType> dlg = new Dialog<>();
+        WindowManager.prepare(dlg);
         dlg.setTitle("Novo Item");
         dlg.setHeaderText("Adicionar item ao checklist");
         dlg.getDialogPane().setContent(content);
@@ -532,7 +537,7 @@ public class ProjectChecklistWindow {
         row.setAlignment(Pos.CENTER_LEFT);
         row.setPadding(new Insets(9, 12, 9, 14));
 
-        String baseColor = index % 2 == 0 ? "#ffffff" : "-t-surface-a";
+        String baseColor = index % 2 == 0 ? "-t-surface" : "-t-surface-a";
         row.setStyle("-fx-background-color:" + baseColor
                 + "; -fx-border-color:transparent transparent -t-bd-lt transparent; -fx-border-width:0 0 1 0;");
         row.setOnMouseEntered(e -> row.setStyle("-fx-background-color:-t-hover;"
@@ -702,6 +707,7 @@ public class ProjectChecklistWindow {
 
     private void showAddItemDialogForColumn(String colKey) {
         TextInputDialog dlg = new TextInputDialog();
+        WindowManager.prepare(dlg);
         dlg.setTitle("Novo Item");
         dlg.setHeaderText("Adicionar item na coluna \u201c" + columnLabel(colKey) + "\u201d");
         dlg.setContentText("Texto:");
@@ -771,6 +777,7 @@ public class ProjectChecklistWindow {
             // No Kanban — usa TextInputDialog
             editItem.setOnAction(e -> {
                 TextInputDialog dlg = new TextInputDialog(item.text);
+                WindowManager.prepare(dlg);
                 dlg.setTitle("Editar Item"); dlg.setHeaderText(null);
                 dlg.setContentText("Texto:");
                 dlg.showAndWait().ifPresent(t -> {
@@ -894,10 +901,10 @@ public class ProjectChecklistWindow {
 
     private HBox buildFooter(Stage stage) {
         Label hint = new Label("💡  Duplo clique para editar  ·  Botão direito para mais opções  ·  ⬛ Kanban mostra colunas de progresso");
+        ResponsiveWindowLayout.makeFlexible(hint);
         hint.setStyle("-fx-font-size:11px; -fx-text-fill:-t-text-m2;"
                 + " -fx-font-family:'JetBrains Mono','Consolas',monospace;");
-        Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
-
+        HBox.setHgrow(hint, Priority.ALWAYS);
         Button printBtn = new Button("🖨  Imprimir Checklist");
         printBtn.getStyleClass().add("secondary-button");
         printBtn.setOnAction(e -> printChecklist());
@@ -905,7 +912,7 @@ public class ProjectChecklistWindow {
         Button closeBtn = new Button("✕  Fechar");
         closeBtn.getStyleClass().add("secondary-button");
         closeBtn.setOnAction(e -> stage.close());
-        HBox footer = new HBox(12, hint, spacer, printBtn, closeBtn);
+        HBox footer = new HBox(12, hint, printBtn, closeBtn);
         footer.setPadding(new Insets(10, 18, 10, 18)); footer.setAlignment(Pos.CENTER_LEFT);
         footer.setStyle("-fx-background-color:-t-surface-d; -fx-border-color:-t-bd; -fx-border-width:1 0 0 0;");
         return footer;
@@ -943,4 +950,3 @@ public class ProjectChecklistWindow {
         new ProjectChecklistWindow(idea, repo, onChanged).show();
     }
 }
-

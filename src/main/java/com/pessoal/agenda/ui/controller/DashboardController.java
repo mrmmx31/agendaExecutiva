@@ -7,10 +7,28 @@ import com.pessoal.agenda.model.ProjectIdea;
 import com.pessoal.agenda.model.Protocol;
 import com.pessoal.agenda.model.Task;
 import com.pessoal.agenda.model.TaskPriority;
+import com.pessoal.agenda.model.DailyPlan;
+import com.pessoal.agenda.model.DailyPlanCapacity;
+import com.pessoal.agenda.model.FocusContext;
+import com.pessoal.agenda.model.OverdueAgeBand;
 import com.pessoal.agenda.repository.ProjectIdeaRepository;
+import com.pessoal.agenda.repository.TaskRepository;
+import com.pessoal.agenda.service.DailyPlanService;
+import com.pessoal.agenda.service.DayReviewService;
+import com.pessoal.agenda.service.FocusSelectionService;
+import com.pessoal.agenda.service.FocusContextService;
+import com.pessoal.agenda.service.TaskTimerService;
+import com.pessoal.agenda.service.LocalMetricsService;
+import com.pessoal.agenda.ui.view.DailyPlanPanel;
+import com.pessoal.agenda.ui.view.DayReviewWindow;
 import com.pessoal.agenda.ui.view.IdeaInboxReviewWindow;
 import com.pessoal.agenda.ui.view.ProjectIdeaDetailWindow;
+import com.pessoal.agenda.ui.view.Dialogs;
+import com.pessoal.agenda.ui.view.TaskTimerWindow;
+import com.pessoal.agenda.ui.view.LocalMetricsPanel;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ChoiceDialog;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -20,8 +38,10 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
 import javafx.scene.control.Tooltip;
 import com.pessoal.agenda.service.PendencyNotificationService;
 import com.pessoal.agenda.ui.view.ProtocolExecutionWindow;
@@ -30,7 +50,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.scene.control.Separator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,9 +58,14 @@ import java.time.temporal.ChronoUnit;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.prefs.Preferences;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 /**
@@ -50,8 +74,17 @@ import java.util.function.IntConsumer;
  */
 public class DashboardController {
 
+    private static final String FOCUS_TASK_PREF = "dashboard.focus.taskId";
+
     private final SharedContext    ctx;
     private final DatabaseService  db;
+    private final DailyPlanService dailyPlanService;
+    private final DayReviewService dayReviewService;
+    private final TaskRepository taskRepository;
+    private final FocusContextService focusContextService;
+    private final LocalMetricsService localMetricsService;
+    private final Consumer<Task> timerWindowOpener;
+    private final FocusSelectionService focusSelectionService = new FocusSelectionService();
 
     /**
      * Callback para navegar até uma aba pelo índice.
@@ -63,17 +96,38 @@ public class DashboardController {
 
     private Label  focusNowTitleLabel;
     private Label  focusNowDetailLabel;
-    private Button focusNowActionBtn;
+    private Label  focusNowModeLabel;
+    private Button focusStartBtn;
+    private Button focusOpenBtn;
+    private Button focusChooseBtn;
+    private Button focusAutomaticBtn;
+    private VBox focusNowBox;
     private final javafx.collections.ObservableList<Protocol> frequentProtocolItems = javafx.collections.FXCollections.observableArrayList();
     private final ObservableList<ProtocolNowItem> protocolNowItems = FXCollections.observableArrayList();
     private final ObservableList<TaskReminderItem> highlightedTaskItems = FXCollections.observableArrayList();
-    private final ObservableList<TaskReminderItem> staleTaskItems = FXCollections.observableArrayList();
+    private final ObservableList<TaskReminderItem> overdueUpTo7Items = FXCollections.observableArrayList();
+    private final ObservableList<TaskReminderItem> overdue8To30Items = FXCollections.observableArrayList();
+    private final ObservableList<TaskReminderItem> overdueOver30Items = FXCollections.observableArrayList();
     private final ObservableList<IdeaInboxItem> ideaInboxItems = FXCollections.observableArrayList();
     private final ObservableList<StudyTodayItem> studyTodayItems = FXCollections.observableArrayList();
     private Runnable focusNowAction = () -> {};
-    private int staleFocusRotation = 0;
+    private List<TaskReminderItem> focusCandidates = List.of();
+    private TaskReminderItem currentFocusTask;
+    private FocusSelectionService.Origin currentFocusOrigin;
+    private FocusContext currentResumeContext;
+    private final Preferences preferences;
     private TextField quickIdeaTitleField;
     private TextArea quickIdeaNotesArea;
+    private DailyPlanPanel dailyPlanPanel;
+    private VBox dashboardContent;
+    private DailyPlan currentDailyPlan;
+    private Task dailyPlanEssentialTask;
+    private Tab overdueUpTo7Tab;
+    private Tab overdue8To30Tab;
+    private Tab overdueOver30Tab;
+    private LocalMetricsPanel localMetricsPanel;
+    private Long resumeAttemptTaskId;
+    private int resumeActionAttempts;
 
     private record TaskReminderItem(long taskId,
                                     String title,
@@ -82,13 +136,23 @@ public class DashboardController {
                                     long overdueDays,
                                     boolean dueToday,
                                     boolean overdue,
-                                    boolean stale,
+                                    boolean longPending,
                                     String category,
-                                    String linkedProtocolName) {}
+                                    String linkedProtocolName) {
+        @Override
+        public String toString() {
+            String priorityLabel = priority != null ? priority.label() : "Normal";
+            return title + " · " + anchorDate + " · " + priorityLabel;
+        }
+    }
 
     private record ProtocolNowItem(Protocol protocol, String reason, int score) {}
 
     private record TimedProtocolSignal(int score, String reason) {}
+
+    private record FocusedTask(TaskReminderItem item, FocusSelectionService.Origin origin) {}
+
+    private record ResumeFocus(FocusContext context, TaskReminderItem item) {}
 
     private record IdeaInboxItem(long id,
                                  String title,
@@ -102,9 +166,34 @@ public class DashboardController {
                                   String progressDisplay,
                                   double presenceRate) {}
 
-    public DashboardController(SharedContext ctx, DatabaseService db) {
+    public DashboardController(SharedContext ctx, DatabaseService db,
+                               DailyPlanService dailyPlanService, DayReviewService dayReviewService,
+                               LocalMetricsService localMetricsService,
+                               TaskRepository taskRepository,
+                               FocusContextService focusContextService) {
+        this(ctx, db, dailyPlanService, dayReviewService, localMetricsService,
+                taskRepository, focusContextService,
+                task -> new TaskTimerWindow(task,
+                        AppContextHolder.get().taskSessionRepository(),
+                        ctx::triggerDashboardRefresh).show(),
+                Preferences.userNodeForPackage(DashboardController.class));
+    }
+
+    DashboardController(SharedContext ctx, DatabaseService db,
+                        DailyPlanService dailyPlanService, DayReviewService dayReviewService,
+                        LocalMetricsService localMetricsService,
+                        TaskRepository taskRepository,
+                        FocusContextService focusContextService,
+                        Consumer<Task> timerWindowOpener, Preferences preferences) {
         this.ctx = ctx;
         this.db  = db;
+        this.dailyPlanService = dailyPlanService;
+        this.dayReviewService = dayReviewService;
+        this.localMetricsService = localMetricsService;
+        this.taskRepository = taskRepository;
+        this.focusContextService = focusContextService;
+        this.timerWindowOpener = timerWindowOpener;
+        this.preferences = preferences;
     }
 
     /** Define o callback de navegação entre abas (chamado pelo AgendaApp). */
@@ -123,13 +212,13 @@ public class DashboardController {
         tab.setClosable(false);
 
         FlowPane cards = new FlowPane();
-        cards.getStyleClass().add("dashboard-cards");
+        cards.getStyleClass().addAll("dashboard-cards", "reduced-attention");
         cards.setHgap(12); cards.setVgap(12);
         cards.getChildren().addAll(
                 UIHelper.createKpiCard("📋 Tarefas de HOJE",    ctx.tasksDueCountLabel,   "kpi-red"),
                 UIHelper.createKpiCard("⚠️ Protocolos vencendo", ctx.protocolsExpiringCountLabel, "kpi-orange"),
                 UIHelper.createKpiCard("Tarefas abertas",       ctx.openTasksValue,       "kpi-blue"),
-                UIHelper.createKpiCard("Tarefas atrasadas",     ctx.overdueTasksValue,    "kpi-red"),
+                UIHelper.createKpiCard("Tarefas vencidas",      ctx.overdueTasksValue,    "kpi-red"),
                 UIHelper.createKpiCard("Pagamentos pendentes",  ctx.pendingPaymentsValue, "kpi-orange"),
                 UIHelper.createKpiCard("Valor pendente",        ctx.pendingAmountValue,   "kpi-purple"),
                 UIHelper.createKpiCard("Checklist pendente",    ctx.checklistPendingValue,"kpi-cyan"),
@@ -138,24 +227,61 @@ public class DashboardController {
                 UIHelper.createKpiCard("Ideias em progresso",   ctx.ideasInProgressValue, "kpi-indigo")
         );
 
+        focusNowModeLabel = new Label("Seleção automática");
+        focusNowModeLabel.setId("dashboard-focus-mode");
+        focusNowModeLabel.getStyleClass().add("focus-now-mode");
+
         focusNowTitleLabel = new Label("Carregando foco do dia...");
+        focusNowTitleLabel.setId("dashboard-focus-title");
         focusNowTitleLabel.getStyleClass().add("focus-now-title");
+        focusNowTitleLabel.setWrapText(true);
 
         focusNowDetailLabel = new Label("Assim que os dados forem atualizados, este bloco mostrará a próxima ação.");
+        focusNowDetailLabel.setId("dashboard-focus-detail");
         focusNowDetailLabel.getStyleClass().add("focus-now-detail");
         focusNowDetailLabel.setWrapText(true);
 
-        focusNowActionBtn = new Button("Abrir Agenda");
-        focusNowActionBtn.getStyleClass().addAll("secondary-button", "focus-now-action");
-        focusNowActionBtn.setMaxWidth(Double.MAX_VALUE);
-        focusNowActionBtn.setOnAction(e -> {
-            if (tabNavigator != null) tabNavigator.accept(1);
-        });
+        focusStartBtn = new Button("▶  Iniciar foco");
+        focusStartBtn.setId("dashboard-focus-start");
+        focusStartBtn.getStyleClass().add("primary-button");
+        focusStartBtn.setTooltip(new Tooltip("Abre o timer diretamente para a tarefa escolhida."));
+        focusStartBtn.setOnAction(e -> startCurrentFocus());
 
-        VBox focusNowContent = new VBox(8, focusNowTitleLabel, focusNowDetailLabel, focusNowActionBtn);
+        focusOpenBtn = new Button("Abrir detalhes");
+        focusOpenBtn.setId("dashboard-focus-open");
+        focusOpenBtn.getStyleClass().add("secondary-button");
+        focusOpenBtn.setOnAction(e -> openCurrentFocusDetails());
+
+        focusChooseBtn = new Button("Escolher foco");
+        focusChooseBtn.setId("dashboard-focus-choose");
+        focusChooseBtn.getStyleClass().add("secondary-button");
+        focusChooseBtn.setOnAction(e -> chooseFocusManually());
+
+        focusAutomaticBtn = new Button("Usar automático");
+        focusAutomaticBtn.setId("dashboard-focus-automatic");
+        focusAutomaticBtn.getStyleClass().add("secondary-button");
+        focusAutomaticBtn.setOnAction(e -> clearManualFocus());
+
+        FlowPane focusActions = new FlowPane(8, 8,
+                focusStartBtn, focusOpenBtn, focusChooseBtn, focusAutomaticBtn);
+        focusActions.getStyleClass().add("focus-now-actions");
+
+        VBox focusNowContent = new VBox(6, focusNowModeLabel, focusNowTitleLabel,
+                focusNowDetailLabel, focusActions);
         focusNowContent.setFillWidth(true);
-        VBox focusNowBox = UIHelper.createCardSection("🎯 1 tarefa principal do dia", focusNowContent);
+        focusNowBox = UIHelper.createCardSection("Agora", focusNowContent);
+        focusNowBox.setId("dashboard-focus-now");
         focusNowBox.getStyleClass().add("focus-now-card");
+
+        dailyPlanPanel = new DailyPlanPanel();
+        dailyPlanPanel.setStartAction(this::beginDailyPlanning);
+        dailyPlanPanel.setEditAction(this::beginDailyPlanning);
+        dailyPlanPanel.setOpenEssentialAction(this::openDailyPlanEssential);
+        dailyPlanPanel.setCloseDayAction(this::openDayReview);
+        dailyPlanPanel.setRetryAction(this::updateDailyPlanPanel);
+        dailyPlanPanel.setSaveAction(this::saveDailyPlan);
+        dailyPlanPanel.setCancelPlanningAction(this::updateDailyPlanPanel);
+        dailyPlanPanel.setCapacityChangeAction(this::applyDailyPlanCapacityMode);
 
         quickIdeaTitleField = new TextField();
         quickIdeaTitleField.getStyleClass().add("input-control");
@@ -179,7 +305,7 @@ public class DashboardController {
         ideaInboxList.getStyleClass().add("clean-list");
         ideaInboxList.setPrefHeight(150);
         ideaInboxList.setMinHeight(110);
-        ideaInboxList.setPlaceholder(new Label("Nenhuma captura pendente de revisão."));
+        ideaInboxList.setPlaceholder(new Label("Nenhuma ideia aguardando revisão."));
         VBox.setVgrow(ideaInboxList, Priority.ALWAYS);
         ideaInboxList.setCellFactory(lv -> new ListCell<>() {
             private final Label titleLabel = new Label();
@@ -216,12 +342,12 @@ public class DashboardController {
                 if (selected != null) openIdeaReview(selected.id());
             }
         });
-        Tooltip.install(ideaInboxList, new Tooltip("Capturas novas e ideias em caixa de entrada. Duplo clique para abrir a fila dedicada de revisão."));
+        Tooltip.install(ideaInboxList, new Tooltip("Ideias novas aguardando organização. Duplo clique para abrir a revisão."));
 
         Label quickIdeaHint = new Label("💡 Capture sem parar o que está fazendo. Depois você revisa, prioriza e pode ligar uma nota à outra.");
-        quickIdeaHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
+        quickIdeaHint.getStyleClass().add("dashboard-hint");
         HBox quickIdeaButtons = new HBox(8, saveQuickIdeaBtn, reviewIdeasBtn);
-        VBox quickIdeasBox = UIHelper.createCardSection("🧠 Captura rápida de ideias",
+        VBox quickIdeasBox = UIHelper.createCardSection("🧠 Ideias para revisar",
                 new VBox(6,
                         new VBox(4,
                                 new Label("Anote no impulso, organize na hora certa."),
@@ -275,17 +401,19 @@ public class DashboardController {
         Tooltip.install(studyTodayList, new Tooltip("Estudos com frequência programada para hoje. Duplo clique ou ▶ para abrir o diário."));
 
         Label studyTodayHint = new Label("💡 Somente estudos em andamento com o dia de hoje na grade de frequência aparecem aqui.");
-        studyTodayHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
+        studyTodayHint.getStyleClass().add("dashboard-hint");
         VBox studyTodayBox = UIHelper.createCardSection("📚 Estudos do dia",
                 new VBox(6,
                         new VBox(4, new Label("Estudos com frequência programada para hoje."), studyTodayHint),
                         studyTodayList));
+        studyTodayBox.getStyleClass().add("reduced-attention");
 
         // ── ListView de tarefas de hoje ────────────────────────────────────────
         ListView<String> todayTasksList = new ListView<>(ctx.todayTaskItems);
         todayTasksList.getStyleClass().add("clean-list");
         todayTasksList.setPrefHeight(120);
         todayTasksList.setMinHeight(96);
+        todayTasksList.setPlaceholder(new Label("Nenhuma tarefa programada para hoje."));
         VBox.setVgrow(todayTasksList, Priority.ALWAYS);
         Tooltip.install(todayTasksList,
                 new Tooltip("Tarefas vencendo hoje. Duplo clique para navegar."));
@@ -296,11 +424,11 @@ public class DashboardController {
         });
 
         Label todayHint = new Label("💡 Duplo clique para abrir Agenda e Prioridades");
-        todayHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
+        todayHint.getStyleClass().add("dashboard-hint");
 
         VBox todayTasksBox = UIHelper.createCardSection("📋 Tarefas de Hoje",
                 new VBox(4,
-                        new VBox(4, new Label("Foco nas tarefas de hoje — não deixe escapar!"), todayHint),
+                        new VBox(4, new Label("Tarefas disponíveis para hoje."), todayHint),
                         todayTasksList));
 
         // ── ListView de protocolos vencendo ─────────────────────────────────────
@@ -318,7 +446,7 @@ public class DashboardController {
         });
 
         Label protocolHint = new Label("💡 Duplo clique para abrir Protocolos Operacionais");
-        protocolHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
+        protocolHint.getStyleClass().add("dashboard-hint");
 
         VBox expiringProtocolsBox = UIHelper.createCardSection("⚠️ Protocolos Vencendo",
                 new VBox(4,
@@ -327,21 +455,34 @@ public class DashboardController {
 
         ListView<TaskReminderItem> highlightedTasksList = buildTaskReminderList(highlightedTaskItems,
                 "Tarefas mais recentes/importantes. Duplo clique abre a data exata na Agenda.");
-        Label highlightedHint = new Label("💡 Aqui entram primeiro as tarefas mais recentes e prioritárias — as muito antigas ficam separadas.");
-        highlightedHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
+        Label highlightedHint = new Label("Tarefas vencidas ficam disponíveis na revisão por período.");
+        highlightedHint.getStyleClass().add("dashboard-hint");
         VBox highlightedTasksBox = UIHelper.createCardSection("🎯 Tarefas em destaque",
                 new VBox(4,
-                        new VBox(4, new Label("Foco do agora: sem deixar tarefas antigas sufocarem o que é mais acionável."), highlightedHint),
+                        new VBox(4, new Label("Tarefas recentes e prioritárias para revisão."), highlightedHint),
                         highlightedTasksList));
 
-        ListView<TaskReminderItem> staleTasksListView = buildTaskReminderList(staleTaskItems,
-                "Pendências antigas que continuam existindo. Duplo clique abre a tarefa no dia exato.");
-        Label staleHint = new Label("💡 Essas tarefas continuam visíveis, mas em um canto separado; pendências antigas e prioritárias voltam ao foco de tempos em tempos.");
-        staleHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
-        VBox staleTasksBox = UIHelper.createCardSection("🕰 Pendências antigas esquecidas",
-                new VBox(4,
-                        new VBox(4, new Label("Itens antigos para não sumirem, sem atropelar o que é mais recente."), staleHint),
-                        staleTasksListView));
+        ListView<TaskReminderItem> overdueUpTo7List = buildTaskReminderList(overdueUpTo7Items,
+                "Tarefas pendentes há até 7 dias. Duplo clique abre a tarefa.");
+        overdueUpTo7List.setId("dashboard-overdue-up-to-7");
+        ListView<TaskReminderItem> overdue8To30List = buildTaskReminderList(overdue8To30Items,
+                "Tarefas pendentes entre 8 e 30 dias. Duplo clique abre a tarefa.");
+        overdue8To30List.setId("dashboard-overdue-8-to-30");
+        ListView<TaskReminderItem> overdueOver30List = buildTaskReminderList(overdueOver30Items,
+                "Tarefas pendentes há mais de 30 dias. Duplo clique abre a tarefa.");
+        overdueOver30List.setId("dashboard-overdue-over-30");
+        overdueUpTo7Tab = new Tab(OverdueAgeBand.UP_TO_7_DAYS.label(), overdueUpTo7List);
+        overdue8To30Tab = new Tab(OverdueAgeBand.DAYS_8_TO_30.label(), overdue8To30List);
+        overdueOver30Tab = new Tab(OverdueAgeBand.OVER_30_DAYS.label(), overdueOver30List);
+        TabPane overdueBands = new TabPane(overdueUpTo7Tab, overdue8To30Tab, overdueOver30Tab);
+        overdueBands.setId("dashboard-overdue-bands");
+        overdueBands.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        Label overdueHint = new Label(
+                "Escolha uma faixa para revisar no seu ritmo. Nenhuma tarefa é iniciada automaticamente.");
+        overdueHint.getStyleClass().add("dashboard-hint");
+        VBox overdueTasksBox = UIHelper.createCardSection("Tarefas pendentes por período",
+                new VBox(4, overdueHint, overdueBands));
+        overdueTasksBox.getStyleClass().add("reduced-attention");
 
         ListView<ProtocolNowItem> protocolNowList = new ListView<>(protocolNowItems);
         protocolNowList.getStyleClass().add("clean-list");
@@ -393,7 +534,7 @@ public class DashboardController {
         });
 
         Label protocolNowHint = new Label("💡 Aqui entram protocolos ligados ao agora: saída, reunião, remédios, tarefa de hoje ou execução ativa. Gatilhos por relógio valem para a categoria Horários.");
-        protocolNowHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
+        protocolNowHint.getStyleClass().add("dashboard-hint");
         VBox protocolNowBox = UIHelper.createCardSection("⏰ Protocolos de agora",
                 new VBox(4,
                         new VBox(4, new Label("Ações rápidas para o momento presente."), protocolNowHint),
@@ -451,7 +592,7 @@ public class DashboardController {
         });
 
         Label frequentHint = new Label("💡 Inicie direto daqui sem precisar navegar até a aba de protocolos");
-        frequentHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
+        frequentHint.getStyleClass().add("dashboard-hint");
 
         VBox frequentProtocolsBox = UIHelper.createCardSection("🏠 Protocolos mais recorrentes",
                 new VBox(4,
@@ -493,8 +634,8 @@ public class DashboardController {
             if (e.getClickCount() == 2) {
                 String item = alertsList.getSelectionModel().getSelectedItem();
                 if (item == null) return;
-                // Formato: "Tarefa atrasada: ..."  ou  "Pagamento pendente: ..."
-                if (item.startsWith("Tarefa atrasada:")) {
+                // Formato: "Tarefa pendente há ..." ou "Pagamento pendente: ..."
+                if (item.startsWith("Tarefa pendente há ")) {
                     extractFirstIsoDate(item).ifPresentOrElse(
                             date -> openTaskByDate(date, null),
                             () -> {
@@ -507,18 +648,18 @@ public class DashboardController {
         });
 
         Label upcomingHint = new Label("💡 Duplo clique para navegar à aba correspondente");
-        upcomingHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
+        upcomingHint.getStyleClass().add("dashboard-hint");
 
         Label alertsHint = new Label("💡 Duplo clique para navegar à aba correspondente");
-        alertsHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
+        alertsHint.getStyleClass().add("dashboard-hint");
 
         VBox upcomingBox = UIHelper.createCardSection("Próximos prazos críticos",
                 new VBox(4,
                         new VBox(4, new Label("Visão consolidada de tarefas e pagamentos."), upcomingHint),
                         upcomingList));
-        VBox alertsBox = UIHelper.createCardSection("Alertas de atraso",
+        VBox alertsBox = UIHelper.createCardSection("Pendências recentes",
                 new VBox(4,
-                        new VBox(4, new Label("Pendências vencidas que exigem ação imediata."), alertsHint),
+                        new VBox(4, new Label("Pendências vencidas disponíveis para revisão."), alertsHint),
                         alertsList));
         upcomingBox.setMinHeight(230);
         alertsBox.setMinHeight(230);
@@ -530,26 +671,27 @@ public class DashboardController {
         HBox.setHgrow(upcomingBox, Priority.ALWAYS);
         HBox.setHgrow(alertsBox,   Priority.ALWAYS);
 
-        // ── Layout vertical com seções TDAH no topo ─────────────────────────
-        VBox topAlerts = new VBox(8, quickIdeasBox, studyTodayBox, todayTasksBox, highlightedTasksBox, protocolNowBox, expiringProtocolsBox, frequentProtocolsBox, staleTasksBox);
-        VBox.setVgrow(quickIdeasBox, Priority.ALWAYS);
-        VBox.setVgrow(studyTodayBox, Priority.ALWAYS);
-        VBox.setVgrow(todayTasksBox, Priority.ALWAYS);
-        VBox.setVgrow(highlightedTasksBox, Priority.ALWAYS);
-        VBox.setVgrow(protocolNowBox, Priority.ALWAYS);
-        VBox.setVgrow(expiringProtocolsBox, Priority.ALWAYS);
-        VBox.setVgrow(frequentProtocolsBox, Priority.ALWAYS);
-        VBox.setVgrow(staleTasksBox, Priority.ALWAYS);
-        topAlerts.setMinHeight(290);
+        VBox todayView = new VBox(10, dailyPlanPanel, todayTasksBox, studyTodayBox, protocolNowBox);
+        VBox organizeView = new VBox(10, quickIdeasBox, expiringProtocolsBox, frequentProtocolsBox);
+        localMetricsPanel = new LocalMetricsPanel(localMetricsService);
+        VBox reviewView = new VBox(10, highlightedTasksBox, overdueTasksBox,
+                localMetricsPanel, bottom);
 
-        HBox tdahSection = new HBox(12, topAlerts);
-        HBox.setHgrow(topAlerts, Priority.ALWAYS);
+        Tab todayTab = new Tab("Hoje", todayView);
+        Tab organizeTab = new Tab("Organizar", organizeView);
+        Tab reviewTab = new Tab("Revisar", reviewView);
+        TabPane workspace = new TabPane(todayTab, organizeTab, reviewTab);
+        workspace.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        workspace.getStyleClass().add("dashboard-workspace");
 
-        VBox content = new VBox(12, cards, new Separator(), focusNowBox, tdahSection, bottom);
-        VBox.setVgrow(bottom, Priority.ALWAYS);
-        content.setPadding(new Insets(16));
+        TitledPane overview = new TitledPane("Visão geral e indicadores", cards);
+        overview.setExpanded(false);
+        overview.getStyleClass().add("dashboard-overview");
 
-        ScrollPane scroll = new ScrollPane(content);
+        dashboardContent = new VBox(12, focusNowBox, workspace, overview);
+        dashboardContent.setPadding(new Insets(16));
+
+        ScrollPane scroll = new ScrollPane(dashboardContent);
         scroll.setFitToWidth(true);
         scroll.setFitToHeight(false);
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
@@ -586,12 +728,160 @@ public class DashboardController {
         updateTaskReminderPanels();
         updateProtocolsNow();
         updateFrequentProtocols();
+        updateDailyPlanPanel();
         updateFocusNowPanel();
+        if (localMetricsPanel != null) localMetricsPanel.refresh();
 
         boolean hasAlertState = overdueCount > 0
                 || !ctx.todayTaskItems.isEmpty()
                 || !ctx.expiringProtocolItems.isEmpty();
         PendencyNotificationService.getInstance().setHasAlerts(hasAlertState);
+    }
+
+    private void updateDailyPlanPanel() {
+        if (dailyPlanPanel == null) return;
+        dailyPlanPanel.showLoading();
+        currentDailyPlan = null;
+        dailyPlanEssentialTask = null;
+        try {
+            LocalDate today = LocalDate.now();
+            var review = dayReviewService.summary(today);
+            if (review.isEmpty()) {
+                applyDailyPlanCapacityMode(DailyPlanCapacity.NORMAL);
+                dailyPlanPanel.showEmpty();
+                return;
+            }
+
+            DailyPlan restored = review.get().plan();
+            currentDailyPlan = restored.closedAt() == null
+                    ? dailyPlanService.findByDate(today).orElse(null)
+                    : null;
+            dailyPlanEssentialTask = restored.essentialItem()
+                    .flatMap(item -> taskRepository.findById(item.taskId()))
+                    .orElse(null);
+            List<String> supportTitles = restored.supportItems().stream()
+                    .map(item -> taskRepository.findById(item.taskId())
+                            .map(Task::title)
+                            .orElse("Tarefa indisponível"))
+                    .toList();
+            String capacity = restored.capacity() == DailyPlanCapacity.REDUCED
+                    ? "Capacidade reduzida"
+                    : "Ritmo normal";
+            applyDailyPlanCapacityMode(restored.capacity());
+            String essentialTitle = dailyPlanEssentialTask != null
+                    ? dailyPlanEssentialTask.title()
+                    : "Tarefa essencial indisponível";
+            dailyPlanPanel.setEssentialAvailable(dailyPlanEssentialTask != null);
+            if (restored.closedAt() != null) {
+                dailyPlanPanel.showClosedPlan(
+                        capacity, essentialTitle, supportTitles);
+            } else {
+                dailyPlanPanel.showPlan(
+                        capacity, essentialTitle, supportTitles);
+            }
+        } catch (RuntimeException ex) {
+            ex.printStackTrace();
+            applyDailyPlanCapacityMode(DailyPlanCapacity.NORMAL);
+            dailyPlanPanel.showError();
+        }
+    }
+
+    private void openDayReview() {
+        new DayReviewWindow(dayReviewService, LocalDate.now(), () -> {
+            updateDailyPlanPanel();
+            updateFocusNowPanel();
+            ctx.triggerInboxRefresh();
+        }).show();
+    }
+
+    private void applyDailyPlanCapacityMode(DailyPlanCapacity capacity) {
+        if (dashboardContent == null) return;
+        boolean reduced = capacity == DailyPlanCapacity.REDUCED;
+        if (reduced && !dashboardContent.getStyleClass().contains("reduced-capacity-dashboard")) {
+            dashboardContent.getStyleClass().add("reduced-capacity-dashboard");
+        } else if (!reduced) {
+            dashboardContent.getStyleClass().remove("reduced-capacity-dashboard");
+        }
+    }
+
+    private void beginDailyPlanning() {
+        try {
+            LocalDate today = LocalDate.now();
+            List<DailyPlanPanel.TaskOption> candidates = taskRepository.findOpenTasks().stream()
+                    .map(task -> new DailyPlanPanel.TaskOption(
+                            task.id(), task.title(), formatPlanningTaskDetail(task, today)))
+                    .toList();
+            List<String> todayItems = taskRepository.findByDay(today, null).stream()
+                    .filter(task -> !task.done())
+                    .map(task -> {
+                        String time = task.startTime() == null || task.startTime().isBlank()
+                                ? "Sem horário"
+                                : task.startTime();
+                        return time + " · " + task.title();
+                    })
+                    .toList();
+            Long essentialTaskId = currentDailyPlan == null
+                    ? null
+                    : currentDailyPlan.essentialItem().map(item -> item.taskId()).orElse(null);
+            List<Long> supportTaskIds = currentDailyPlan == null
+                    ? List.of()
+                    : currentDailyPlan.supportItems().stream().map(item -> item.taskId()).toList();
+            DailyPlanCapacity capacity = currentDailyPlan == null
+                    ? DailyPlanCapacity.NORMAL
+                    : currentDailyPlan.capacity();
+
+            dailyPlanPanel.beginPlanning(new DailyPlanPanel.PlanningRequest(
+                    candidates, todayItems, capacity, essentialTaskId, supportTaskIds));
+            ctx.setStatus(candidates.isEmpty()
+                    ? "Crie uma tarefa aberta antes de montar o plano do dia."
+                    : "Planejamento do dia iniciado. Nada será salvo antes da confirmação.");
+        } catch (RuntimeException ex) {
+            ex.printStackTrace();
+            dailyPlanPanel.showError();
+        }
+    }
+
+    private void saveDailyPlan(DailyPlanPanel.PlanSelection selection) {
+        try {
+            DailyPlan saved = dailyPlanService.savePlan(
+                    LocalDate.now(), selection.capacity(),
+                    selection.essentialTaskId(), selection.supportTaskIds());
+            updateDailyPlanPanel();
+            updateFocusNowPanel();
+            ctx.setStatus("Plano de hoje salvo.");
+            if (selection.openAfterSave()) {
+                taskRepository.findById(saved.essentialItem().orElseThrow().taskId())
+                        .ifPresent(task -> openTaskByDate(task.effectiveEndDate(), task.id()));
+            }
+        } catch (IllegalArgumentException ex) {
+            dailyPlanPanel.showPlanningError(ex.getMessage());
+        } catch (RuntimeException ex) {
+            ex.printStackTrace();
+            dailyPlanPanel.showPlanningError("Não foi possível salvar o plano. Tente novamente.");
+        }
+    }
+
+    private String formatPlanningTaskDetail(Task task, LocalDate today) {
+        String date;
+        if (task.isActiveOn(today)) {
+            date = "Hoje";
+        } else if (task.effectiveEndDate().isBefore(today)) {
+            date = "Pendente há " + ChronoUnit.DAYS.between(task.effectiveEndDate(), today) + " dia(s)";
+        } else {
+            date = task.effectiveEndDate().toString();
+        }
+        String priority = task.priority() == null ? "Normal" : task.priority().label();
+        String category = task.category() == null || task.category().isBlank() ? "Geral" : task.category();
+        return date + " · " + priority + " · " + category;
+    }
+
+    private void openDailyPlanEssential() {
+        Task task = dailyPlanEssentialTask;
+        if (task == null) {
+            updateDailyPlanPanel();
+            return;
+        }
+        openTaskByDate(task.effectiveEndDate(), task.id());
     }
 
     private void updateTodayTasks() {
@@ -662,22 +952,50 @@ public class DashboardController {
     }
 
     private void updateFocusNowPanel() {
-        if (focusNowTitleLabel == null || focusNowDetailLabel == null || focusNowActionBtn == null) {
+        if (focusNowTitleLabel == null || focusNowDetailLabel == null || focusOpenBtn == null) {
             return;
         }
 
-        Optional<TaskReminderItem> focusTask = chooseFocusTask();
+        Optional<ResumeFocus> resumeFocus = findResumeFocus();
+        Optional<FocusedTask> focusTask = resumeFocus.isEmpty()
+                ? chooseFocusTask()
+                : Optional.empty();
         String title;
         String detail;
         String actionText;
 
-        if (focusTask.isPresent()) {
-            TaskReminderItem item = focusTask.get();
-            title = item.stale() ? "Relembrar pendência esquecida" : item.dueToday() ? "Sua tarefa mais importante de hoje" : "Resolver atraso recente";
+        if (resumeFocus.isPresent()) {
+            ResumeFocus resume = resumeFocus.get();
+            TaskReminderItem item = resume.item();
+            currentFocusTask = item;
+            currentFocusOrigin = null;
+            currentResumeContext = resume.context();
+            focusNowModeLabel.setText("Retomada pendente");
+            title = item.title();
+            detail = "Onde você parou: " + resume.context().resumeNote();
+            actionText = "Abrir tarefa";
+            focusNowAction = () -> openTaskReminder(item);
+        } else if (focusTask.isPresent()) {
+            FocusedTask focused = focusTask.get();
+            TaskReminderItem item = focused.item();
+            currentFocusTask = item;
+            currentFocusOrigin = focused.origin();
+            currentResumeContext = null;
+            focusNowModeLabel.setText(switch (focused.origin()) {
+                case TIMER -> "Timer em andamento";
+                case MANUAL -> "Escolhido por você";
+                case DAILY_PLAN -> "Plano de hoje";
+                case AUTOMATIC -> "Sugestão automática";
+            });
+            title = item.title();
             detail = formatTaskReminderDetail(item);
-            actionText = "Abrir na data exata";
+            actionText = "Abrir tarefa";
             focusNowAction = () -> openTaskReminder(item);
         } else if (!ctx.alertItems.isEmpty() && ctx.alertItems.get(0).startsWith("Pagamento pendente:")) {
+            currentFocusTask = null;
+            currentFocusOrigin = null;
+            currentResumeContext = null;
+            focusNowModeLabel.setText("Sugestão automática");
             title = "Resolver pagamento pendente";
             detail = ctx.alertItems.get(0);
             actionText = "Ir para Financeiro";
@@ -685,11 +1003,19 @@ public class DashboardController {
                 if (tabNavigator != null) tabNavigator.accept(3);
             };
         } else if (!ctx.todayTaskItems.isEmpty()) {
+            currentFocusTask = null;
+            currentFocusOrigin = null;
+            currentResumeContext = null;
+            focusNowModeLabel.setText("Sugestão automática");
             title = "Sua próxima tarefa de hoje";
             detail = ctx.todayTaskItems.get(0);
             actionText = "Abrir Agenda";
             focusNowAction = () -> openTaskByDate(LocalDate.now(), null);
         } else if (!ctx.expiringProtocolItems.isEmpty()) {
+            currentFocusTask = null;
+            currentFocusOrigin = null;
+            currentResumeContext = null;
+            focusNowModeLabel.setText("Sugestão automática");
             title = "Protocolo para revisar";
             detail = ctx.expiringProtocolItems.get(0);
             actionText = "Abrir Protocolos";
@@ -697,6 +1023,10 @@ public class DashboardController {
                 if (tabNavigator != null) tabNavigator.accept(2);
             };
         } else {
+            currentFocusTask = null;
+            currentFocusOrigin = null;
+            currentResumeContext = null;
+            focusNowModeLabel.setText("Sem urgências agora");
             title = "Tudo está em ordem agora";
             detail = "Ótimo momento para capturar novas ideias ou revisar o plano do dia sem pressão.";
             actionText = "Abrir Agenda";
@@ -707,21 +1037,61 @@ public class DashboardController {
 
         focusNowTitleLabel.setText(title);
         focusNowDetailLabel.setText(detail);
-        focusNowActionBtn.setText(actionText);
-        focusNowActionBtn.setDisable(tabNavigator == null && taskNavigator == null);
-        focusNowActionBtn.setOnAction(e -> focusNowAction.run());
+        focusOpenBtn.setText(actionText);
+        boolean resumePending = currentResumeContext != null;
+        if (resumePending && !focusNowBox.getStyleClass().contains("resume-pending")) {
+            focusNowBox.getStyleClass().add("resume-pending");
+        } else if (!resumePending) {
+            focusNowBox.getStyleClass().remove("resume-pending");
+        }
+        focusStartBtn.setText(resumePending
+                ? "Retomar"
+                : currentFocusOrigin == FocusSelectionService.Origin.TIMER
+                        ? "Continuar foco"
+                        : "Iniciar foco");
+        focusStartBtn.setTooltip(new Tooltip(resumePending
+                ? "Retoma a tarefa e remove esta pista do bloco Agora."
+                : "Abre o timer diretamente para a tarefa escolhida."));
+        focusOpenBtn.setDisable(tabNavigator == null && taskNavigator == null);
+        focusStartBtn.setDisable(currentFocusTask == null);
+        UIHelper.setConditionalVisible(focusStartBtn, currentFocusTask != null);
+        focusChooseBtn.setDisable(focusCandidates.isEmpty());
+        UIHelper.setConditionalVisible(focusChooseBtn, !resumePending);
+        UIHelper.setConditionalVisible(focusAutomaticBtn,
+                !resumePending && pinnedFocusTaskId() > 0);
+    }
+
+    public void refreshFocusNow() {
+        updateFocusNowPanel();
+    }
+
+    private Optional<ResumeFocus> findResumeFocus() {
+        try {
+            return focusContextService.current().flatMap(context ->
+                    taskRepository.findById(context.taskId())
+                            .map(task -> new ResumeFocus(context, toTaskReminderItem(task))));
+        } catch (RuntimeException error) {
+            return Optional.empty();
+        }
     }
 
     private void updateTaskReminderPanels() {
+        updateTaskReminderPanels(taskRepository.findOpenTasks(), LocalDate.now());
+    }
+
+    void updateTaskReminderPanels(List<Task> tasks, LocalDate today) {
         try {
-            LocalDate today = LocalDate.now();
             ArrayList<TaskReminderItem> active = new ArrayList<>();
-            ArrayList<TaskReminderItem> stale = new ArrayList<>();
-            for (Task task : AppContextHolder.get().taskRepository().findOpenTasks()) {
+            Map<OverdueAgeBand, ArrayList<TaskReminderItem>> overdueGroups = new java.util.EnumMap<>(
+                    OverdueAgeBand.class);
+            for (OverdueAgeBand band : OverdueAgeBand.values()) {
+                overdueGroups.put(band, new ArrayList<>());
+            }
+            ArrayList<TaskReminderItem> candidates = new ArrayList<>();
+            for (Task task : tasks) {
                 LocalDate anchorDate = task.effectiveEndDate();
                 boolean overdue = anchorDate.isBefore(today);
                 boolean dueToday = task.isDueToday();
-                if (!overdue && !dueToday) continue;
 
                 String linkedProtocolName = null;
                 if (task.linkedProtocolId() != null) {
@@ -740,13 +1110,14 @@ public class DashboardController {
                         overdueDays,
                         dueToday,
                         overdue,
-                        overdue && overdueDays > 45,
+                        overdue && overdueDays > 30,
                         task.category(),
                         linkedProtocolName
                 );
-                if (item.stale()) {
-                    stale.add(item);
-                } else {
+                candidates.add(item);
+                if (overdue) {
+                    overdueGroups.get(OverdueAgeBand.fromPendingDays(overdueDays)).add(item);
+                } else if (dueToday) {
                     active.add(item);
                 }
             }
@@ -757,37 +1128,165 @@ public class DashboardController {
                     .thenComparing(TaskReminderItem::anchorDate, Comparator.reverseOrder())
                     .thenComparing(TaskReminderItem::title));
 
-            stale.sort(Comparator
-                    .comparingInt((TaskReminderItem item) -> priorityWeight(item.priority()))
+            Comparator<TaskReminderItem> reviewOrder = Comparator
+                    .comparing(TaskReminderItem::anchorDate, Comparator.reverseOrder())
+                    .thenComparing(TaskReminderItem::title);
+            overdueGroups.values().forEach(group -> group.sort(reviewOrder));
+
+            candidates.sort(Comparator
+                    .comparingInt(this::taskReminderScore)
                     .reversed()
                     .thenComparing(TaskReminderItem::anchorDate)
                     .thenComparing(TaskReminderItem::title));
 
             highlightedTaskItems.setAll(active.stream().limit(8).toList());
-            staleTaskItems.setAll(stale.stream().limit(8).toList());
+            overdueUpTo7Items.setAll(overdueGroups.get(OverdueAgeBand.UP_TO_7_DAYS));
+            overdue8To30Items.setAll(overdueGroups.get(OverdueAgeBand.DAYS_8_TO_30));
+            overdueOver30Items.setAll(overdueGroups.get(OverdueAgeBand.OVER_30_DAYS));
+            updateOverdueTabLabels();
+            focusCandidates = List.copyOf(candidates);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
     }
 
-    private Optional<TaskReminderItem> chooseFocusTask() {
-        TaskReminderItem stalePriority = staleTaskItems.stream()
-                .filter(item -> priorityWeight(item.priority()) >= priorityWeight(TaskPriority.ALTA))
+    private Optional<FocusedTask> chooseFocusTask() {
+        Map<Long, TaskReminderItem> available = new LinkedHashMap<>();
+        focusCandidates.forEach(item -> available.put(item.taskId(), item));
+
+        Long activeTimerTaskId = TaskTimerService.get().getActiveTaskId();
+        if (activeTimerTaskId != null && !available.containsKey(activeTimerTaskId)) {
+            taskRepository.findById(activeTimerTaskId)
+                    .map(this::toTaskReminderItem)
+                    .ifPresent(item -> available.put(item.taskId(), item));
+        }
+
+        long pinnedTaskId = pinnedFocusTaskId();
+        if (pinnedTaskId > 0 && !available.containsKey(pinnedTaskId)) {
+            preferences.remove(FOCUS_TASK_PREF);
+            pinnedTaskId = -1;
+        }
+
+        TaskReminderItem criticalOverdue = overdueReviewItems().stream()
+                .filter(item -> item.priority() == TaskPriority.CRITICA)
                 .findFirst()
                 .orElse(null);
-        boolean shouldSurfaceStale = stalePriority != null
-                && highlightedTaskItems.stream().noneMatch(TaskReminderItem::dueToday)
-                && staleFocusRotation++ % 4 == 3;
-        if (shouldSurfaceStale) {
-            return Optional.of(stalePriority);
+        ArrayList<Long> automaticIds = new ArrayList<>();
+        if (!highlightedTaskItems.isEmpty()) automaticIds.add(highlightedTaskItems.getFirst().taskId());
+        if (criticalOverdue != null) automaticIds.add(criticalOverdue.taskId());
+        focusCandidates.stream()
+                .filter(item -> !item.overdue() || item.priority() == TaskPriority.CRITICA)
+                .map(TaskReminderItem::taskId)
+                .filter(id -> !automaticIds.contains(id))
+                .forEach(automaticIds::add);
+
+        Long dailyPlanTaskId = currentDailyPlan == null
+                ? null
+                : currentDailyPlan.essentialItem().map(item -> item.taskId()).orElse(null);
+        if (dailyPlanEssentialTask != null && dailyPlanTaskId != null
+                && !available.containsKey(dailyPlanTaskId)) {
+            TaskReminderItem item = toTaskReminderItem(dailyPlanEssentialTask);
+            available.put(item.taskId(), item);
         }
-        if (!highlightedTaskItems.isEmpty()) {
-            return Optional.of(highlightedTaskItems.get(0));
+
+        return focusSelectionService.select(
+                        activeTimerTaskId,
+                        pinnedTaskId > 0 ? pinnedTaskId : null,
+                        dailyPlanTaskId,
+                        automaticIds,
+                        Set.copyOf(available.keySet()))
+                .map(selection -> new FocusedTask(
+                        available.get(selection.taskId()), selection.origin()));
+    }
+
+    private TaskReminderItem toTaskReminderItem(Task task) {
+        LocalDate today = LocalDate.now();
+        LocalDate anchorDate = task.effectiveEndDate();
+        boolean overdue = anchorDate.isBefore(today);
+        long overdueDays = overdue ? ChronoUnit.DAYS.between(anchorDate, today) : 0;
+        String linkedProtocolName = task.linkedProtocolId() == null
+                ? null
+                : AppContextHolder.get().protocolRepository()
+                        .findProtocolById(task.linkedProtocolId())
+                        .map(Protocol::name)
+                        .orElse(null);
+        return new TaskReminderItem(
+                task.id(), task.title(), anchorDate, task.priority(), overdueDays,
+                task.isDueToday(), overdue, overdue && overdueDays > 30,
+                task.category(), linkedProtocolName);
+    }
+
+    private long pinnedFocusTaskId() {
+        return preferences.getLong(FOCUS_TASK_PREF, -1L);
+    }
+
+    private void chooseFocusManually() {
+        if (focusCandidates.isEmpty()) {
+            Dialogs.info("Escolher foco", "Não há tarefas abertas disponíveis para escolher.");
+            return;
         }
-        if (stalePriority != null) {
-            return Optional.of(stalePriority);
-        }
-        return Optional.empty();
+
+        TaskReminderItem initial = currentFocusTask != null && focusCandidates.contains(currentFocusTask)
+                ? currentFocusTask
+                : focusCandidates.getFirst();
+        ChoiceDialog<TaskReminderItem> dialog = new ChoiceDialog<>(initial, focusCandidates);
+        Dialogs.prepare(dialog);
+        dialog.setTitle("Escolher foco");
+        dialog.setHeaderText("Qual tarefa merece o seu campo de atenção agora?");
+        dialog.setContentText(null);
+        dialog.getDialogPane().setPrefWidth(560);
+        ((Button) dialog.getDialogPane().lookupButton(ButtonType.OK)).setText("Selecionar");
+        ((Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL)).setText("Cancelar");
+        dialog.showAndWait().ifPresent(item -> {
+            preferences.putLong(FOCUS_TASK_PREF, item.taskId());
+            updateFocusNowPanel();
+            ctx.setStatus("Foco definido: " + item.title());
+        });
+    }
+
+    private void clearManualFocus() {
+        preferences.remove(FOCUS_TASK_PREF);
+        updateFocusNowPanel();
+        ctx.setStatus("Seleção automática de foco restaurada.");
+    }
+
+    private void startCurrentFocus() {
+        TaskReminderItem item = currentFocusTask;
+        if (item == null) return;
+        boolean completingResume = currentResumeContext != null
+                && currentResumeContext.taskId() == item.taskId();
+        int resumeActions = completingResume ? registerResumeAttempt(item.taskId()) : 0;
+        taskRepository.findById(item.taskId()).ifPresentOrElse(
+                task -> {
+                    try {
+                        TaskTimerService timerService = TaskTimerService.get();
+                        if (!Long.valueOf(task.id()).equals(timerService.getActiveTaskId())) {
+                            timerService.start(task.id());
+                        } else if (!timerService.isRunning()) {
+                            timerService.resume();
+                        }
+                        timerWindowOpener.accept(task);
+                        localMetricsService.recordFocusAction();
+                        if (completingResume) {
+                            focusContextService.completeResume(task.id());
+                            localMetricsService.recordInterruptionResume(resumeActions);
+                            resumeAttemptTaskId = null;
+                            resumeActionAttempts = 0;
+                            ctx.setStatus("Retomada iniciada: " + task.title());
+                        }
+                        updateFocusNowPanel();
+                        if (localMetricsPanel != null) localMetricsPanel.refresh();
+                    } catch (RuntimeException error) {
+                        Dialogs.error("Não foi possível iniciar o foco",
+                                "A pista foi preservada. Tente novamente.");
+                    }
+                },
+                () -> {
+                    if (!completingResume) preferences.remove(FOCUS_TASK_PREF);
+                    Dialogs.warning("Tarefa não encontrada",
+                            "A tarefa escolhida já não está disponível.");
+                    ctx.triggerDashboardRefresh();
+                });
     }
 
     private ListView<TaskReminderItem> buildTaskReminderList(ObservableList<TaskReminderItem> items, String tooltipText) {
@@ -839,7 +1338,7 @@ public class DashboardController {
             return appendProtocolHint("%s · %s · hoje".formatted(priority, category), item.linkedProtocolName());
         }
         if (item.overdue()) {
-            return appendProtocolHint("%s · %s · %s · atrasada há %d dia(s)".formatted(
+            return appendProtocolHint("%s · %s · %s · pendente há %d dia(s)".formatted(
                     priority,
                     category,
                     item.anchorDate(),
@@ -851,14 +1350,15 @@ public class DashboardController {
     private String formatTaskReminderDetail(TaskReminderItem item) {
         String priority = item.priority() != null ? item.priority().label() : "Normal";
         if (item.dueToday()) {
-            return appendProtocolHint("%s · %s · vence/acontece hoje · %s".formatted(item.title(), item.anchorDate(), priority), item.linkedProtocolName());
+            return appendProtocolHint("%s · acontece hoje · %s · %s".formatted(
+                    item.anchorDate(), item.category(), priority), item.linkedProtocolName());
         }
-        if (item.stale()) {
-            return appendProtocolHint("%s · %s · esquecida há %d dia(s) · %s".formatted(
-                    item.title(), item.anchorDate(), item.overdueDays(), priority), item.linkedProtocolName());
+        if (!item.overdue()) {
+            return appendProtocolHint("%s · programada · %s · %s".formatted(
+                    item.anchorDate(), item.category(), priority), item.linkedProtocolName());
         }
-        return appendProtocolHint("%s · %s · atrasada há %d dia(s) · %s".formatted(
-                item.title(), item.anchorDate(), item.overdueDays(), priority), item.linkedProtocolName());
+        return appendProtocolHint("%s · pendente há %d dia(s) · %s · %s".formatted(
+                item.anchorDate(), item.overdueDays(), item.category(), priority), item.linkedProtocolName());
     }
 
     private static String appendProtocolHint(String base, String protocolName) {
@@ -874,8 +1374,25 @@ public class DashboardController {
             else if (item.overdueDays() <= 30) score += 180;
             else if (item.overdueDays() <= 45) score += 120;
         }
-        if (item.stale()) score -= 240;
+        if (item.longPending()) score -= 240;
         return score;
+    }
+
+    private List<TaskReminderItem> overdueReviewItems() {
+        return java.util.stream.Stream.of(
+                        overdueUpTo7Items, overdue8To30Items, overdueOver30Items)
+                .flatMap(List::stream)
+                .toList();
+    }
+
+    private void updateOverdueTabLabels() {
+        if (overdueUpTo7Tab == null) return;
+        overdueUpTo7Tab.setText(OverdueAgeBand.UP_TO_7_DAYS.label()
+                + " (" + overdueUpTo7Items.size() + ")");
+        overdue8To30Tab.setText(OverdueAgeBand.DAYS_8_TO_30.label()
+                + " (" + overdue8To30Items.size() + ")");
+        overdueOver30Tab.setText(OverdueAgeBand.OVER_30_DAYS.label()
+                + " (" + overdueOver30Items.size() + ")");
     }
 
     private static int priorityWeight(TaskPriority priority) {
@@ -891,6 +1408,20 @@ public class DashboardController {
     private void openTaskReminder(TaskReminderItem item) {
         if (item == null) return;
         openTaskByDate(item.anchorDate(), item.taskId());
+    }
+
+    private void openCurrentFocusDetails() {
+        focusNowAction.run();
+        if (currentFocusTask != null) localMetricsService.recordFocusAction();
+        if (localMetricsPanel != null) localMetricsPanel.refresh();
+    }
+
+    private int registerResumeAttempt(long taskId) {
+        if (!Long.valueOf(taskId).equals(resumeAttemptTaskId)) {
+            resumeAttemptTaskId = taskId;
+            resumeActionAttempts = 0;
+        }
+        return ++resumeActionAttempts;
     }
 
     private void openTaskByDate(LocalDate date, Long taskId) {
@@ -1019,8 +1550,8 @@ public class DashboardController {
         updateIdeaInbox();
         ctx.triggerDashboardRefresh();
         ctx.setStatus(created == 1
-                ? "Captura salva na caixa de entrada de ideias."
-                : "Captura salva e agrupada para revisão posterior (" + created + " itens)." );
+                ? "Ideia salva para revisão."
+                : "Ideias salvas e agrupadas para revisão (" + created + " itens)." );
     }
 
     private static List<String> splitCaptureBlocks(String raw) {
@@ -1299,4 +1830,3 @@ public class DashboardController {
                 ctx::triggerDashboardRefresh).show();
     }
 }
-

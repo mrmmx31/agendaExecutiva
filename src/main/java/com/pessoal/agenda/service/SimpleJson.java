@@ -46,7 +46,8 @@ public final class SimpleJson {
             // número, boolean ou null
             int end = idx;
             while (end < json.length() && ",}\n\r]".indexOf(json.charAt(end)) < 0) end++;
-            return json.substring(idx, end).trim();
+            String value = json.substring(idx, end).trim();
+            return "null".equals(value) ? null : value;
         }
     }
 
@@ -96,5 +97,40 @@ public final class SimpleJson {
         String v = str(json, key);
         return "true".equalsIgnoreCase(v);
     }
-}
 
+    public static boolean isStructurallyValid(String json) {
+        if (json == null) return false;
+        List<Character> stack = new ArrayList<>();
+        boolean inString = false;
+        boolean escaped = false;
+        for (int index = 0; index < json.length(); index++) {
+            char current = json.charAt(index);
+            if (inString) {
+                if (escaped) escaped = false;
+                else if (current == '\\') escaped = true;
+                else if (current == '"') inString = false;
+                continue;
+            }
+            if (current == '"') {
+                inString = true;
+            } else if (current == '{' || current == '[') {
+                stack.add(current);
+            } else if (current == '}' || current == ']') {
+                if (stack.isEmpty()) return false;
+                char expected = current == '}' ? '{' : '[';
+                if (stack.removeLast() != expected) return false;
+            }
+        }
+        return !inString && !escaped && stack.isEmpty();
+    }
+
+    public static boolean isArrayField(String json, String key) {
+        int keyIndex = json.indexOf("\"" + key + "\"");
+        if (keyIndex < 0) return true;
+        int colon = json.indexOf(':', keyIndex);
+        if (colon < 0) return false;
+        int value = colon + 1;
+        while (value < json.length() && Character.isWhitespace(json.charAt(value))) value++;
+        return value < json.length() && json.charAt(value) == '[';
+    }
+}

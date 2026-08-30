@@ -1,11 +1,11 @@
 package com.pessoal.agenda.ui.view;
 
 import javafx.collections.ListChangeListener;
-import javafx.collections.ObservableList;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Window;
 
+import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.prefs.Preferences;
@@ -45,16 +45,16 @@ public class ThemeManager {
     public  static ThemeManager getInstance() { return INSTANCE; }
 
     private static final String APP_CSS = "/com/pessoal/agenda/app.css";
+    private static final String DARK_STYLE_CLASS = "theme-dark";
 
     // ── Estado ────────────────────────────────────────────────────────────
     private Theme currentTheme;
 
     /**
-     * Registro fraco: cada entrada é a lista de stylesheets de uma cena ou nó.
-     * WeakHashMap garante que entradas órfãs (janelas fechadas) sejam coletadas.
+     * Registro fraco das raízes tematizadas.
+     * As referências não retêm cenas de janelas já fechadas.
      */
-    private final Map<ObservableList<String>, Void> registered =
-            Collections.synchronizedMap(new WeakHashMap<>());
+    private final List<WeakReference<Parent>> registeredRoots = new ArrayList<>();
 
     private final List<Consumer<Theme>> listeners = new ArrayList<>();
     private boolean globalHookInstalled = false;
@@ -75,12 +75,16 @@ public class ThemeManager {
 
     /** Aplica o tema atual a uma Scene e registra para atualizações futuras. */
     public void applyTo(Scene scene) {
-        applyToList(scene.getStylesheets());
+        applyStylesheets(scene.getStylesheets());
+        applyThemeClass(scene.getRoot());
+        registerRoot(scene.getRoot());
     }
 
     /** Aplica o tema atual ao stylesheet de um nó raiz e registra para atualizações futuras. */
     public void applyTo(Parent root) {
-        applyToList(root.getStylesheets());
+        applyStylesheets(root.getStylesheets());
+        applyThemeClass(root);
+        registerRoot(root);
     }
 
     /**
@@ -131,16 +135,16 @@ public class ThemeManager {
     private void applyToWindowWhenReady(Window w) {
         Scene scene = w.getScene();
         if (scene != null) {
-            applyToList(scene.getStylesheets());
+            applyTo(scene);
         } else {
             // Escuta a propriedade cena e aplica quando ela aparecer
             w.sceneProperty().addListener((obs, old, newScene) -> {
-                if (newScene != null) applyToList(newScene.getStylesheets());
+                if (newScene != null) applyTo(newScene);
             });
         }
     }
 
-    private void applyToList(ObservableList<String> sheets) {
+    private void applyStylesheets(List<String> sheets) {
         String appUrl = resolveUrl(APP_CSS);
         if (appUrl == null) return;
 
@@ -157,23 +161,41 @@ public class ThemeManager {
                 sheets.add(themeUrl);
             }
         }
-        // Registra para atualizações futuras
-        registered.put(sheets, null);
     }
 
     private void updateAllRegistered() {
-        List<ObservableList<String>> snapshot;
-        synchronized (registered) {
-            snapshot = new ArrayList<>(registered.keySet());
+        List<Parent> snapshot;
+        synchronized (registeredRoots) {
+            registeredRoots.removeIf(reference -> reference.get() == null);
+            snapshot = registeredRoots.stream()
+                    .map(WeakReference::get)
+                    .filter(Objects::nonNull)
+                    .toList();
         }
-        for (ObservableList<String> sheets : snapshot) {
-            sheets.removeIf(s -> s != null && s.contains("/theme-"));
-            if (currentTheme.cssResource != null) {
-                String themeUrl = resolveUrl(currentTheme.cssResource);
-                if (themeUrl != null && !sheets.contains(themeUrl)) {
-                    sheets.add(themeUrl);
-                }
-            }
+        for (Parent root : snapshot) {
+            List<String> sheets = root.getScene() != null
+                    ? root.getScene().getStylesheets() : root.getStylesheets();
+            applyStylesheets(sheets);
+            applyThemeClass(root);
+            root.applyCss();
+            root.requestLayout();
+        }
+    }
+
+    private void applyThemeClass(Parent root) {
+        if (root == null) return;
+        root.getStyleClass().remove(DARK_STYLE_CLASS);
+        if (currentTheme == Theme.ESCURO) root.getStyleClass().add(DARK_STYLE_CLASS);
+    }
+
+    private void registerRoot(Parent root) {
+        if (root == null) return;
+        synchronized (registeredRoots) {
+            registeredRoots.removeIf(reference -> reference.get() == null);
+            boolean alreadyRegistered = registeredRoots.stream()
+                    .map(WeakReference::get)
+                    .anyMatch(existing -> existing == root);
+            if (!alreadyRegistered) registeredRoots.add(new WeakReference<>(root));
         }
     }
 

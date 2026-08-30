@@ -2,8 +2,8 @@ package com.pessoal.agenda.ui.view;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.TextInputDialog;
-import javafx.stage.Modality;
 
 import java.util.Optional;
 
@@ -11,7 +11,7 @@ import java.util.Optional;
  * Fábrica central de caixas de diálogo.
  *
  * Garante que todos os diálogos da aplicação:
- *   • Usam Modality.NONE  → não bloqueiam a janela principal (evita bugs de maximização no Linux)
+ *   • Pertencem à janela ativa e bloqueiam apenas essa janela
  *   • Recebem o tema CSS automaticamente via ThemeManager.initGlobalWindowHook()
  *
  * Uso:
@@ -84,12 +84,16 @@ public final class Dialogs {
      * @return texto digitado, ou Optional.empty() se cancelado
      */
     public static Optional<String> input(String title, String header, String defaultValue) {
-        TextInputDialog d = new TextInputDialog(defaultValue != null ? defaultValue : "");
+        TextInputDialog d = WindowManager.prepare(
+                new TextInputDialog(defaultValue != null ? defaultValue : ""));
         d.setTitle(title);
         d.setHeaderText(header);
         d.setContentText(null);
-        d.initModality(Modality.NONE);
         return d.showAndWait();
+    }
+
+    public static <D extends Dialog<?>> D prepare(D dialog) {
+        return WindowManager.prepare(dialog);
     }
 
     // ── Builder interno ───────────────────────────────────────────────────
@@ -99,11 +103,10 @@ public final class Dialogs {
      * O tema CSS é aplicado automaticamente pelo ThemeManager.initGlobalWindowHook().
      */
     public static Alert build(Alert.AlertType type, String title, String header, String content) {
-        Alert a = new Alert(type);
+        Alert a = WindowManager.prepare(new Alert(type));
         a.setTitle(title);
         a.setHeaderText(header);            // null → sem cabeçalho (mostra só content)
         a.setContentText(content);
-        a.initModality(Modality.NONE);      // não bloqueia a janela principal maximizada
         a.getDialogPane().setMinWidth(360); // largura mínima razoável
         return a;
     }

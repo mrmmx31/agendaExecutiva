@@ -8,7 +8,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.time.DayOfWeek;
@@ -54,10 +53,9 @@ public class StudyMonitorWindow {
 
     public void show() {
         // Always create a new stage for the monitor window (reverted behavior).
-        Stage stage = new Stage();
+        Stage stage = WindowManager.createModelessStage();
         stage.setTitle("📊  Monitor de Frequência — " + plan.title());
         stage.setMinWidth(860); stage.setMinHeight(640);
-        stage.initModality(Modality.NONE);
 
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app-root");
@@ -69,7 +67,7 @@ public class StudyMonitorWindow {
 
         stage.setScene(scene);
         stage.setOnHiding(e -> { if (onClose != null) onClose.run(); });
-        stage.show();
+        WindowManager.show(stage);
     }
 
     // ── Header ────────────────────────────────────────────────────────────
@@ -77,10 +75,12 @@ public class StudyMonitorWindow {
     private VBox buildHeader() {
         Label title = new Label("📊  " + plan.title());
         title.getStyleClass().add("page-title");
+        ResponsiveWindowLayout.makeFlexible(title);
 
         Label sub = new Label("Monitor de Frequência  ·  " + plan.studyTypeName()
                 + "  ·  " + plan.status().label());
         sub.getStyleClass().add("page-subtitle");
+        ResponsiveWindowLayout.makeFlexible(sub);
 
         VBox hdr = new VBox(2, title, sub);
         hdr.setPadding(new Insets(12, 16, 12, 16));
@@ -105,7 +105,7 @@ public class StudyMonitorWindow {
 
     private VBox buildCalendarSide() {
         // KPI bar
-        HBox kpiBar = buildKpiBar();
+        FlowPane kpiBar = buildKpiBar();
 
         // navegação de mês
         Button prevBtn = new Button("◀"); prevBtn.getStyleClass().add("secondary-button");
@@ -144,7 +144,7 @@ public class StudyMonitorWindow {
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         // Legenda
-        HBox legend = buildLegend();
+        FlowPane legend = buildLegend();
 
         VBox side = new VBox(10, kpiBar, navBar, weekHeader, scroll, legend);
         side.setPadding(new Insets(12));
@@ -207,8 +207,8 @@ public class StudyMonitorWindow {
         return cell;
     }
 
-    private HBox buildLegend() {
-        HBox box = new HBox(12);
+    private FlowPane buildLegend() {
+        FlowPane box = new FlowPane(12, 4);
         box.setAlignment(Pos.CENTER_LEFT);
         box.setPadding(new Insets(6, 0, 0, 0));
         for (AttendanceStatus s : AttendanceStatus.values()) {
@@ -222,13 +222,13 @@ public class StudyMonitorWindow {
 
     // ── KPI bar ───────────────────────────────────────────────────────────
 
-    private HBox buildKpiBar() {
+    private FlowPane buildKpiBar() {
         LocalDate from = currentMonth.atDay(1);
         LocalDate to   = currentMonth.atEndOfMonth();
         Summary sum = AppContextHolder.get().studyAttendanceService()
                 .getSummary(plan.id(), from, to);
 
-        HBox bar = new HBox(10,
+        FlowPane bar = new FlowPane(10, 8,
             kpi("Programados", String.valueOf(sum.scheduledDays()), "kpi-blue"),
             kpi("Presença", String.format("%.0f%%", sum.presenceRate()), "kpi-green"),
             kpi("Ausências", String.valueOf(sum.absentDays()), "kpi-orange"),
@@ -300,7 +300,7 @@ public class StudyMonitorWindow {
         Label minLbl = new Label(fmt(c.compensationMinutes()) + " a compensar");
         minLbl.getStyleClass().add("study-dates-label");
 
-        HBox topRow = new HBox(8, dateLbl, statusLbl, minLbl);
+        FlowPane topRow = new FlowPane(8, 4, dateLbl, statusLbl, minLbl);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         VBox card = new VBox(6, topRow);
@@ -341,7 +341,8 @@ public class StudyMonitorWindow {
                 refreshCompensations();
             });
 
-            HBox actions = new HBox(8, new Label("Compensar em:"), dp, doneBtn, pardonBtn, cancelBtn);
+            FlowPane actions = new FlowPane(8, 6,
+                    new Label("Compensar em:"), dp, doneBtn, pardonBtn, cancelBtn);
             actions.setAlignment(Pos.CENTER_LEFT);
             card.getChildren().add(actions);
         } else if (c.isDone() && c.compensationDate() != null) {
@@ -478,6 +479,3 @@ public class StudyMonitorWindow {
         Dialogs.info("Monitoramento", msg);
     }
 }
-
-
-

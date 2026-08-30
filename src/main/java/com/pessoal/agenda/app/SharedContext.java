@@ -27,6 +27,7 @@ public class SharedContext {
     private Runnable dashboardRefreshCallback;
     private Runnable alertRefreshCallback;
     private Runnable categoriesRefreshCallback;
+    private Runnable inboxRefreshCallback;
 
     // ── Categorias (compartilhadas entre abas) ─────────────────────────────
     public final ObservableList<Category> taskCatList       = FXCollections.observableArrayList();
@@ -73,6 +74,7 @@ public class SharedContext {
     public void setDashboardRefreshCallback(Runnable cb)  { this.dashboardRefreshCallback  = cb; }
     public void setAlertRefreshCallback(Runnable cb)      { this.alertRefreshCallback      = cb; }
     public void setCategoriesRefreshCallback(Runnable cb) { this.categoriesRefreshCallback = cb; }
+    public void setInboxRefreshCallback(Runnable cb)      { this.inboxRefreshCallback = cb; }
 
     // ── Ações públicas ─────────────────────────────────────────────────────
 
@@ -103,6 +105,11 @@ public class SharedContext {
         if (alertRefreshCallback != null) alertRefreshCallback.run();
     }
 
+    /** Atualiza a caixa de entrada e as telas afetadas por sua classificação. */
+    public void triggerInboxRefresh() {
+        if (inboxRefreshCallback != null) inboxRefreshCallback.run();
+    }
+
     /** Aciona atualização completa das categorias a partir do banco. */
     public void refreshCategories() {
         var cs = AppContextHolder.get().categoryService();
@@ -120,4 +127,3 @@ public class SharedContext {
         nameList.setAll(cats.stream().map(Category::name).collect(Collectors.toList()));
     }
 }
-

@@ -1370,6 +1370,7 @@ public class AgendaTabController {
         javafx.scene.layout.GridPane.setHgrow(dlgPrioCombo,   Priority.ALWAYS);
 
         Dialog<ButtonType> printDlg = new Dialog<>();
+        Dialogs.prepare(printDlg);
         printDlg.setTitle("Opções de Impressão");
         printDlg.setHeaderText("Agenda e Prioridades — Filtros para impressão");
         printDlg.getDialogPane().setContent(grid);
@@ -1494,6 +1495,7 @@ public class AgendaTabController {
 
         // Diálogo de confirmação
         Dialog<ButtonType> optDialog = new Dialog<>();
+        Dialogs.prepare(optDialog);
         optDialog.setTitle("Exportar para Google Calendar");
         optDialog.setHeaderText("Exportar tarefas — " + periodDesc);
         optDialog.setContentText(

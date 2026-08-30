@@ -8,6 +8,8 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.time.Instant;
+import java.time.Duration;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.function.Consumer;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
@@ -34,6 +36,8 @@ public class GoogleAuthService {
 
     private static final String SCOPE =
             "https://www.googleapis.com/auth/tasks";
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(20);
 
     // Credenciais lidas do arquivo
     private String clientId;
@@ -65,7 +69,8 @@ public class GoogleAuthService {
     }
 
     public boolean hasValidCredentials() {
-        return clientId != null && !clientId.isBlank();
+        return notBlank(clientId) && notBlank(clientSecret)
+                && validHttpUri(tokenUri) && validHttpUri(authUri);
     }
 
     /** Revoga a autorização e remove tokens locais. */
@@ -85,11 +90,20 @@ public class GoogleAuthService {
      */
     public synchronized String getAccessToken() throws IOException, InterruptedException {
         if (!isAuthorized()) throw new IllegalStateException("Não autorizado. Realize a conexão primeiro.");
+        if (!hasValidCredentials()) {
+            throw GoogleSyncException.configuration(
+                    "As credenciais Google estão ausentes ou inválidas.");
+        }
         long now = Instant.now().getEpochSecond();
         if (accessToken == null || now >= expiresAt - 60) {
             refreshAccessToken();
         }
         return accessToken;
+    }
+
+    public synchronized void invalidateAccessToken() {
+        accessToken = null;
+        expiresAt = 0;
     }
 
     // ── Fluxo de autorização ────────────────────────────────────────────────
@@ -200,12 +214,21 @@ public class GoogleAuthService {
                 + "&refresh_token=" + URLEncoder.encode(refreshToken, StandardCharsets.UTF_8)
                 + "&client_id=" + URLEncoder.encode(clientId, StandardCharsets.UTF_8)
                 + "&client_secret=" + URLEncoder.encode(clientSecret, StandardCharsets.UTF_8);
-        String response = post(tokenUri, body);
+        String response;
+        try {
+            response = post(tokenUri, body);
+        } catch (GoogleSyncException error) {
+            if (error.kind() == GoogleSyncException.Kind.AUTHENTICATION) {
+                clearTokens();
+            }
+            throw error;
+        }
+        requireTokenResponse(response);
         // Refresh response: access_token + expires_in (sem new refresh_token geralmente)
         String newAccess  = SimpleJson.str(response, "access_token");
         long   expiresIn  = SimpleJson.num(response, "expires_in");
         String newRefresh = SimpleJson.str(response, "refresh_token");
-        if (newAccess == null) throw new IOException("Falha ao renovar token: " + response);
+        if (newAccess == null) throw GoogleSyncException.invalidResponse();
         accessToken = newAccess;
         expiresAt   = Instant.now().getEpochSecond() + (expiresIn > 0 ? expiresIn : 3600);
         if (newRefresh != null && !newRefresh.isBlank()) refreshToken = newRefresh;
@@ -213,11 +236,12 @@ public class GoogleAuthService {
     }
 
     private void parseAndSaveTokens(String response) throws IOException {
+        requireTokenResponse(response);
         accessToken  = SimpleJson.str(response, "access_token");
         refreshToken = SimpleJson.str(response, "refresh_token");
         long expiresIn = SimpleJson.num(response, "expires_in");
         if (accessToken == null || refreshToken == null) {
-            throw new IOException("Resposta de token inválida: " + response);
+            throw GoogleSyncException.invalidResponse();
         }
         expiresAt = Instant.now().getEpochSecond() + (expiresIn > 0 ? expiresIn : 3600);
         saveTokens();
@@ -228,14 +252,16 @@ public class GoogleAuthService {
         String json = "{\"access_token\":\"" + accessToken + "\","
                     + "\"refresh_token\":\"" + refreshToken + "\","
                     + "\"expires_at\":" + expiresAt + "}";
-        Files.writeString(path, json, StandardCharsets.UTF_8);
+        writePrivateFile(path, json);
     }
 
     private void loadTokens() {
         try {
             Path path = Paths.get(TOKENS_PATH);
             if (!Files.exists(path)) return;
+            restrictPrivateFile(path);
             String json = Files.readString(path, StandardCharsets.UTF_8);
+            if (!SimpleJson.isStructurallyValid(json)) return;
             accessToken  = SimpleJson.str(json, "access_token");
             refreshToken = SimpleJson.str(json, "refresh_token");
             expiresAt    = SimpleJson.num(json, "expires_at");
@@ -248,7 +274,9 @@ public class GoogleAuthService {
         try {
             Path path = Paths.get(CREDENTIALS_PATH);
             if (!Files.exists(path)) return;
+            restrictPrivateFile(path);
             String json = Files.readString(path, StandardCharsets.UTF_8);
+            if (!SimpleJson.isStructurallyValid(json)) return;
             // JSON: {"installed":{"client_id":"...","client_secret":"...","auth_uri":"...","token_uri":"..."}}
             String installed = extractObject(json, "installed");
             if (installed == null) installed = json; // fallback
@@ -257,7 +285,7 @@ public class GoogleAuthService {
             tokenUri     = SimpleJson.str(installed, "token_uri");
             authUri      = SimpleJson.str(installed, "auth_uri");
         } catch (IOException e) {
-            System.err.println("[GoogleAuth] Erro ao ler credenciais: " + e.getMessage());
+            System.err.println("[GoogleAuth] Não foi possível ler as credenciais locais.");
         }
     }
 
@@ -286,15 +314,78 @@ public class GoogleAuthService {
 
         HttpClient client = HttpClient.newBuilder()
                 .sslParameters(sslParams)
+                .connectTimeout(CONNECT_TIMEOUT)
                 .build();
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
+                .timeout(REQUEST_TIMEOUT)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
                 .build();
-        HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
+        HttpResponse<String> response;
+        try {
+            response = client.send(request, BodyHandlers.ofString());
+        } catch (IOException error) {
+            throw GoogleSyncException.fromIOException(error);
+        }
+        requireOAuthSuccess(response.statusCode());
         return response.body();
     }
-}
 
+    static void requireOAuthSuccess(int statusCode) throws GoogleSyncException {
+        if (statusCode >= 200 && statusCode < 300) return;
+        if (statusCode == 400 || statusCode == 401 || statusCode == 403) {
+            throw GoogleSyncException.oauthRejected(statusCode);
+        }
+        throw GoogleSyncException.forStatus(statusCode);
+    }
+
+    private void clearTokens() throws IOException {
+        accessToken = null;
+        refreshToken = null;
+        expiresAt = 0;
+        Files.deleteIfExists(Paths.get(TOKENS_PATH));
+    }
+
+    static void writePrivateFile(Path path, String content) throws IOException {
+        Path parent = path.getParent();
+        if (parent != null) Files.createDirectories(parent);
+        Files.writeString(path, content, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE);
+        restrictPrivateFile(path);
+    }
+
+    static void restrictPrivateFile(Path path) throws IOException {
+        try {
+            Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rw-------"));
+        } catch (UnsupportedOperationException ignored) {
+            // Windows e outros sistemas sem permissões POSIX.
+        }
+    }
+
+    private static boolean notBlank(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private static boolean validHttpUri(String value) {
+        if (!notBlank(value)) return false;
+        try {
+            URI uri = URI.create(value);
+            return ("https".equalsIgnoreCase(uri.getScheme())
+                    || "http".equalsIgnoreCase(uri.getScheme()))
+                    && uri.getHost() != null;
+        } catch (IllegalArgumentException error) {
+            return false;
+        }
+    }
+
+    private static void requireTokenResponse(String response) throws GoogleSyncException {
+        if (response == null || !response.stripLeading().startsWith("{")
+                || !response.stripTrailing().endsWith("}")
+                || !SimpleJson.isStructurallyValid(response)) {
+            throw GoogleSyncException.invalidResponse();
+        }
+    }
+}

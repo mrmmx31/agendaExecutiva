@@ -5,8 +5,15 @@ import com.pessoal.agenda.repository.*;
 import com.pessoal.agenda.service.AlertService;
 import com.pessoal.agenda.service.CategoryService;
 import com.pessoal.agenda.service.DashboardService;
+import com.pessoal.agenda.service.DailyPlanService;
+import com.pessoal.agenda.service.DayReviewService;
+import com.pessoal.agenda.service.FocusContextService;
 import com.pessoal.agenda.service.StudyAttendanceService;
+import com.pessoal.agenda.service.TaskTimerRecoveryService;
 import com.pessoal.agenda.service.TaskService;
+import com.pessoal.agenda.service.InboxCaptureService;
+import com.pessoal.agenda.service.QuickCapturePreferences;
+import com.pessoal.agenda.service.LocalMetricsService;
 
 /**
  * Composition Root (DI manual): centraliza a montagem de dependencias da aplicacao.
@@ -38,12 +45,26 @@ public class AppContext {
     private final com.pessoal.agenda.repository.StudyStatusLogRepository studyStatusLogRepository;
     private final com.pessoal.agenda.repository.TaskSessionRepository taskSessionRepository;
     private final com.pessoal.agenda.repository.GoogleTasksMappingRepository googleTasksMappingRepository;
+    private final com.pessoal.agenda.repository.GoogleTasksSyncRepository googleTasksSyncRepository;
+    private final DailyPlanRepository dailyPlanRepository;
+    private final DayReviewRepository dayReviewRepository;
+    private final InboxCaptureRepository inboxCaptureRepository;
+    private final FocusContextRepository focusContextRepository;
+    private final TimerRecoveryRepository timerRecoveryRepository;
+    private final LocalMetricsRepository localMetricsRepository;
 
     private final TaskService taskService;
     private final AlertService alertService;
     private final DashboardService dashboardService;
     private final CategoryService categoryService;
     private final StudyAttendanceService studyAttendanceService;
+    private final DailyPlanService dailyPlanService;
+    private final DayReviewService dayReviewService;
+    private final InboxCaptureService inboxCaptureService;
+    private final FocusContextService focusContextService;
+    private final TaskTimerRecoveryService taskTimerRecoveryService;
+    private final QuickCapturePreferences quickCapturePreferences;
+    private final LocalMetricsService localMetricsService;
 
     private AppContext() {
         this.database = new Database();
@@ -67,6 +88,13 @@ public class AppContext {
         this.studyStatusLogRepository = new com.pessoal.agenda.repository.StudyStatusLogRepository(database);
         this.taskSessionRepository = new com.pessoal.agenda.repository.TaskSessionRepository(database);
         this.googleTasksMappingRepository = new com.pessoal.agenda.repository.GoogleTasksMappingRepository(database);
+        this.googleTasksSyncRepository = new com.pessoal.agenda.repository.GoogleTasksSyncRepository(database);
+        this.dailyPlanRepository = new DailyPlanRepository(database);
+        this.dayReviewRepository = new DayReviewRepository(database);
+        this.inboxCaptureRepository = new InboxCaptureRepository(database);
+        this.focusContextRepository = new FocusContextRepository(database);
+        this.timerRecoveryRepository = new TimerRecoveryRepository(database);
+        this.localMetricsRepository = new LocalMetricsRepository(database);
 
         this.taskService = new TaskService(taskRepository);
         this.alertService = new AlertService(database, taskRepository, financeRepository);
@@ -75,6 +103,15 @@ public class AppContext {
         this.studyAttendanceService = new StudyAttendanceService(
                 studyScheduleRepository, studyEntryRepository, studyCompensationRepository,
                 studyStatusLogRepository);
+        this.dailyPlanService = new DailyPlanService(dailyPlanRepository, taskRepository);
+        this.dayReviewService = new DayReviewService(
+                dailyPlanRepository, taskRepository, taskSessionRepository, dayReviewRepository);
+        this.inboxCaptureService = new InboxCaptureService(inboxCaptureRepository);
+        this.focusContextService = new FocusContextService(focusContextRepository, taskRepository);
+        this.taskTimerRecoveryService = new TaskTimerRecoveryService(
+                timerRecoveryRepository, taskRepository);
+        this.quickCapturePreferences = new QuickCapturePreferences();
+        this.localMetricsService = new LocalMetricsService(localMetricsRepository);
         this.categoryService.seedDefaults();
     }
 
@@ -174,7 +211,63 @@ public class AppContext {
         return googleTasksMappingRepository;
     }
 
+    public com.pessoal.agenda.repository.GoogleTasksSyncRepository googleTasksSyncRepository() {
+        return googleTasksSyncRepository;
+    }
+
     public StudyAttendanceService studyAttendanceService() {
         return studyAttendanceService;
+    }
+
+    public DailyPlanRepository dailyPlanRepository() {
+        return dailyPlanRepository;
+    }
+
+    public DailyPlanService dailyPlanService() {
+        return dailyPlanService;
+    }
+
+    public DayReviewRepository dayReviewRepository() {
+        return dayReviewRepository;
+    }
+
+    public DayReviewService dayReviewService() {
+        return dayReviewService;
+    }
+
+    public InboxCaptureRepository inboxCaptureRepository() {
+        return inboxCaptureRepository;
+    }
+
+    public InboxCaptureService inboxCaptureService() {
+        return inboxCaptureService;
+    }
+
+    public FocusContextRepository focusContextRepository() {
+        return focusContextRepository;
+    }
+
+    public FocusContextService focusContextService() {
+        return focusContextService;
+    }
+
+    public TimerRecoveryRepository timerRecoveryRepository() {
+        return timerRecoveryRepository;
+    }
+
+    public TaskTimerRecoveryService taskTimerRecoveryService() {
+        return taskTimerRecoveryService;
+    }
+
+    public QuickCapturePreferences quickCapturePreferences() {
+        return quickCapturePreferences;
+    }
+
+    public LocalMetricsRepository localMetricsRepository() {
+        return localMetricsRepository;
+    }
+
+    public LocalMetricsService localMetricsService() {
+        return localMetricsService;
     }
 }

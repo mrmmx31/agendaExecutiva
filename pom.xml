@@ -12,8 +12,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.12.1</junit.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
+        <test.excludedGroups>javafx-ui</test.excludedGroups>
     </properties>
 
     <dependencies>
@@ -58,8 +58,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
+                    <release>${maven.compiler.release}</release>
                 </configuration>
             </plugin>
             <plugin>
@@ -78,17 +77,55 @@
                             <noManPages>true</noManPages>
                             <stripDebug>true</stripDebug>
                             <noHeaderFiles>true</noHeaderFiles>
-                            <jvmArgs>
-                                <!-- Silencia warnings de acesso nativo restrito -->
-                                <jvmArg>--enable-native-access=org.xerial.sqlitejdbc</jvmArg>
-                                <jvmArg>--enable-native-access=javafx.graphics</jvmArg>
-                                <jvmArg>--enable-native-access=javafx.media</jvmArg>
-                                <jvmArg>--enable-native-access=ALL-UNNAMED</jvmArg>
-                            </jvmArgs>
+                            <options>
+                                <option>--enable-native-access=org.xerial.sqlitejdbc</option>
+                                <option>--enable-native-access=javafx.graphics</option>
+                                <option>--enable-native-access=javafx.media</option>
+                                <option>--enable-native-access=javafx.web</option>
+                                <option>--enable-native-access=ALL-UNNAMED</option>
+                            </options>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+                <configuration>
+                    <argLine>--enable-native-access=org.xerial.sqlitejdbc,javafx.graphics</argLine>
+                    <excludedGroups>${test.excludedGroups}</excludedGroups>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>manual-ui-validation</id>
+            <properties>
+                <agenda.validation.home>${project.build.directory}/manual-ui-profile</agenda.validation.home>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.openjfx</groupId>
+                        <artifactId>javafx-maven-plugin</artifactId>
+                        <configuration>
+                            <options combine.children="append">
+                                <option>-Duser.home=${agenda.validation.home}</option>
+                                <option>-Djava.util.prefs.userRoot=${agenda.validation.home}/preferences</option>
+                            </options>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>javafx-ui-tests</id>
+            <properties>
+                <test.excludedGroups></test.excludedGroups>
+            </properties>
+        </profile>
+    </profiles>
 </project>

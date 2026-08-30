@@ -977,7 +977,7 @@ public class SalesController {
             boolean pend = e.isPending();
 
             Label typeBadge = badge(svc ? "SERVIÇO" : "MATERIAL",
-                    svc ? "#e0f7f4:#006d5b" : "#e8eaf6:#283593");
+                    svc ? "-t-success-bg:-t-success" : "-t-pri-lt:-t-pri");
 
             Label statusBadge = badge(pend ? "A RECEBER" : "RECEBIDO",
                     pend ? "-t-warn-bg:-t-warn" : "-t-success-bg:-t-success");
@@ -1020,7 +1020,7 @@ public class SalesController {
             boolean lowStock = item.isLowStock();
 
             Label typeBadge = badge(svc ? "SERVIÇO" : "MATERIAL",
-                    svc ? "#e0f7f4:#006d5b" : "#e8eaf6:#283593");
+                    svc ? "-t-success-bg:-t-success" : "-t-pri-lt:-t-pri");
 
             Label nameLbl = new Label(item.productName());
             nameLbl.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: -t-text;");

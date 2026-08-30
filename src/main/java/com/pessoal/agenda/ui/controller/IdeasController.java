@@ -516,6 +516,7 @@ public class IdeasController {
         javafx.scene.layout.GridPane.setHgrow(dlgSearchField,  Priority.ALWAYS);
 
         Dialog<ButtonType> printDlg = new Dialog<>();
+        Dialogs.prepare(printDlg);
         printDlg.setTitle("Opções de Impressão");
         printDlg.setHeaderText("Ideias e Projetos — Filtros para impressão");
         printDlg.getDialogPane().setContent(grid);
@@ -717,9 +718,9 @@ public class IdeasController {
             titleLbl.setWrapText(false);
 
             Label statusBadge  = badge(idea.statusLabel(),  accentHex, "white");
-            Label priorityBadge= badge(idea.priorityLabel(), "#eef4fc","-t-pri");
-            Label typeBadge    = badge(idea.typeLabel(),     "#f3eeff","-t-purple");
-            Label impactBadge  = badge(idea.impactLabel(),   "#fff4ec","-t-warn");
+            Label priorityBadge= badge(idea.priorityLabel(), "-t-pri-lt", "-t-pri");
+            Label typeBadge    = badge(idea.typeLabel(),     "-t-purple-bg", "-t-purple");
+            Label impactBadge  = badge(idea.impactLabel(),   "-t-warn-bg", "-t-warn");
 
             Region hSpacer = new Region(); HBox.setHgrow(hSpacer, Priority.ALWAYS);
             HBox row1 = new HBox(8, titleLbl, hSpacer, statusBadge, priorityBadge, typeBadge, impactBadge);

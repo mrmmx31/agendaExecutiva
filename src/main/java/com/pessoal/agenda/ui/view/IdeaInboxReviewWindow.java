@@ -23,10 +23,10 @@ import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.time.LocalDate;
@@ -76,9 +76,8 @@ public class IdeaInboxReviewWindow {
     }
 
     public void show(Long initialIdeaId) {
-        Stage stage = new Stage();
-        stage.initModality(Modality.NONE);
-        stage.setTitle("Revisão da caixa de entrada");
+        Stage stage = WindowManager.createModelessStage();
+        stage.setTitle("Revisão de ideias");
         stage.setMinWidth(1080);
         stage.setMinHeight(720);
 
@@ -97,7 +96,8 @@ public class IdeaInboxReviewWindow {
 
         ScrollPane rightScroll = new ScrollPane(detailPane);
         rightScroll.setFitToWidth(true);
-        rightScroll.setFitToHeight(true);
+        rightScroll.setFitToHeight(false);
+        rightScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
 
         SplitPane splitPane = new SplitPane(leftPane, rightScroll);
         splitPane.setDividerPositions(0.34);
@@ -110,17 +110,20 @@ public class IdeaInboxReviewWindow {
         stage.setScene(scene);
 
         refreshInbox(initialIdeaId, 0);
-        stage.show();
+        WindowManager.show(stage);
     }
 
     private HBox buildHeader() {
-        Label title = new Label("🗂 Revisão da caixa de entrada");
+        Label title = new Label("🗂 Revisão de ideias");
         title.getStyleClass().add("page-title");
 
         Label subtitle = new Label("Priorize, conecte, transforme em projeto/tarefa e arquive sem perder o fio da meada.");
         subtitle.getStyleClass().add("page-subtitle");
+        ResponsiveWindowLayout.makeFlexible(subtitle);
 
         VBox titles = new VBox(2, title, subtitle);
+        titles.setMinWidth(0);
+        HBox.setHgrow(titles, Priority.ALWAYS);
         HBox header = new HBox(titles);
         header.getStyleClass().add("header-bar");
         header.setPadding(new Insets(14, 20, 14, 20));
@@ -153,7 +156,7 @@ public class IdeaInboxReviewWindow {
     private ListView<ProjectIdea> buildInboxList() {
         ListView<ProjectIdea> list = new ListView<>(inboxItems);
         list.getStyleClass().add("clean-list");
-        list.setPlaceholder(new Label("Nenhuma ideia pendente na caixa de entrada."));
+        list.setPlaceholder(new Label("Nenhuma ideia aguardando revisão."));
         list.setCellFactory(lv -> new ListCell<>() {
             private final Label title = new Label();
             private final Label meta = new Label();
@@ -236,7 +239,7 @@ public class IdeaInboxReviewWindow {
         Label hint = new Label("Ajuste a prioridade antes de decidir o destino do item.");
         hint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2;");
 
-        HBox buttons = new HBox(8,
+        FlowPane buttons = ResponsiveWindowLayout.actionFlow(
                 buildActionButton("🔴 Crítica", "secondary-button", () -> changePriority("CRITICA", "crítica")),
                 buildActionButton("🟠 Alta", "secondary-button", () -> changePriority("ALTA", "alta")),
                 buildActionButton("🔵 Normal", "secondary-button", () -> changePriority("NORMAL", "normal")),
@@ -252,7 +255,7 @@ public class IdeaInboxReviewWindow {
         Button linkBtn = buildActionButton("↳ Vincular / atualizar vínculo", "secondary-button", this::linkSelectedIdeaToParent);
         Button clearBtn = buildActionButton("⤬ Soltar vínculo", "secondary-button", () -> parentIdeaCombo.setValue(ParentIdeaOption.NONE));
 
-        HBox buttons = new HBox(8, linkBtn, clearBtn);
+        FlowPane buttons = ResponsiveWindowLayout.actionFlow(linkBtn, clearBtn);
         VBox.setVgrow(parentIdeaCombo, Priority.NEVER);
         return sectionCard("🧬 Hierarquia", new VBox(8, hint, parentIdeaCombo, buttons));
     }
@@ -268,23 +271,23 @@ public class IdeaInboxReviewWindow {
         Button detailBtn = buildActionButton("✏ Abrir detalhe completo", "secondary-button", this::openSelectedIdeaDetail);
         Button archiveBtn = buildActionButton("🧊 Arquivar", "danger-button", this::archiveSelectedIdea);
 
-        HBox row1 = new HBox(8, projectBtn, checklistBtn);
-        HBox row2 = new HBox(8, taskBtn, detailBtn, archiveBtn);
-        return sectionCard("🛠 Destino rápido", new VBox(8, hint, row1, row2));
+        FlowPane actions = ResponsiveWindowLayout.actionFlow(
+                projectBtn, checklistBtn, taskBtn, detailBtn, archiveBtn);
+        return sectionCard("🛠 Destino rápido", new VBox(8, hint, actions));
     }
 
     private HBox buildFooter(Stage stage) {
-        Label hint = new Label("A fila atualiza após cada ação. Quando um item vira projeto, checklist ou tarefa, ele sai naturalmente da caixa de entrada.");
+        Label hint = new Label("A fila atualiza após cada ação. Projetos, checklists, tarefas e itens arquivados saem desta revisão.");
         hint.setWrapText(true);
+        hint.setMinWidth(0);
+        HBox.setHgrow(hint, Priority.ALWAYS);
         hint.setStyle("-fx-font-size: 10px; -fx-text-fill: -t-text-m2;");
 
         Button closeBtn = new Button("✕ Fechar");
         closeBtn.getStyleClass().add("secondary-button");
         closeBtn.setOnAction(e -> stage.close());
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox footer = new HBox(12, hint, spacer, closeBtn);
+        HBox footer = new HBox(12, hint, closeBtn);
         footer.setPadding(new Insets(10, 18, 10, 18));
         footer.setAlignment(Pos.CENTER_LEFT);
         footer.setStyle("-fx-background-color: -t-surface-d; -fx-border-color: -t-bd; -fx-border-width: 1 0 0 0;");
@@ -666,5 +669,3 @@ public class IdeaInboxReviewWindow {
         if (onChanged != null) onChanged.run();
     }
 }
-
-

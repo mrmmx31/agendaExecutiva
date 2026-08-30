@@ -8,12 +8,10 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 /**
@@ -43,9 +41,8 @@ public class PrintPreviewWindow {
 
     /** Abre a janela de pré-visualização (não bloqueia a thread JavaFX). */
     public void show() {
-        stage = new Stage();
+        stage = WindowManager.createModelessStage();
         stage.setTitle("Pré-visualização: " + windowTitle);
-        stage.initModality(Modality.NONE);
         stage.setResizable(true);
 
         // ── WebView ───────────────────────────────────────────────────────
@@ -56,16 +53,11 @@ public class PrintPreviewWindow {
 
         // ── Toolbar ───────────────────────────────────────────────────────
         Button printBtn = new Button("🖨  Imprimir");
-        printBtn.setStyle(
-                "-fx-background-color: -t-text-s; -fx-text-fill: -t-surface; -fx-font-weight: bold;"
-                + " -fx-font-size: 12px; -fx-padding: 7 16 7 16; -fx-background-radius: 5;"
-                + " -fx-cursor: hand;");
+        printBtn.getStyleClass().add("primary-button");
         printBtn.setOnAction(e -> triggerPrint());
 
         ToggleButton monoToggle = new ToggleButton("Monocromático");
-        monoToggle.setStyle(
-                "-fx-font-size: 11.5px; -fx-padding: 6 14 6 14; -fx-background-radius: 5;"
-                + " -fx-cursor: hand;");
+        monoToggle.getStyleClass().add("secondary-button");
         monoToggle.setSelected(false);
         monoToggle.setOnAction(e -> {
             isMonoMode = monoToggle.isSelected();
@@ -74,47 +66,42 @@ public class PrintPreviewWindow {
         });
 
         Label zoomLabel = new Label("Zoom:");
-        zoomLabel.setStyle("-fx-font-size: 11px;");
+        zoomLabel.getStyleClass().add("form-label");
 
         Button zoomInBtn  = new Button("+");
         Button zoomOutBtn = new Button("−");
-        zoomInBtn.setStyle("-fx-font-size: 12px; -fx-padding: 4 10 4 10; -fx-cursor: hand;");
-        zoomOutBtn.setStyle("-fx-font-size: 12px; -fx-padding: 4 10 4 10; -fx-cursor: hand;");
+        zoomInBtn.getStyleClass().addAll("secondary-button", "icon-button");
+        zoomOutBtn.getStyleClass().addAll("secondary-button", "icon-button");
+        zoomInBtn.setTooltip(new javafx.scene.control.Tooltip("Aumentar zoom"));
+        zoomOutBtn.setTooltip(new javafx.scene.control.Tooltip("Diminuir zoom"));
         zoomInBtn.setOnAction(e  -> webView.setZoom(Math.min(2.5, webView.getZoom() + 0.15)));
         zoomOutBtn.setOnAction(e -> webView.setZoom(Math.max(0.4, webView.getZoom() - 0.15)));
 
         Button closeBtn = new Button("✕  Fechar");
-        closeBtn.setStyle(
-                "-fx-background-color: -t-text-m; -fx-text-fill: -t-surface;"
-                + " -fx-font-size: 11px; -fx-padding: 6 12 6 12; -fx-background-radius: 5;"
-                + " -fx-cursor: hand;");
+        closeBtn.getStyleClass().add("secondary-button");
         closeBtn.setOnAction(e -> stage.close());
 
         Label hint = new Label("Dica: alterne Colorido/Mono antes de imprimir.");
-        hint.setStyle("-fx-font-size: 9.5px; -fx-text-fill: -t-text-m2; -fx-font-style: italic;");
+        hint.getStyleClass().add("print-preview-hint");
+        ResponsiveWindowLayout.makeFlexible(hint);
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        HBox toolbar = new HBox(10, printBtn, monoToggle, spacer,
-                zoomLabel, zoomOutBtn, zoomInBtn, hint, closeBtn);
-        toolbar.setAlignment(Pos.CENTER_LEFT);
-        toolbar.setPadding(new Insets(10, 14, 10, 14));
-        toolbar.setStyle(
-                "-fx-background-color: -t-surface-d;"
-                + " -fx-border-color: -t-bd; -fx-border-width: 0 0 1 0;");
+        FlowPane commands = new FlowPane(10, 6,
+                printBtn, monoToggle, zoomLabel, zoomOutBtn, zoomInBtn, closeBtn);
+        commands.setAlignment(Pos.CENTER_LEFT);
+        VBox toolbar = new VBox(5, commands, hint);
+        toolbar.getStyleClass().add("print-preview-toolbar");
 
         // ── Layout ────────────────────────────────────────────────────────
         BorderPane root = new BorderPane();
+        root.getStyleClass().add("app-root");
         root.setTop(toolbar);
         root.setCenter(webView);
 
         Scene scene = new Scene(root, 960, 740);
+        stage.setMinWidth(680);
+        stage.setMinHeight(520);
         stage.setScene(scene);
-        stage.show();
-
-        // Registra para fechar junto com a janela principal
-        WindowManager.register(stage);
+        WindowManager.show(stage);
     }
 
     // ── Impressão via PrinterJob (abre diálogo nativo do sistema) ────────────
@@ -170,13 +157,7 @@ public class PrintPreviewWindow {
     }
 
     private void showError(String msg) {
-        javafx.scene.control.Alert alert =
-                new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
-        alert.setTitle("Erro de impressão");
-        alert.setHeaderText(null);
-        alert.setContentText(msg);
-        alert.initOwner(stage);
-        alert.showAndWait();
+        Dialogs.error("Erro de impressão", msg);
     }
 
     // ── Factory conveniente ───────────────────────────────────────────────────

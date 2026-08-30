@@ -1109,6 +1109,14 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 
 **Resultado:** mensagens de texto e status agora usam explicitamente o título do lado que originou a alteração: Google nas atualizações locais e local nas atualizações remotas. Um teste de regressão exige que uma edição remota registre o novo título recebido. A suíte padrão aprovou 123 testes e o perfil JavaFX aprovou 188, sem acessar a conta ou a rede Google.
 
+### GSYNC-03.6 — Comparação informada de conflitos
+
+**Status:** Concluído em 2026-08-30.
+
+**Problema:** a revisão identificava a pendência e explicava a consequência da escolha, mas não mostrava os valores atuais dos dois lados. Resolver conflitos reais exigia escolher entre local e Google sem comparar título, notas, data e status.
+
+**Resultado:** `Revisar pendências` carrega as versões atuais em segundo plano e apresenta `Versão local` e `Versão Google` lado a lado antes das decisões. Cada lado mostra título, status, data e notas; tarefas excluídas ou ausentes aparecem explicitamente como indisponíveis. Trocar o item limpa a escolha anterior, e `Aplicar decisão` continua desabilitado até uma nova escolha explícita. O comparador usa controles somente leitura compatíveis com tema escuro e mantém colunas sem sobreposição em 620 px. Testes cobrem conflitos, ambos os sentidos de exclusão, conteúdo comparativo e contraste. A suíte padrão aprovou 125 testes e o perfil JavaFX aprovou 191, sem acessar a conta ou a rede Google.
+
 ### GSYNC-04 — Interface e validação controlada
 
 **Status:** Concluído em 2026-08-27.
@@ -1145,7 +1153,7 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 - [ ] LIVE-07 — Revisar os cinco conflitos existentes e validar uma exclusão controlada
 - [ ] LIVE-08 — Cancelar uma autorização pendente, tentar novamente e validar reconexão
 
-**Próxima ação:** preparar o `LIVE-07` antes de alterar dados. A revisão atual identifica os cinco conflitos e explica a consequência das decisões, mas ainda não apresenta lado a lado título, notas, data e status das versões local e Google. Implementar essa comparação é pré-requisito para resolver conflitos reais de forma informada; nenhuma decisão ou exclusão deve ser aplicada até essa interface estar disponível e testada.
+**Próxima ação:** reiniciar a aplicação para carregar `GSYNC-03.6`, abrir `Revisar pendências` na lista `Minhas tarefas` e inspecionar os cinco comparadores sem aplicar decisões. Confirmar que os dois lados estão legíveis e que cada escolha corresponde ao conteúdo que deve ser preservado; somente depois iniciar as resoluções controladas do `LIVE-07`.
 
 ## 27. Implementação da interrupção e retomada
 

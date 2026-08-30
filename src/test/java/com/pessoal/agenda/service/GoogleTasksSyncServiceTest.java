@@ -226,6 +226,19 @@ class GoogleTasksSyncServiceTest {
     }
 
     @Test
+    void reviewDetailsExposeBothVersionsBeforeResolution() throws Exception {
+        createConflict("Alterado local", "Alterado Google");
+
+        var details = service.loadReviewDetails("list-1").getFirst();
+
+        assertEquals(CONFLICT, details.item().state());
+        assertEquals("Alterado local", details.local().title());
+        assertTrue(details.local().available());
+        assertEquals("Alterado Google", details.google().title());
+        assertTrue(details.google().available());
+    }
+
+    @Test
     void conflictCanBeResolvedUsingLocalVersion() throws Exception {
         long mappingId = createConflict("Local escolhido", "Google descartado");
 
@@ -280,6 +293,9 @@ class GoogleTasksSyncServiceTest {
         assertTrue(taskRepository.findById(mapping.localTaskId()).isPresent());
         assertEquals(REMOTE_DELETED, mappingRepository.findByLocalId(mapping.localTaskId())
                 .orElseThrow().syncState());
+        var details = service.loadReviewDetails("list-1").getFirst();
+        assertTrue(details.local().available());
+        assertFalse(details.google().available());
     }
 
     @Test
@@ -311,6 +327,9 @@ class GoogleTasksSyncServiceTest {
         assertEquals(1, gateway.tasks.size());
         assertEquals(LOCAL_DELETED, mappingRepository.findByGoogleId("list-1", "google-1")
                 .orElseThrow().syncState());
+        var details = service.loadReviewDetails("list-1").getFirst();
+        assertFalse(details.local().available());
+        assertTrue(details.google().available());
     }
 
     @Test

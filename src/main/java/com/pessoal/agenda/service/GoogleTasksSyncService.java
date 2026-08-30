@@ -203,6 +203,41 @@ public class GoogleTasksSyncService {
         return List.copyOf(items);
     }
 
+    public List<ReviewDetails> loadReviewDetails(String googleListId)
+            throws IOException, InterruptedException {
+        Map<String, GTask> googleById = new LinkedHashMap<>();
+        for (GTask task : gateway.listTasksForSync(googleListId)) {
+            googleById.put(task.id(), task);
+        }
+
+        List<ReviewDetails> details = new ArrayList<>();
+        for (TaskMapping mapping : mappingRepository.findByListId(googleListId)) {
+            if (mapping.syncState() == SyncState.ACTIVE) continue;
+            Task local = taskRepository.findById(mapping.localTaskId()).orElse(null);
+            GTask google = googleById.get(mapping.googleTaskId());
+            String title = local != null ? local.title()
+                    : google != null ? google.title() : mapping.syncedTitle();
+            ReviewItem item = new ReviewItem(mapping.id(), mapping.syncState(),
+                    displayTitle(title), mapping.googleTaskId());
+            details.add(new ReviewDetails(item, reviewVersion(local), reviewVersion(google)));
+        }
+        return List.copyOf(details);
+    }
+
+    private static ReviewVersion reviewVersion(Task task) {
+        return task == null
+                ? ReviewVersion.unavailable()
+                : new ReviewVersion(true, displayTitle(task.title()), blankToNull(task.notes()),
+                        task.dueDate(), task.done());
+    }
+
+    private static ReviewVersion reviewVersion(GTask task) {
+        return task == null || task.deleted()
+                ? ReviewVersion.unavailable()
+                : new ReviewVersion(true, displayTitle(task.title()), blankToNull(task.notes()),
+                        task.dueDate(), task.completed());
+    }
+
     public ResolutionResult resolveReview(long mappingId, Resolution resolution)
             throws IOException, InterruptedException {
         TaskMapping mapping = mappingRepository.findById(mappingId)
@@ -485,6 +520,15 @@ public class GoogleTasksSyncService {
 
     public record ReviewItem(long mappingId, SyncState state,
                              String title, String googleTaskId) {}
+
+    public record ReviewDetails(ReviewItem item, ReviewVersion local, ReviewVersion google) {}
+
+    public record ReviewVersion(boolean available, String title, String notes,
+                                LocalDate dueDate, boolean completed) {
+        static ReviewVersion unavailable() {
+            return new ReviewVersion(false, null, null, null, false);
+        }
+    }
 
     public record ResolutionResult(long mappingId, Resolution resolution,
                                    SyncState previousState) {}

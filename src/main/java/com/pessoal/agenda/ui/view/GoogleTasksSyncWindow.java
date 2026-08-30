@@ -6,7 +6,9 @@ import com.pessoal.agenda.service.GoogleTasksService;
 import com.pessoal.agenda.service.GoogleTasksSyncService;
 import com.pessoal.agenda.service.GoogleTasksSyncService.PreparedSync;
 import com.pessoal.agenda.service.GoogleTasksSyncService.Resolution;
+import com.pessoal.agenda.service.GoogleTasksSyncService.ReviewDetails;
 import com.pessoal.agenda.service.GoogleTasksSyncService.ReviewItem;
+import com.pessoal.agenda.service.GoogleTasksSyncService.ReviewVersion;
 import com.pessoal.agenda.service.GoogleTasksSyncService.SyncPreview;
 import com.pessoal.agenda.service.GoogleSyncErrorPresenter;
 import com.pessoal.agenda.service.GoogleTasksService.GTask;
@@ -578,27 +580,48 @@ public class GoogleTasksSyncWindow {
             setStatus("Conecte ao Google antes de resolver uma revisão.");
             return;
         }
-        List<ReviewItem> items = syncService.listReviewItems(selectedList.id());
-        if (items.isEmpty()) {
+        if (syncService.listReviewItems(selectedList.id()).isEmpty()) {
             setStatus("Nenhum conflito ou exclusão aguarda revisão.");
             return;
         }
 
+        setStatus("Carregando versões local e Google...");
+        runBackground(
+                () -> syncService.loadReviewDetails(selectedList.id()),
+                details -> {
+                    if (details.isEmpty()) {
+                        setStatus("Nenhum conflito ou exclusão aguarda revisão.");
+                        refreshReviewCount();
+                        return;
+                    }
+                    setStatus("Compare as versões antes de escolher.");
+                    showReviewDialog(details);
+                },
+                error -> showError("Erro ao carregar versões para revisão", error));
+    }
+
+    private void showReviewDialog(List<ReviewDetails> details) {
         Dialog<ReviewDecision> dialog = Dialogs.prepare(new Dialog<>());
         dialog.setTitle("Revisar sincronização");
-        dialog.setHeaderText("Escolha qual estado deve prevalecer");
+        dialog.setHeaderText("Compare as versões e escolha qual estado deve prevalecer");
         ButtonType apply = new ButtonType("Aplicar decisão", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().setAll(apply, ButtonType.CANCEL);
 
-        ComboBox<ReviewItem> itemCombo = new ComboBox<>(FXCollections.observableArrayList(items));
+        ComboBox<ReviewDetails> itemCombo = new ComboBox<>(
+                FXCollections.observableArrayList(details));
         itemCombo.setId("google-review-item");
         itemCombo.setMaxWidth(Double.MAX_VALUE);
         itemCombo.setConverter(new StringConverter<>() {
-            @Override public String toString(ReviewItem item) {
+            @Override public String toString(ReviewDetails details) {
+                ReviewItem item = details != null ? details.item() : null;
                 return item == null ? "" : reviewStateLabel(item.state()) + ": " + item.title();
             }
-            @Override public ReviewItem fromString(String text) { return null; }
+            @Override public ReviewDetails fromString(String text) { return null; }
         });
+
+        TextArea localVersion = reviewVersionArea("google-review-local-version");
+        TextArea googleVersion = reviewVersionArea("google-review-google-version");
+        GridPane comparison = reviewComparison(localVersion, googleVersion);
 
         ToggleGroup choice = new ToggleGroup();
         RadioButton localChoice = new RadioButton();
@@ -614,33 +637,40 @@ public class GoogleTasksSyncWindow {
         consequence.setWrapText(true);
         consequence.getStyleClass().add("secondary-text");
 
-        VBox content = new VBox(10, itemCombo, localChoice, googleChoice, consequence);
+        VBox content = new VBox(12, itemCombo, comparison,
+                localChoice, googleChoice, consequence);
         content.setPadding(new Insets(8, 0, 0, 0));
         dialog.getDialogPane().setContent(content);
-        dialog.getDialogPane().setPrefWidth(520);
+        dialog.getDialogPane().setPrefWidth(720);
         javafx.scene.Node applyNode = dialog.getDialogPane().lookupButton(apply);
         applyNode.setDisable(true);
 
         Runnable updateChoices = () -> {
-            ReviewItem item = itemCombo.getValue();
+            ReviewDetails selected = itemCombo.getValue();
+            ReviewItem item = selected != null ? selected.item() : null;
             choice.selectToggle(null);
             consequence.setText("");
+            localVersion.setText(formatReviewVersion(
+                    selected != null ? selected.local() : null, "Tarefa local indisponível"));
+            googleVersion.setText(formatReviewVersion(
+                    selected != null ? selected.google() : null, "Tarefa Google indisponível"));
             if (item == null) return;
             localChoice.setText(resolutionLabel(item.state(), Resolution.USE_LOCAL));
             googleChoice.setText(resolutionLabel(item.state(), Resolution.USE_GOOGLE));
         };
         itemCombo.valueProperty().addListener((obs, old, value) -> updateChoices.run());
         choice.selectedToggleProperty().addListener((obs, old, toggle) -> {
-            applyNode.setDisable(toggle == null || itemCombo.getValue() == null);
-            if (toggle != null && itemCombo.getValue() != null) {
-                consequence.setText(resolutionConsequence(itemCombo.getValue().state(),
+            ReviewDetails selected = itemCombo.getValue();
+            applyNode.setDisable(toggle == null || selected == null);
+            if (toggle != null && selected != null) {
+                consequence.setText(resolutionConsequence(selected.item().state(),
                         (Resolution) toggle.getUserData()));
             }
         });
         dialog.setResultConverter(button -> {
             if (button != apply || itemCombo.getValue() == null
                     || choice.getSelectedToggle() == null) return null;
-            return new ReviewDecision(itemCombo.getValue(),
+            return new ReviewDecision(itemCombo.getValue().item(),
                     (Resolution) choice.getSelectedToggle().getUserData());
         });
         itemCombo.getSelectionModel().selectFirst();
@@ -663,6 +693,50 @@ public class GoogleTasksSyncWindow {
                     },
                     error -> showError("Erro ao resolver revisão", error));
         });
+    }
+
+    static TextArea reviewVersionArea(String id) {
+        TextArea area = new TextArea();
+        area.setId(id);
+        area.setEditable(false);
+        area.setWrapText(true);
+        area.setFocusTraversable(false);
+        area.setPrefRowCount(7);
+        area.setMinWidth(0);
+        area.setMaxWidth(Double.MAX_VALUE);
+        return area;
+    }
+
+    static GridPane reviewComparison(TextArea localVersion, TextArea googleVersion) {
+        Label localTitle = new Label("Versão local");
+        localTitle.getStyleClass().add("section-title");
+        Label googleTitle = new Label("Versão Google");
+        googleTitle.getStyleClass().add("section-title");
+        GridPane comparison = new GridPane();
+        comparison.setId("google-review-comparison");
+        comparison.setHgap(12);
+        comparison.setVgap(6);
+        ColumnConstraints localColumn = new ColumnConstraints();
+        localColumn.setPercentWidth(50);
+        localColumn.setHgrow(Priority.ALWAYS);
+        ColumnConstraints googleColumn = new ColumnConstraints();
+        googleColumn.setPercentWidth(50);
+        googleColumn.setHgrow(Priority.ALWAYS);
+        comparison.getColumnConstraints().addAll(localColumn, googleColumn);
+        comparison.add(localTitle, 0, 0);
+        comparison.add(googleTitle, 1, 0);
+        comparison.add(localVersion, 0, 1);
+        comparison.add(googleVersion, 1, 1);
+        return comparison;
+    }
+
+    static String formatReviewVersion(ReviewVersion version, String unavailableText) {
+        if (version == null || !version.available()) return unavailableText;
+        return "Título: " + version.title()
+                + "\nStatus: " + (version.completed() ? "Concluída" : "Pendente")
+                + "\nData: " + (version.dueDate() != null
+                        ? DATE_FMT.format(version.dueDate()) : "Sem data")
+                + "\nNotas: " + (version.notes() != null ? version.notes() : "Sem notas");
     }
 
     static String resolutionLabel(SyncState state, Resolution resolution) {

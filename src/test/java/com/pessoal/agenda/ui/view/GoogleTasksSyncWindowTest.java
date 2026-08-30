@@ -2,10 +2,12 @@ package com.pessoal.agenda.ui.view;
 
 import com.pessoal.agenda.service.GoogleTasksService.SyncResult;
 import com.pessoal.agenda.service.GoogleTasksSyncService.Resolution;
+import com.pessoal.agenda.service.GoogleTasksSyncService.ReviewVersion;
 import com.pessoal.agenda.service.GoogleTasksSyncService.SyncPreview;
 import com.pessoal.agenda.repository.GoogleTasksMappingRepository.SyncState;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -45,5 +47,20 @@ class GoogleTasksSyncWindowTest {
                 SyncState.REMOTE_DELETED, Resolution.USE_GOOGLE));
         assertTrue(GoogleTasksSyncWindow.resolutionConsequence(
                 SyncState.LOCAL_DELETED, Resolution.USE_GOOGLE).contains("importada novamente"));
+    }
+
+    @Test
+    void reviewVersionShowsEveryFieldNeededForDecision() {
+        ReviewVersion version = new ReviewVersion(true, "Título Google", "Notas Google",
+                LocalDate.of(2026, 8, 30), true);
+
+        String comparison = GoogleTasksSyncWindow.formatReviewVersion(version, "Indisponível");
+
+        assertTrue(comparison.contains("Título: Título Google"));
+        assertTrue(comparison.contains("Status: Concluída"));
+        assertTrue(comparison.contains("Data: 30/08/2026"));
+        assertTrue(comparison.contains("Notas: Notas Google"));
+        assertEquals("Indisponível",
+                GoogleTasksSyncWindow.formatReviewVersion(null, "Indisponível"));
     }
 }

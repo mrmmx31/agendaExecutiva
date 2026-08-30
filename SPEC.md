@@ -1297,6 +1297,15 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 **Ordem operacional acordada:** iniciar `PIL-01`; versionar e enviar o trabalho atual ao GitHub; depois executar o teste Google ao vivo com o protocolo de segurança já definido.
 
+**Estado operacional em 30/08/2026:**
+
+- `PIL-01` iniciado, ainda sem evidências de uso normal;
+- implementação e documentação versionadas em dois commits e enviadas para `origin/master` até `9c62eb7ee`;
+- worktree local e remoto conferidos sem divergência;
+- credenciais e tokens Google restritos a permissão `600`;
+- banco validado por `PRAGMA quick_check` e backup pré-teste criado com permissão `600`;
+- teste Google ao vivo aguarda lista descartável e confirmação explícita imediatamente antes da conexão.
+
 **Checklist de avanço:**
 
 - [x] PIL-00 — Definir protocolo de observação de baixa carga

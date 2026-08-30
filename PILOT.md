@@ -30,6 +30,8 @@ Registrar quando faltar espaço útil, quando itens de apoio sobrarem repetidame
 
 **Estado:** Em andamento desde 2026-08-30, ainda sem evidências.
 
+**Preparação técnica:** versão do piloto enviada ao GitHub; nenhuma alteração adicional de produto será feita enquanto esta hipótese não tiver evidência.
+
 **Decisão:** manter o limite até existirem pelo menos duas ocorrências semelhantes de excesso ou insuficiência. Não aumentar capacidade por uma exceção isolada.
 
 ### H2 — Capacidade reduzida

@@ -47,6 +47,13 @@ ALTER TABLE tasks ADD COLUMN recurrence_days TEXT;
 - Criacao via `AppContextHolder.get().taskService().createTask()`
 - Conclusao via `AppContextHolder.get().taskService().markDone()`
 
+### Métricas locais opt-in
+
+- `LocalMetricsService`: consentimento persistente, duração da sessão e cálculo das medianas.
+- `LocalMetricsRepository`: escrita e consulta de eventos numéricos no SQLite, com retenção máxima por tipo.
+- `LocalMetricsPanel`: apresentação na vista `Revisar`; permanece fora do layout quando a coleta está desativada.
+- Não existe transporte de rede, identificador de tarefa ou conteúdo textual nesse fluxo.
+
 ## Estado atual
 - Estrutura de pacotes: model, infra, repository, service, app criados e compilando
 - `Database` centraliza conexao e migracoes
@@ -67,4 +74,3 @@ ALTER TABLE tasks ADD COLUMN recurrence_days TEXT;
 - Service: sem dependencia de JavaFX
 - UI: sem SQL direto
 - Mensagens de erro/validacao concentradas no service quando possivel
-

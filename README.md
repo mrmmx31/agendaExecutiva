@@ -1,20 +1,51 @@
-# Agenda pessoal (JavaFX + SQLite)
-Aplicacao desktop para organizacao pessoal com persistencia local em SQLite.
-## Modulos entregues no MVP
-- Agenda com tarefas do dia, filtro por mes e marcacao de concluidas
-- Alertas de atrasos (tarefas vencidas e pagamentos vencidos)
-- Checklists de protocolos e acoes
-- Financeiro (orcamentos, pendencias, lancamentos)
-- Vendas pessoais e controle basico de estoque
-- Frequencia de estudos e atividades
-- Banco de ideias para projetos pessoais
-## Banco de dados
-- Arquivo local: `~/.agenda-pessoal/agenda.db`
-- Tabelas criadas automaticamente na primeira execucao
+# Agenda Científica Pessoal
+
+Aplicação desktop JavaFX para planejamento pessoal com persistência local em SQLite. O produto funciona como uma prótese executiva pessoal: menos decisões simultâneas, um foco explícito e fluxos curtos para capturar, iniciar e retomar atividades.
+
+## Funcionalidades atuais
+
+- Dashboard operacional com bloco `Agora`, foco do plano, automático ou escolhido manualmente e acesso direto ao timer.
+- Plano diário guiado em três etapas, com uma tarefa essencial, até dois apoios e capacidade reduzida.
+- Revisão do dia com decisões limitadas por item, preparação opcional de amanhã, encerramento persistente e reabertura.
+- Revisão de tarefas vencidas por faixas neutras, sem recolocá-las continuamente no foco automático.
+- Métricas locais opcionais de foco, captura e retomada, desativadas por padrão e sem telemetria remota.
+- Agenda diária, semanal, mensal e anual, com recorrência, prioridades, status e protocolos vinculados.
+- Captura rápida de tarefas com apenas os campos essenciais.
+- Protocolos operacionais executáveis, templates de rotina e gatilhos de horário.
+- Timer por tarefa, interrupção com pista de retomada e histórico de sessões vinculado por `task_id`.
+- Financeiro, vendas, estoque, estudos, frequência e projetos pessoais.
+- Captura e revisão de ideias em caixa de entrada.
+- Integração Google Tasks e exportação iCalendar.
+- Temas claro e escuro aplicados também às janelas secundárias.
+- Lembretes configuráveis por intervalo, som e animação, com pausa temporária.
+- Gerenciamento central de janelas para owner, modalidade, posicionamento e limites da tela.
+
+## Direção do produto
+
+A visão, os requisitos, os critérios de aceite e o plano de entrega estão em [SPEC.md](SPEC.md). As Fases 0 a 5 e o pacote de estabilização foram concluídos, assim como as auditorias de alertas e do Google Tasks. O ciclo diário cobre planejamento, foco, interrupção, retomada, encerramento e preparação de amanhã. O pacote Google está em 100%, com preview, revisão assistida e operações exclusivas; eventual teste ao vivo continua condicionado a confirmação explícita e lista descartável.
+
+Documentação complementar:
+
+- [ARCHITECTURE.md](ARCHITECTURE.md): camadas e decisões arquiteturais.
+- [DEVELOPMENT.md](DEVELOPMENT.md): convenções e mecânica de desenvolvimento.
+- [CHANGELOG.md](CHANGELOG.md): mudanças por versão.
+- [PILOT.md](PILOT.md): observação curta das hipóteses que dependem de uso real.
+
+## Dados
+
+- Banco local: `~/.agenda-pessoal/agenda.db`.
+- Tabelas e migrações são aplicadas automaticamente na inicialização.
+- A aplicação funciona localmente; sincronizações externas são acionadas explicitamente.
+
+Antes de testar migrações amplas com dados reais, faça backup do arquivo `agenda.db`.
+
 ## Requisitos
-- Java 21+
-- Maven (ou usar `./mvnw`)
+
+- Java 21 ou superior.
+- Maven, ou o Maven Wrapper incluído no projeto.
+
 ## Executar
+
 ```bash
 cd /home/lsi/IdeaProjects/agenda
 ./mvnw javafx:run
@@ -22,16 +53,24 @@ cd /home/lsi/IdeaProjects/agenda
 
 ## Executar no IntelliJ
 
-- Abra o projeto e aguarde o Maven sync.
-- No seletor de configuracoes, escolha `Run Agenda (JavaFX Maven)`.
-- Clique em Run para iniciar a aplicacao.
-## Build
+1. Abra o projeto e aguarde a sincronização Maven.
+2. Selecione a configuração `Agenda Científica` ou execute `javafx:run` pela janela Maven.
+3. Inicie a aplicação.
+
+## Testar
+
 ```bash
-cd /home/lsi/IdeaProjects/agenda
+./mvnw test
+```
+
+Os testes usam bancos SQLite temporários quando exercitam persistência. A matriz manual está em [UI_VALIDATION.md](UI_VALIDATION.md), a referência de uso em [USABILITY_BASELINE.md](USABILITY_BASELINE.md), e o fechamento rastreável nas seções 15 e 29 da [SPEC.md](SPEC.md).
+
+## Compilar
+
+```bash
 ./mvnw -DskipTests compile
 ```
-## Proximos passos sugeridos
-- Edicao e exclusao de registros
-- Dashboard com indicadores mensais (totais, atrasos e horas estudadas)
-- Notificacao ativa por timer (ex.: checagem a cada 5 minutos)
-- Relatorios CSV para financeiro e vendas
+
+## Estado do desenvolvimento
+
+O projeto mantém `DatabaseService` para leituras legadas enquanto novos recursos usam `repository` e `service`. Não introduza SQL em controllers JavaFX. Consulte a Definition of Done da spec antes de considerar uma história concluída.

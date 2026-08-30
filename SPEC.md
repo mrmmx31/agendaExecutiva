@@ -1108,9 +1108,28 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 
 **Aceite:** todos os requisitos GSY; testes automatizados cobrem ida, volta, repetição, conflito, exclusão, paginação e falhas; teste ao vivo só ocorre após confirmação e backup.
 
-**Resultado:** a janela usa um guardião global para impedir conexão, carga, sincronização, importação, exportação, remoção e resolução concorrentes, inclusive após fechar e reabrir. `prepareSync()` gera preview sem mutação; o usuário confirma antes da aplicação, e `applyPrepared()` revalida os dois lados, aplica uma única vez ou exige nova prévia se o estado mudou. `Revisar pendências` lista conflitos e exclusões e oferece decisões concretas para usar a versão local/Google, recriar, restaurar ou aceitar a exclusão, sempre informando a consequência. Nove testes novos cobrem exclusão mútua, preview sem mutação, aplicação única, expiração, apresentação e resoluções de conflito/exclusão. A suíte padrão aprovou 86 testes e o perfil JavaFX aprovou 123. A validação usou transporte, gateway e SQLite simulados; nenhuma conta, token ou rede Google foi acessada. O teste ao vivo em lista descartável não foi executado por depender de confirmação explícita e backup.
+**Resultado:** a janela usa um guardião global para impedir conexão, carga, sincronização, importação, exportação, remoção e resolução concorrentes, inclusive após fechar e reabrir. `prepareSync()` gera preview sem mutação; o usuário confirma antes da aplicação, e `applyPrepared()` revalida os dois lados, aplica uma única vez ou exige nova prévia se o estado mudou. `Revisar pendências` lista conflitos e exclusões e oferece decisões concretas para usar a versão local/Google, recriar, restaurar ou aceitar a exclusão, sempre informando a consequência. Nove testes novos cobrem exclusão mútua, preview sem mutação, aplicação única, expiração, apresentação e resoluções de conflito/exclusão. A suíte padrão aprovou 86 testes e o perfil JavaFX aprovou 123. A validação automatizada usou transporte, gateway e SQLite simulados; a validação ao vivo posterior é acompanhada separadamente em `GSYNC-LIVE`.
 
-**Fechamento:** todos os achados automatizáveis do pacote foram corrigidos. A checklist acima é a fonte de acompanhamento do percentual. Uma validação ao vivo futura permanece como etapa operacional opcional e controlada: lista Google descartável, backup local e confirmação explícita imediatamente antes do acesso.
+**Fechamento:** todos os achados automatizáveis do pacote foram corrigidos. A checklist acima é a fonte de acompanhamento do percentual automatizado; a validação operacional com conta real é controlada pela checklist `GSYNC-LIVE` abaixo.
+
+### GSYNC-LIVE — Validação ao vivo controlada
+
+**Status operacional:** Em andamento em 2026-08-30, 50% (4 de 8 verificações concluídas). Este percentual não reduz os 100% do pacote automatizado.
+
+**Evidência segura registrada:** após a conexão e a primeira sincronização executadas pelo usuário, `PRAGMA quick_check` permaneceu `ok`. O banco contém 22 vínculos em duas listas, sem IDs Google duplicados, tarefas locais duplicadamente vinculadas ou referências locais órfãs. Em comparação ao backup pré-teste, cinco vínculos são novos: três pertencem a tarefas locais preexistentes, evidência compatível com exportação, e dois pertencem a tarefas locais novas, evidência compatível com importação. Nenhuma tarefa local preexistente foi removida. Existem 17 vínculos ativos e cinco vínculos preexistentes agora marcados como conflito, que ainda exigem revisão explícita.
+
+**Checklist ao vivo:**
+
+- [x] LIVE-01 — Conectar a conta escolhida pelo fluxo OAuth
+- [x] LIVE-02 — Executar a primeira sincronização mantendo a integridade local
+- [x] LIVE-03 — Observar importação Google → local sem órfãos ou duplicação de vínculo
+- [x] LIVE-04 — Observar exportação local → Google com vínculo persistido
+- [ ] LIVE-05 — Repetir sem alterações e confirmar zero criações/atualizações
+- [ ] LIVE-06 — Validar edição, conclusão e reabertura nos dois sentidos com item descartável
+- [ ] LIVE-07 — Revisar os cinco conflitos existentes e validar uma exclusão controlada
+- [ ] LIVE-08 — Cancelar uma autorização pendente, tentar novamente e validar reconexão
+
+**Próxima ação:** executar `LIVE-05` na mesma lista já sincronizada. Se a prévia propuser qualquer criação, atualização ou mudança de status, cancelar sem aplicar e registrar apenas as contagens. Se informar ausência de alterações, considerar a idempotência ao vivo aprovada.
 
 ## 27. Implementação da interrupção e retomada
 
@@ -1324,11 +1343,11 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 **Estado operacional em 30/08/2026:**
 
 - `PIL-01` iniciado, ainda sem evidências de uso normal;
-- implementação e documentação versionadas em dois commits e enviadas para `origin/master` até `9c62eb7ee`;
+- implementação e documentação enviadas para `origin/master` até `205570a9d`;
 - worktree local e remoto conferidos sem divergência;
 - credenciais e tokens Google restritos a permissão `600`;
 - banco validado por `PRAGMA quick_check` e backup pré-teste criado com permissão `600`;
-- teste Google ao vivo aguarda lista descartável e confirmação explícita imediatamente antes da conexão.
+- teste Google ao vivo iniciado pelo usuário; conexão, sincronização inicial e os dois sentidos básicos possuem evidência estrutural local, enquanto idempotência, ciclo de estado, conflitos/exclusão e reconexão permanecem pendentes.
 
 **Checklist de avanço:**
 

@@ -1093,6 +1093,14 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 
 **Resultado:** cada tentativa OAuth possui uma sessão cancelável que fecha imediatamente o servidor local de callback. `Cancelar conexão` aparece durante a espera tanto em Configurações quanto na janela Google Tasks; fechar a janela de sincronização também cancela a tentativa. O cancelamento é tratado como decisão do usuário, sem diálogo de erro, libera o bloqueio global e reativa `Conectar conta` para uma nova tentativa. A suíte padrão aprovou 123 testes e o perfil JavaFX aprovou 187, sem acessar a conta ou a rede Google.
 
+### GSYNC-03.4 — Títulos íntegros nos comandos de sincronização
+
+**Status:** Concluído em 2026-08-30.
+
+**Problema:** após uma sincronização, o resumo extenso do rodapé disputava largura com os comandos inferiores. JavaFX comprimia os botões e apresentava títulos incompletos ou com reticências.
+
+**Resultado:** somente o texto de status passa a ceder largura e exibir reticências, mantendo o conteúdo completo em tooltip. Botões do cabeçalho, sincronização, ações manuais, log e rodapé preservam sua largura preferida; as ações manuais continuam quebrando linha. Teste JavaFX em rodapé de 310 px confirma que `Atualizar` e `Fechar` permanecem integrais e sem sobreposição. A suíte padrão aprovou 123 testes e o perfil JavaFX aprovou 188.
+
 ### GSYNC-04 — Interface e validação controlada
 
 **Status:** Concluído em 2026-08-27.

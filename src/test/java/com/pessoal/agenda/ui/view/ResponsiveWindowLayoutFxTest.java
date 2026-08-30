@@ -4,6 +4,8 @@ import javafx.geometry.Bounds;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.OverrunStyle;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
@@ -70,6 +72,39 @@ class ResponsiveWindowLayoutFxTest {
             Bounds actionBounds = action.localToScene(action.getBoundsInLocal());
             assertTrue(labelBounds.getHeight() > label.getFont().getSize());
             assertTrue(actionBounds.getMaxX() <= scene.getWidth());
+        });
+    }
+
+    @Test
+    void longStatusYieldsSpaceWithoutTruncatingActions() throws Exception {
+        FxTestSupport.run(() -> {
+            Label status = new Label(
+                    "Sincronização concluída com um resumo deliberadamente longo para o rodapé");
+            status.setMinWidth(0);
+            status.setMaxWidth(Double.MAX_VALUE);
+            status.setTextOverrun(OverrunStyle.ELLIPSIS);
+            HBox.setHgrow(status, Priority.ALWAYS);
+            Tooltip tooltip = new Tooltip();
+            tooltip.textProperty().bind(status.textProperty());
+            status.setTooltip(tooltip);
+
+            Button refresh = new Button("Atualizar");
+            Button close = new Button("Fechar");
+            ResponsiveWindowLayout.preserveButtonText(refresh, close);
+            HBox bar = new HBox(10, status, refresh, close);
+            Scene scene = new Scene(bar, 310, 60);
+
+            bar.applyCss();
+            bar.layout();
+
+            Bounds refreshBounds = refresh.localToScene(refresh.getBoundsInLocal());
+            Bounds closeBounds = close.localToScene(close.getBoundsInLocal());
+            Bounds statusBounds = status.localToScene(status.getBoundsInLocal());
+            assertTrue(refreshBounds.getWidth() >= refresh.prefWidth(-1));
+            assertTrue(closeBounds.getWidth() >= close.prefWidth(-1));
+            assertTrue(statusBounds.getMaxX() <= refreshBounds.getMinX());
+            assertTrue(closeBounds.getMaxX() <= scene.getWidth());
+            assertTrue(status.getTooltip().getText().contains("deliberadamente longo"));
         });
     }
 }

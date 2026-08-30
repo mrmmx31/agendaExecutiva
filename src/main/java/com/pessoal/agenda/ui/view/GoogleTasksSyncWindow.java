@@ -139,6 +139,8 @@ public class GoogleTasksSyncWindow {
         disconnectBtn.getStyleClass().add("danger-button");
         registerGoogleControl(disconnectBtn);
         disconnectBtn.setOnAction(e -> doDisconnect());
+        ResponsiveWindowLayout.preserveButtonText(
+                connectBtn, cancelConnectBtn, disconnectBtn);
 
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
         HBox header = new HBox(12, title, spacer, connectionLabel,
@@ -203,6 +205,8 @@ public class GoogleTasksSyncWindow {
         reviewBtn.getStyleClass().add("secondary-button");
         registerGoogleControl(reviewBtn);
         reviewBtn.setOnAction(e -> reviewPendingItems());
+        ResponsiveWindowLayout.preserveButtonText(
+                syncBtn, importSelBtn, exportSelBtn, dedupGoogleBtn, reviewBtn);
 
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
         HBox selectionRow = new HBox(10, listLabel, listCombo, refreshListsBtn, spacer, syncBtn);
@@ -335,6 +339,7 @@ public class GoogleTasksSyncWindow {
         Button clearBtn = new Button("Limpar log");
         clearBtn.getStyleClass().add("secondary-button");
         clearBtn.setOnAction(e -> logArea.clear());
+        ResponsiveWindowLayout.preserveButtonText(clearBtn);
 
         VBox panel = new VBox(8, title, logArea, clearBtn);
         panel.setPadding(new Insets(12));
@@ -348,6 +353,13 @@ public class GoogleTasksSyncWindow {
     private HBox buildBottom() {
         statusLabel = new Label("Pronto.");
         statusLabel.setStyle("-fx-font-size: 11px; -fx-opacity: 0.7;");
+        statusLabel.setMinWidth(0);
+        statusLabel.setMaxWidth(Double.MAX_VALUE);
+        statusLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
+        HBox.setHgrow(statusLabel, Priority.ALWAYS);
+        Tooltip statusTooltip = new Tooltip();
+        statusTooltip.textProperty().bind(statusLabel.textProperty());
+        statusLabel.setTooltip(statusTooltip);
 
         Button refreshLocalBtn = new Button("↻  Atualizar");
         refreshLocalBtn.getStyleClass().add("secondary-button");
@@ -357,9 +369,9 @@ public class GoogleTasksSyncWindow {
         Button closeBtn = new Button("Fechar");
         closeBtn.getStyleClass().add("secondary-button");
         closeBtn.setOnAction(e -> stage.close());
+        ResponsiveWindowLayout.preserveButtonText(refreshLocalBtn, closeBtn);
 
-        Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox bar = new HBox(10, statusLabel, spacer, refreshLocalBtn, closeBtn);
+        HBox bar = new HBox(10, statusLabel, refreshLocalBtn, closeBtn);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(10, 14, 10, 14));
         bar.setStyle("-fx-border-color: -t-border; -fx-border-width: 1 0 0 0;");

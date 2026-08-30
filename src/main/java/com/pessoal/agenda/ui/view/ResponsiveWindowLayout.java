@@ -2,8 +2,10 @@ package com.pessoal.agenda.ui.view;
 
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.Region;
 
 final class ResponsiveWindowLayout {
 
@@ -21,5 +23,11 @@ final class ResponsiveWindowLayout {
         label.setMinWidth(0);
         label.setMaxWidth(Double.MAX_VALUE);
         label.setWrapText(true);
+    }
+
+    static void preserveButtonText(Button... buttons) {
+        for (Button button : buttons) {
+            button.setMinWidth(Region.USE_PREF_SIZE);
+        }
     }
 }

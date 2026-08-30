@@ -1124,7 +1124,7 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 
 **Status operacional:** Em andamento em 2026-08-30, 63% (5 de 8 verificações concluídas). Este percentual não reduz os 100% do pacote automatizado.
 
-**Evidência segura registrada:** após a conexão e a primeira sincronização executadas pelo usuário, `PRAGMA quick_check` permaneceu `ok`. O banco contém 22 vínculos em duas listas, sem IDs Google duplicados, tarefas locais duplicadamente vinculadas ou referências locais órfãs. Em comparação ao backup pré-teste, cinco vínculos são novos: três pertencem a tarefas locais preexistentes, evidência compatível com exportação, e dois pertencem a tarefas locais novas, evidência compatível com importação. Nenhuma tarefa local preexistente foi removida. Existem 17 vínculos ativos e cinco vínculos preexistentes agora marcados como conflito, que ainda exigem revisão explícita. A repetição na lista `Minhas tarefas` apresentou zero criações, atualizações, mudanças de status e revisões; terminou com `nenhuma alteração detectada`, mantendo contagens e integridade locais inalteradas.
+**Evidência segura registrada:** após a conexão e a primeira sincronização executadas pelo usuário, `PRAGMA quick_check` permaneceu `ok`. O banco contém 22 vínculos em duas listas, sem IDs Google duplicados, tarefas locais duplicadamente vinculadas ou referências locais órfãs. Em comparação ao backup pré-teste, cinco vínculos são novos: três pertencem a tarefas locais preexistentes, evidência compatível com exportação, e dois pertencem a tarefas locais novas, evidência compatível com importação. Nenhuma tarefa local preexistente foi removida. Existem 17 vínculos ativos e cinco vínculos preexistentes agora marcados como conflito, que ainda exigem revisão explícita. A repetição na lista `Minhas tarefas` apresentou zero criações, atualizações, mudanças de status e revisões; terminou com `nenhuma alteração detectada`, mantendo contagens e integridade locais inalteradas. A primeira etapa do `LIVE-06` importou o item descartável com exatamente `1 criar local` e zero nas demais ações. O banco permaneceu íntegro e confirmou uma única tarefa local, um único vínculo `ACTIVE` e nenhuma duplicação para o ID Google. O título retornado pelo Google continha um espaço inicial, preservado igualmente na tarefa e no snapshot.
 
 **Checklist ao vivo:**
 
@@ -1137,7 +1137,7 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 - [ ] LIVE-07 — Revisar os cinco conflitos existentes e validar uma exclusão controlada
 - [ ] LIVE-08 — Cancelar uma autorização pendente, tentar novamente e validar reconexão
 
-**Próxima ação:** iniciar `LIVE-06` com um único item descartável. Criar no Google Tasks, na mesma lista, `TESTE Agenda 2026-08-30 01` e sincronizar. A prévia esperada é exatamente `1 criar local` e zero nas demais ações; qualquer contagem diferente deve ser cancelada sem aplicar.
+**Próxima ação:** continuar `LIVE-06` no sentido local → Google. Editar somente a tarefa local importada para o título `TESTE Agenda 2026-08-30 02 LOCAL`, salvar e sincronizar a mesma lista. A prévia esperada é exatamente `1 atualizar Google` e zero nas demais ações; qualquer contagem diferente deve ser cancelada sem aplicar.
 
 ## 27. Implementação da interrupção e retomada
 

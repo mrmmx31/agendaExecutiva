@@ -1114,9 +1114,9 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 
 ### GSYNC-LIVE — Validação ao vivo controlada
 
-**Status operacional:** Em andamento em 2026-08-30, 50% (4 de 8 verificações concluídas). Este percentual não reduz os 100% do pacote automatizado.
+**Status operacional:** Em andamento em 2026-08-30, 63% (5 de 8 verificações concluídas). Este percentual não reduz os 100% do pacote automatizado.
 
-**Evidência segura registrada:** após a conexão e a primeira sincronização executadas pelo usuário, `PRAGMA quick_check` permaneceu `ok`. O banco contém 22 vínculos em duas listas, sem IDs Google duplicados, tarefas locais duplicadamente vinculadas ou referências locais órfãs. Em comparação ao backup pré-teste, cinco vínculos são novos: três pertencem a tarefas locais preexistentes, evidência compatível com exportação, e dois pertencem a tarefas locais novas, evidência compatível com importação. Nenhuma tarefa local preexistente foi removida. Existem 17 vínculos ativos e cinco vínculos preexistentes agora marcados como conflito, que ainda exigem revisão explícita.
+**Evidência segura registrada:** após a conexão e a primeira sincronização executadas pelo usuário, `PRAGMA quick_check` permaneceu `ok`. O banco contém 22 vínculos em duas listas, sem IDs Google duplicados, tarefas locais duplicadamente vinculadas ou referências locais órfãs. Em comparação ao backup pré-teste, cinco vínculos são novos: três pertencem a tarefas locais preexistentes, evidência compatível com exportação, e dois pertencem a tarefas locais novas, evidência compatível com importação. Nenhuma tarefa local preexistente foi removida. Existem 17 vínculos ativos e cinco vínculos preexistentes agora marcados como conflito, que ainda exigem revisão explícita. A repetição na lista `Minhas tarefas` apresentou zero criações, atualizações, mudanças de status e revisões; terminou com `nenhuma alteração detectada`, mantendo contagens e integridade locais inalteradas.
 
 **Checklist ao vivo:**
 
@@ -1124,12 +1124,12 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 - [x] LIVE-02 — Executar a primeira sincronização mantendo a integridade local
 - [x] LIVE-03 — Observar importação Google → local sem órfãos ou duplicação de vínculo
 - [x] LIVE-04 — Observar exportação local → Google com vínculo persistido
-- [ ] LIVE-05 — Repetir sem alterações e confirmar zero criações/atualizações
+- [x] LIVE-05 — Repetir sem alterações e confirmar zero criações/atualizações
 - [ ] LIVE-06 — Validar edição, conclusão e reabertura nos dois sentidos com item descartável
 - [ ] LIVE-07 — Revisar os cinco conflitos existentes e validar uma exclusão controlada
 - [ ] LIVE-08 — Cancelar uma autorização pendente, tentar novamente e validar reconexão
 
-**Próxima ação:** executar `LIVE-05` na mesma lista já sincronizada. Se a prévia propuser qualquer criação, atualização ou mudança de status, cancelar sem aplicar e registrar apenas as contagens. Se informar ausência de alterações, considerar a idempotência ao vivo aprovada.
+**Próxima ação:** iniciar `LIVE-06` com um único item descartável. Criar no Google Tasks, na mesma lista, `TESTE Agenda 2026-08-30 01` e sincronizar. A prévia esperada é exatamente `1 criar local` e zero nas demais ações; qualquer contagem diferente deve ser cancelada sem aplicar.
 
 ## 27. Implementação da interrupção e retomada
 

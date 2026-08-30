@@ -7,8 +7,8 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | Registra avanço do teste Google ao vivo |
-| Data | 2026-08-30 07:22:12 -0400 |
+| Mensagem | Confirma idempotência da sincronização Google |
+| Data | 2026-08-30 07:29:19 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
@@ -20,8 +20,8 @@ SPEC.md
 ## Diff Resumido
 
 ```diff
- SPEC.md | 27 +++++++++++++++++++++++----
- 1 file changed, 23 insertions(+), 4 deletions(-)
+ SPEC.md | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 ```
 
 ---

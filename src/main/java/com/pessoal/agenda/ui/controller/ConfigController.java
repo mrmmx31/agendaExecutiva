@@ -9,17 +9,24 @@ import com.pessoal.agenda.model.QuickCaptureShortcut;
 import com.pessoal.agenda.service.PendencyNotificationService;
 import com.pessoal.agenda.service.QuickCapturePreferences;
 import com.pessoal.agenda.service.LocalMetricsService;
+import com.pessoal.agenda.service.GoogleAuthService;
+import com.pessoal.agenda.service.GoogleSyncErrorPresenter;
+import com.pessoal.agenda.ui.view.GoogleAccountConnectionFlow;
+import com.pessoal.agenda.ui.view.GoogleTasksSyncWindow;
 import com.pessoal.agenda.ui.view.ThemeManager;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.function.Consumer;
 
 /**
  * Controller da aba de Configurações.
@@ -93,21 +100,216 @@ public class ConfigController {
         HBox.setHgrow(studyTypeSection,  Priority.ALWAYS);
         HBox.setHgrow(ideaSection,       Priority.ALWAYS);
 
-        Label header = new Label(
-                "Ajuste a aparência, a intensidade dos lembretes e as categorias usadas para organizar seus registros.");
+        Label header = new Label("Configurações da Agenda");
+        header.getStyleClass().add("page-title");
         header.setWrapText(true);
 
-        VBox content = new VBox(14, header, buildThemeSection(), buildNotificationSection(),
+        VBox general = new VBox(14, buildThemeSection(), buildNotificationSection(),
                 buildQuickCaptureSection());
-        if (localMetricsService != null) content.getChildren().add(buildLocalMetricsSection());
-        content.getChildren().addAll(row1, row2, row3);
-        content.setPadding(new Insets(16));
+        if (localMetricsService != null) general.getChildren().add(buildLocalMetricsSection());
 
+        VBox integrations = new VBox(14, buildGoogleTasksSection());
+        VBox categories = new VBox(14, row1, row2, row3);
+
+        TabPane sections = new TabPane(
+                settingsTab("Geral", general),
+                settingsTab("Integrações", integrations),
+                settingsTab("Categorias", categories));
+        sections.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        VBox.setVgrow(sections, Priority.ALWAYS);
+
+        VBox content = new VBox(10, header, sections);
+        content.setPadding(new Insets(16));
+        tab.setContent(content);
+        return tab;
+    }
+
+    private Tab settingsTab(String title, VBox content) {
+        content.setPadding(new Insets(14));
         ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("edge-to-edge");
-        tab.setContent(scroll);
+        Tab tab = new Tab(title, scroll);
+        tab.setClosable(false);
         return tab;
+    }
+
+    VBox buildGoogleTasksSection() {
+        GoogleAuthService auth = GoogleAuthService.getInstance();
+        return buildGoogleTasksSection(new GoogleTasksSettingsActions() {
+            @Override public boolean hasValidCredentials() { return auth.hasValidCredentials(); }
+            @Override public boolean isAuthorized() { return auth.isAuthorized(); }
+            @Override public boolean isOperationRunning() {
+                return GoogleAccountConnectionFlow.isGoogleOperationRunning();
+            }
+            @Override public int mappingCount() {
+                return AppContextHolder.get().googleTasksMappingRepository().count();
+            }
+            @Override public void connect(Consumer<Boolean> busy, Runnable stateChanged) {
+                GoogleAccountConnectionFlow.start(
+                        auth, ctx::setStatus, busy,
+                        () -> {
+                            ctx.setStatus("Conectado ao Google Tasks.");
+                            stateChanged.run();
+                        },
+                        error -> {
+                            ctx.setStatus(GoogleSyncErrorPresenter.userMessage(error));
+                            Dialogs.error("Erro de autorização",
+                                    GoogleSyncErrorPresenter.userMessage(error));
+                            stateChanged.run();
+                        });
+            }
+            @Override public void disconnect() throws Exception { auth.revoke(); }
+            @Override public void clearMappings() {
+                AppContextHolder.get().googleTasksMappingRepository().deleteAll();
+            }
+            @Override public void openSync() {
+                new GoogleTasksSyncWindow(ctx::triggerDashboardRefresh).show();
+            }
+        });
+    }
+
+    VBox buildGoogleTasksSection(GoogleTasksSettingsActions actions) {
+        Label title = new Label("Google Tasks");
+        title.getStyleClass().add("section-title");
+
+        Label connectionValue = new Label();
+        connectionValue.setId("google-settings-connection");
+        Label credentialsValue = new Label();
+        credentialsValue.setId("google-settings-credentials");
+        Label mappingsValue = new Label();
+        mappingsValue.setId("google-settings-mappings");
+
+        GridPane stateGrid = new GridPane();
+        stateGrid.setHgap(18);
+        stateGrid.setVgap(8);
+        addSettingRow(stateGrid, 0, "Conexão", connectionValue);
+        addSettingRow(stateGrid, 1, "Credenciais OAuth", credentialsValue);
+        addSettingRow(stateGrid, 2, "Permissão", new Label("Google Tasks"));
+        addSettingRow(stateGrid, 3, "Sincronização", new Label("Manual, com prévia"));
+        addSettingRow(stateGrid, 4, "Vínculos locais", mappingsValue);
+
+        Button connect = new Button("Conectar conta");
+        connect.setId("google-settings-connect");
+        connect.getStyleClass().add("primary-button");
+        Button disconnect = new Button("Desconectar");
+        disconnect.setId("google-settings-disconnect");
+        disconnect.getStyleClass().add("danger-button");
+        Button openSync = new Button("Abrir sincronização");
+        openSync.setId("google-settings-open-sync");
+        openSync.getStyleClass().add("secondary-button");
+        Button clearMappings = new Button("Limpar vínculos locais");
+        clearMappings.setId("google-settings-clear-mappings");
+        clearMappings.getStyleClass().add("secondary-button");
+        Button refresh = new Button("↻");
+        refresh.setId("google-settings-refresh");
+        refresh.getStyleClass().add("secondary-button");
+        refresh.setTooltip(new Tooltip("Atualizar estado da integração"));
+
+        Control[] controls = {connect, disconnect, openSync, clearMappings, refresh};
+        boolean[] busy = {false};
+        Runnable refreshState = () -> {
+            boolean credentialsReady = actions.hasValidCredentials();
+            boolean connected = actions.isAuthorized();
+            boolean operationRunning = busy[0] || actions.isOperationRunning();
+            int mappings = actions.mappingCount();
+
+            connectionValue.setText(connected ? "Conectado" : "Desconectado");
+            credentialsValue.setText(credentialsReady ? "Prontas" : "Ausentes ou inválidas");
+            mappingsValue.setText(mappings + (mappings == 1 ? " vínculo" : " vínculos"));
+
+            setSemanticState(connectionValue, connected, true);
+            setSemanticState(credentialsValue, credentialsReady, false);
+            connect.setDisable(operationRunning || connected || !credentialsReady);
+            disconnect.setDisable(operationRunning || !connected);
+            openSync.setDisable(false);
+            clearMappings.setDisable(operationRunning || mappings == 0);
+            refresh.setDisable(busy[0]);
+        };
+        Consumer<Boolean> setBusy = value -> {
+            busy[0] = value;
+            for (Control control : controls) control.setDisable(value);
+            if (!value) refreshState.run();
+        };
+
+        connect.setOnAction(event -> actions.connect(setBusy, refreshState));
+        disconnect.setOnAction(event -> {
+            if (actions.isOperationRunning()) {
+                ctx.setStatus("Aguarde a operação Google em andamento terminar.");
+                refreshState.run();
+                return;
+            }
+            Dialogs.confirm(
+                        "Desconectar Google Tasks",
+                        "Desconectar a conta Google?",
+                        "Os tokens locais serão removidos. Os vínculos de sincronização serão preservados.")
+                .filter(button -> button == ButtonType.OK)
+                .ifPresent(button -> {
+                    try {
+                        actions.disconnect();
+                        ctx.setStatus("Conta Google desconectada.");
+                        refreshState.run();
+                    } catch (Exception error) {
+                        Dialogs.error("Erro ao desconectar", "Não foi possível remover os tokens locais.");
+                    }
+                });
+        });
+        clearMappings.setOnAction(event -> {
+            if (actions.isOperationRunning()) {
+                ctx.setStatus("Aguarde a operação Google em andamento terminar.");
+                refreshState.run();
+                return;
+            }
+            Dialogs.confirm(
+                        "Limpar vínculos do Google Tasks",
+                        "Remover todos os vínculos locais de sincronização?",
+                        "Nenhuma tarefa será apagada. Use somente ao trocar de conta ou reiniciar a integração; "
+                                + "uma nova sincronização com os mesmos dados pode criar duplicatas.")
+                .filter(button -> button == ButtonType.OK)
+                .ifPresent(button -> {
+                    actions.clearMappings();
+                    ctx.setStatus("Vínculos locais do Google Tasks removidos.");
+                    refreshState.run();
+                });
+        });
+        openSync.setOnAction(event -> actions.openSync());
+        refresh.setOnAction(event -> refreshState.run());
+
+        FlowPane actionsBar = new FlowPane(10, 8,
+                connect, disconnect, openSync, clearMappings, refresh);
+        actionsBar.setAlignment(Pos.CENTER_LEFT);
+        actionsBar.setMaxWidth(Double.MAX_VALUE);
+
+        VBox section = new VBox(12, title, stateGrid, actionsBar);
+        section.setId("config-google-tasks");
+        section.getStyleClass().addAll("config-section", "config-google-tasks");
+        section.setPadding(new Insets(12, 14, 12, 14));
+        refreshState.run();
+        return section;
+    }
+
+    private void setSemanticState(Label label, boolean positive, boolean bold) {
+        label.getStyleClass().removeAll("t-success", "t-danger");
+        label.getStyleClass().add(positive ? "t-success" : "t-danger");
+        label.setStyle(bold ? "-fx-font-weight: 700;" : "");
+    }
+
+    private void addSettingRow(GridPane grid, int row, String name, Label value) {
+        Label key = new Label(name);
+        key.getStyleClass().add("form-label");
+        grid.add(key, 0, row);
+        grid.add(value, 1, row);
+    }
+
+    interface GoogleTasksSettingsActions {
+        boolean hasValidCredentials();
+        boolean isAuthorized();
+        boolean isOperationRunning();
+        int mappingCount();
+        void connect(Consumer<Boolean> busy, Runnable stateChanged);
+        void disconnect() throws Exception;
+        void clearMappings();
+        void openSync();
     }
 
     VBox buildLocalMetricsSection() {

@@ -7,27 +7,37 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | Permite escolher conta no OAuth do Google |
-| Data | 2026-08-30 05:42:35 -0400 |
+| Mensagem | Organiza configuração da integração Google Tasks |
+| Data | 2026-08-30 06:03:46 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
 SPEC.md
-src/main/java/com/pessoal/agenda/service/GoogleAuthService.java
+src/main/java/com/pessoal/agenda/repository/GoogleTasksMappingRepository.java
+src/main/java/com/pessoal/agenda/ui/controller/ConfigController.java
+src/main/java/com/pessoal/agenda/ui/view/GoogleAccountConnectionFlow.java
+src/main/java/com/pessoal/agenda/ui/view/GoogleOperationGuard.java
 src/main/java/com/pessoal/agenda/ui/view/GoogleTasksSyncWindow.java
-src/test/java/com/pessoal/agenda/service/GoogleTasksTransportTest.java
+src/main/resources/com/pessoal/agenda/app.css
+src/test/java/com/pessoal/agenda/repository/GoogleTasksMappingRepositoryTest.java
+src/test/java/com/pessoal/agenda/ui/controller/ConfigGoogleTasksSettingsFxTest.java
 ```
 
 ## Diff Resumido
 
 ```diff
  SPEC.md                                            |   8 +
- .../pessoal/agenda/service/GoogleAuthService.java  | 173 ++++++++++++++-------
- .../agenda/ui/view/GoogleTasksSyncWindow.java      |  33 +++-
- .../agenda/service/GoogleTasksTransportTest.java   |  29 ++++
- 4 files changed, 182 insertions(+), 61 deletions(-)
+ .../repository/GoogleTasksMappingRepository.java   |  16 ++
+ .../agenda/ui/controller/ConfigController.java     | 214 ++++++++++++++++++++-
+ .../ui/view/GoogleAccountConnectionFlow.java       |  94 +++++++++
+ .../agenda/ui/view/GoogleOperationGuard.java       |   6 +
+ .../agenda/ui/view/GoogleTasksSyncWindow.java      |  55 ++----
+ src/main/resources/com/pessoal/agenda/app.css      |   1 +
+ .../GoogleTasksMappingRepositoryTest.java          |  31 +++
+ .../ConfigGoogleTasksSettingsFxTest.java           | 149 ++++++++++++++
+ 9 files changed, 525 insertions(+), 49 deletions(-)
 ```
 
 ---

@@ -725,6 +725,7 @@
 .config-idea      { -fx-border-color: #6a1b9a; }
 .config-theme     { -fx-border-color: -t-accent; }
 .config-notifications { -fx-border-color: #00796b; }
+.config-google-tasks { -fx-border-color: #1a73e8; }
 
 /* ── Estado vazio ───────────────────────────────────────────────────────── */
 .empty-state-label {

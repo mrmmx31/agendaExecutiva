@@ -1077,6 +1077,14 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 
 **Resultado:** antes da conexão, a interface oferece `Abrir e copiar link` e `Somente copiar link`. A URL solicita ao Google `select_account` junto do consentimento, permanece disponível na área de transferência e não contém o segredo do cliente. O servidor local reserva a porta durante todo o fluxo e o callback passa a usar e validar um `state` aleatório antes de confirmar o sucesso no navegador. As permissões continuam limitadas ao Google Tasks; nenhuma permissão de perfil foi adicionada. A suíte padrão aprovou 121 testes e o perfil JavaFX aprovou 181, sem acessar a conta ou a rede Google.
 
+### GSYNC-03.2 — Configuração central da integração
+
+**Status:** Concluído em 2026-08-30.
+
+**Problema:** a integração só podia ser administrada dentro da janela de sincronização, enquanto a aba Configurações concentrava aparência, alertas, métricas e categorias numa única rolagem extensa. O estado das credenciais, a quantidade de vínculos e as consequências de desconectar não estavam visíveis num local central.
+
+**Resultado:** Configurações foi dividida em `Geral`, `Integrações` e `Categorias`. O painel Google Tasks informa conexão, credenciais OAuth, permissão concedida, modo manual com prévia e quantidade de vínculos locais. Ele permite conectar com escolha de conta/cópia do link, desconectar, atualizar o estado, abrir a sincronização e limpar somente os vínculos locais mediante confirmação. Desconectar preserva vínculos; limpá-los não exclui tarefas e alerta sobre possíveis duplicatas numa nova sincronização. Conexão, desconexão e limpeza ficam bloqueadas durante outra operação Google. O fluxo OAuth é compartilhado entre as duas telas e a barra de ações quebra linha em larguras menores. A suíte padrão aprovou 122 testes e o perfil JavaFX aprovou 185, sem acessar a conta ou a rede Google.
+
 ### GSYNC-04 — Interface e validação controlada
 
 **Status:** Concluído em 2026-08-27.

@@ -122,6 +122,22 @@ public class GoogleTasksMappingRepository {
                 googleListId, googleTaskId);
     }
 
+    public int count() {
+        try (Connection conn = db.connect();
+             PreparedStatement statement = conn.prepareStatement(
+                     "SELECT COUNT(*) FROM google_tasks_mapping");
+             ResultSet result = statement.executeQuery()) {
+            return result.next() ? result.getInt(1) : 0;
+        } catch (SQLException error) {
+            throw new RuntimeException("Erro ao contar mapeamentos Google", error);
+        }
+    }
+
+    /** Remove somente os vínculos; tarefas locais e remotas permanecem intactas. */
+    public void deleteAll() {
+        db.execute("DELETE FROM google_tasks_mapping");
+    }
+
     private TaskMapping map(ResultSet rs) throws SQLException {
         Object syncedDoneValue = rs.getObject("synced_done");
         String dueDate = rs.getString("synced_due_date");

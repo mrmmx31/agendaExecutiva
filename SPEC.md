@@ -1141,6 +1141,14 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 
 **Resultado:** `GoogleTasksReadOnlyAudit` reutiliza a autorização persistida para consultar listas/tarefas e cruza os resultados com o SQLite sem sincronizar, resolver ou excluir. O relatório omite tokens, IDs remotos e conteúdo de notas; mostra contagens, conflitos, campos divergentes e listas vinculadas inacessíveis na conta atual. `ReviewVersion` agora separa o booleano compatível com Google do rótulo local real, preservando `Pendente`, `Em andamento`, `Concluída`, `Bloqueada` e `Cancelada` na interface e auditoria. Testes cobrem diferenças seletivas, indisponibilidade, cancelamento local e lista ausente. A suíte padrão aprovou 130 testes e o perfil JavaFX aprovou 198. A execução real encontrou 18 tarefas e 18 vínculos em `Minhas tarefas`, três conflitos somente de status e cinco vínculos de uma lista não retornada pela conta atual.
 
+### GSYNC-03.10 — Resolução automatizada com escopo explícito
+
+**Status:** Concluído em 2026-08-31.
+
+**Problema:** resolver vários conflitos repetindo o fluxo visual era lento e aumentava a exposição a escolhas acidentais, embora a decisão semântica continuasse dependendo do usuário.
+
+**Resultado:** `GoogleTasksConflictResolver` recebe somente IDs explicitamente autorizados e pré-valida o lote inteiro antes da primeira escrita. Cada vínculo deve existir, permanecer em `CONFLICT`, ter os dois lados disponíveis e possuir exclusivamente diferença de status; qualquer divergência adicional aborta o lote. A ferramenta não escolhe o lado pelo usuário. Três testes cobrem IDs explícitos, aprovação restrita a status e rejeição de campo não autorizado. A suíte padrão aprovou 133 testes e o perfil JavaFX aprovou 201.
+
 ### GSYNC-04 — Interface e validação controlada
 
 **Status:** Concluído em 2026-08-27.
@@ -1162,9 +1170,13 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 
 ### GSYNC-LIVE — Validação ao vivo controlada
 
-**Status operacional:** Em andamento em 2026-08-31, 75% (6 de 8 verificações concluídas). Este percentual não reduz os 100% do pacote automatizado.
+**Status operacional:** Em andamento em 2026-08-31, 87,5% (7 de 8 verificações concluídas). Este percentual não reduz os 100% do pacote automatizado.
 
 **Evidência segura registrada:** após a conexão e a primeira sincronização executadas pelo usuário, `PRAGMA quick_check` permaneceu `ok`. O banco contém 22 vínculos em duas listas, sem IDs Google duplicados, tarefas locais duplicadamente vinculadas ou referências locais órfãs. Em comparação ao backup pré-teste, cinco vínculos são novos: três pertencem a tarefas locais preexistentes, evidência compatível com exportação, e dois pertencem a tarefas locais novas, evidência compatível com importação. Nenhuma tarefa local preexistente foi removida. Existem 17 vínculos ativos e cinco vínculos preexistentes agora marcados como conflito, que ainda exigem revisão explícita. A repetição na lista `Minhas tarefas` apresentou zero criações, atualizações, mudanças de status e revisões; terminou com `nenhuma alteração detectada`, mantendo contagens e integridade locais inalteradas. A primeira etapa do `LIVE-06` importou o item descartável com exatamente `1 criar local` e zero nas demais ações. O banco permaneceu íntegro e confirmou uma única tarefa local, um único vínculo `ACTIVE` e nenhuma duplicação para o ID Google. O título retornado pelo Google continha um espaço inicial, preservado igualmente na tarefa e no snapshot. Em seguida, a edição local para `TESTE Agenda 2026-08-30 02 LOCAL` produziu exatamente `1 atualizar Google`. Nova inspeção confirmou `quick_check = ok`, unicidade do item e snapshot `ACTIVE` idêntico ao título local, sem criação adicional. A edição inversa para `TESTE Agenda 2026-08-30 03 GOOGLE` produziu exatamente `1 atualizar local`; tarefa e snapshot assumiram o novo título, permaneceram únicos e `ACTIVE`. O log exibiu indevidamente o título anterior, originando a correção `GSYNC-03.5`, sem perda ou divergência de dados. A conclusão local produziu exatamente `1 status Google`; o banco permaneceu íntegro, com a tarefa única em `CONCLUIDA`, `done = 1`, snapshot `synced_done = 1` e vínculo `ACTIVE`. Por fim, a reabertura no Google produziu exatamente `1 status local`; tarefa e snapshot retornaram a `done = 0`, a tarefa ficou `PENDENTE`, o vínculo continuou único e `ACTIVE`, não surgiram órfãos e `quick_check` permaneceu `ok`. Na preparação do `LIVE-07`, a versão `GSYNC-03.7` exibiu corretamente os cinco conflitos simultâneos e incluiu no painel local as tarefas concluídas vinculadas, inclusive `Ler Capítulo 7 do Web Application Hacker's Handbook`. Durante a inspeção, resoluções foram aplicadas acidentalmente ao capítulo e a `Pegar a Royal no Motorock`; ambas passaram a `ACTIVE`. Comparação campo a campo confirmou que título, notas, data, conclusão e status locais das duas permanecem idênticos ao backup pré-teste. Os outros três vínculos continuam `CONFLICT`, nenhuma exclusão ocorreu, não existem órfãos e `quick_check = ok`. O incidente originou a barreira `GSYNC-03.8`. Após reiniciar com a proteção, o usuário selecionou a versão local de `Consulta Rosy`, avançou até a segunda confirmação e cancelou. A interface manteve a contagem em três; inspeção confirmou os três estados e timestamps inalterados, sem snapshot novo, e `quick_check = ok`.
+
+**Evidência complementar do LIVE-07:** antes da resolução foi criado o backup íntegro `agenda-before-google-conflicts-local-20260831-053120.db`, contendo 20 vínculos `ACTIVE` e os três `CONFLICT` esperados. Após autorização explícita para preservar o lado local, a ferramenta restrita resolveu somente os vínculos 14, 61 e 91. A auditoria posterior encontrou 18 tarefas, 18 vínculos e zero revisões em `Minhas tarefas`; o SQLite ficou com 23 vínculos `ACTIVE`, nenhum órfão e `quick_check = ok`. Os estados locais permaneceram `CONCLUIDA`, `CONCLUIDA` e `CANCELADA`; por limitação semântica do Google Tasks, os três estados `done = 1` foram representados remotamente como concluídos. Os cinco vínculos da lista inacessível permaneceram intocados.
+
+**Exclusão controlada do LIVE-07:** a inspeção somente leitura identificou os cinco vínculos inacessíveis como tarefas locais concluídas de uma única lista antiga, sem órfãos; eles foram excluídos do teste. Após o backup íntegro `agenda-before-google-controlled-deletion-20260831-054216.db`, somente o item descartável `TESTE Agenda 2026-08-30 03 GOOGLE` foi excluído no Google. A prévia apresentou exatamente uma revisão `REMOTE_DELETED`, com a versão local disponível e a Google indisponível. Preservar o lado local liberou apenas o vínculo antigo e a prévia seguinte apresentou exatamente uma recriação Google. O novo vínculo 133 ficou `ACTIVE`, a tarefa local permaneceu `PENDENTE`, `done = 0`, e título e snapshot convergiram. A auditoria final encontrou 18 tarefas, 18 vínculos e zero revisões na lista acessível; o banco permaneceu com 23 vínculos `ACTIVE`, nenhum órfão, cinco vínculos antigos intocados e `quick_check = ok`.
 
 **Checklist ao vivo:**
 
@@ -1174,10 +1186,10 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 - [x] LIVE-04 — Observar exportação local → Google com vínculo persistido
 - [x] LIVE-05 — Repetir sem alterações e confirmar zero criações/atualizações
 - [x] LIVE-06 — Validar edição, conclusão e reabertura nos dois sentidos com item descartável
-- [ ] LIVE-07 — Revisar os cinco conflitos existentes e validar uma exclusão controlada
+- [x] LIVE-07 — Revisar os cinco conflitos existentes e validar uma exclusão controlada
 - [ ] LIVE-08 — Cancelar uma autorização pendente, tentar novamente e validar reconexão
 
-**Próxima ação:** obter somente as decisões semânticas para os três conflitos já auditados: manter o estado local ou reabrir como pendente. Depois aplicar as escolhas de forma controlada, repetir a auditoria e investigar os cinco vínculos da lista inacessível antes da exclusão controlada do `LIVE-07`.
+**Próxima ação:** executar o `LIVE-08`: cancelar uma autorização pendente, tentar novamente e validar a reconexão, mantendo tarefas e vínculos intactos.
 
 ## 27. Implementação da interrupção e retomada
 

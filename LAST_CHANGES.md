@@ -7,31 +7,25 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | Automatiza auditoria somente leitura do Google Tasks |
-| Data | 2026-08-31 05:27:41 -0400 |
+| Mensagem | Automatiza resolução segura de conflitos Google |
+| Data | 2026-08-31 05:46:11 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
-README.md
 SPEC.md
-src/main/java/com/pessoal/agenda/service/GoogleTasksSyncService.java
-src/main/java/com/pessoal/agenda/tools/GoogleTasksReadOnlyAudit.java
-src/main/java/com/pessoal/agenda/ui/view/GoogleTasksSyncWindow.java
-src/test/java/com/pessoal/agenda/tools/GoogleTasksReadOnlyAuditTest.java
+src/main/java/com/pessoal/agenda/tools/GoogleTasksConflictResolver.java
+src/test/java/com/pessoal/agenda/tools/GoogleTasksConflictResolverTest.java
 ```
 
 ## Diff Resumido
 
 ```diff
- README.md                                          |  11 +++
- SPEC.md                                            |  10 +-
- .../agenda/service/GoogleTasksSyncService.java     |  24 ++++-
- .../agenda/tools/GoogleTasksReadOnlyAudit.java     | 105 +++++++++++++++++++++
- .../agenda/ui/view/GoogleTasksSyncWindow.java      |   2 +-
- .../agenda/tools/GoogleTasksReadOnlyAuditTest.java |  54 +++++++++++
- 6 files changed, 200 insertions(+), 6 deletions(-)
+ SPEC.md                                            |  18 ++-
+ .../agenda/tools/GoogleTasksConflictResolver.java  | 123 +++++++++++++++++++++
+ .../tools/GoogleTasksConflictResolverTest.java     |  54 +++++++++
+ 3 files changed, 192 insertions(+), 3 deletions(-)
 ```
 
 ---

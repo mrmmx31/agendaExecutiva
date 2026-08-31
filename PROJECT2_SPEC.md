@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação iniciada; 8% do Projeto 2 |
+| Status | Implementação iniciada; 10% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -80,7 +80,7 @@ Dados de saúde, medicamentos e substâncias são dados sensíveis. A coleta ser
 - AVD de relógio próprio: `Agenda_Wear_API_34`, Wear OS 5/API 34.
 - `adb` e emulador disponíveis.
 - Telefone físico Samsung detectado por USB, mas fica fora dos testes até o gate de dispositivo real.
-- Os dois AVDs iniciam e respondem via `adb`; o pareamento pelo assistente do Android Studio ainda está pendente.
+- Os dois AVDs iniciam, respondem via `adb` e estão pareados pelo assistente Wear do Android Studio.
 
 ## 6. Arquitetura de referência
 
@@ -552,7 +552,7 @@ Entregas: esta spec, fechamento honesto do piloto, inventário Android, estraté
 
 Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, testes e CI local. Validar AVD API 34 e criar AVD Wear OS pareado. Nenhum dado real.
 
-**Status:** Em andamento em 2026-08-31, 83% (5 de 6 itens concluídos).
+**Status:** Concluído em 2026-08-31, 100% (6 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
@@ -561,11 +561,11 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 - [x] aprovar testes locais, lint e montagem do APK;
 - [x] criar o AVD `Agenda_Phone_API_34` com Play Store e validar o app em temas claro e escuro;
 - [x] criar e inicializar o AVD `Agenda_Wear_API_34` com Wear OS 5;
-- [ ] parear os dois AVDs pelo assistente Wear do Android Studio e registrar a conexão.
+- [x] parear os dois AVDs pelo assistente Wear do Android Studio e registrar a conexão.
 
-**Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot e responderam via `adb`. Nenhuma permissão sensível, dado real, Health Connect, rede da Agenda ou IA foi adicionada.
+**Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. Como 5/6 da `P2-01` estão concluídos, o avanço geral arredondado é 8%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. Com `P2-01` concluída, o avanço geral é 10%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -646,4 +646,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Concluir `P2-01` pareando `Agenda_Phone_API_34` e `Agenda_Wear_API_34` pelo assistente Wear do Android Studio. Não conectar o telefone físico, não tocar no banco pessoal e não implementar saúde ou IA. Após a evidência de pareamento, iniciar `P2-02` pelo modelo offline e dados exclusivamente fictícios.
+Iniciar `P2-02` pelo modelo offline e dados exclusivamente fictícios: captura local, protocolos, fila de operações e contratos versionados, ainda sem rede, dados pessoais, Health Connect ou IA. Manter `ANDROID_SERIAL` explícito para não usar o telefone físico.

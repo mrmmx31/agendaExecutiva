@@ -25,7 +25,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 
 - Telefone: `Agenda_Phone_API_34`, Android 14/API 34, imagem Google Play.
 - Relógio: `Agenda_Wear_API_34`, Wear OS 5/API 34.
-- O pareamento deve ser feito pelo comando `Pair Wearable` do Device Manager do Android Studio.
+- O pareamento foi feito pelo comando `Pair Wearable` do Device Manager do Android Studio.
 - Nunca omitir `ANDROID_SERIAL` enquanto um telefone físico estiver visível no `adb`.
 
 ## Evidência atual
@@ -35,7 +35,8 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - Teste instrumentado Compose no AVD API 34: aprovado.
 - Renderização clara e escura no telefone virtual: inspecionada sem cortes ou resíduos de tema.
 - Primeiro boot dos AVDs de telefone e Wear OS: aprovado.
-- Pareamento telefone-relógio: pendente; não considerar `P2-01` concluída antes dessa evidência.
+- Pareamento telefone-relógio: aprovado; o assistente confirmou `Successful pairing` entre os dois AVDs.
+- O Google Pixel Watch do AVD precisou das permissões de notificações e dispositivos próximos; isso não altera as permissões do aplicativo Agenda.
 
 ## Limites
 

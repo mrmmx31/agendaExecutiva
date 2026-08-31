@@ -10,6 +10,7 @@ target/
 .idea/compiler.xml
 .idea/libraries/
 .idea/copilotDiffState.xml
+/android/.idea/
 *.iws
 *.iml
 *.ipr

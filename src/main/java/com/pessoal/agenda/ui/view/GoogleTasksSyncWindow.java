@@ -783,7 +783,7 @@ public class GoogleTasksSyncWindow {
     static String formatReviewVersion(ReviewVersion version, String unavailableText) {
         if (version == null || !version.available()) return unavailableText;
         return "Título: " + version.title()
-                + "\nStatus: " + (version.completed() ? "Concluída" : "Pendente")
+                + "\nStatus: " + version.statusLabel()
                 + "\nData: " + (version.dueDate() != null
                         ? DATE_FMT.format(version.dueDate()) : "Sem data")
                 + "\nNotas: " + (version.notes() != null ? version.notes() : "Sem notas");

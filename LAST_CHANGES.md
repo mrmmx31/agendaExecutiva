@@ -7,21 +7,31 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | Valida cancelamento de resolução Google |
-| Data | 2026-08-31 05:02:40 -0400 |
+| Mensagem | Automatiza auditoria somente leitura do Google Tasks |
+| Data | 2026-08-31 05:27:41 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
+README.md
 SPEC.md
+src/main/java/com/pessoal/agenda/service/GoogleTasksSyncService.java
+src/main/java/com/pessoal/agenda/tools/GoogleTasksReadOnlyAudit.java
+src/main/java/com/pessoal/agenda/ui/view/GoogleTasksSyncWindow.java
+src/test/java/com/pessoal/agenda/tools/GoogleTasksReadOnlyAuditTest.java
 ```
 
 ## Diff Resumido
 
 ```diff
- SPEC.md | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ README.md                                          |  11 +++
+ SPEC.md                                            |  10 +-
+ .../agenda/service/GoogleTasksSyncService.java     |  24 ++++-
+ .../agenda/tools/GoogleTasksReadOnlyAudit.java     | 105 +++++++++++++++++++++
+ .../agenda/ui/view/GoogleTasksSyncWindow.java      |   2 +-
+ .../agenda/tools/GoogleTasksReadOnlyAuditTest.java |  54 +++++++++++
+ 6 files changed, 200 insertions(+), 6 deletions(-)
 ```
 
 ---

@@ -1133,6 +1133,14 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 
 **Resultado:** o primeiro diálogo agora usa `Continuar...` e nunca executa diretamente. Uma segunda confirmação repete item, lado escolhido, consequência e ausência de desfazer automático; seu botão nomeia `Aplicar versão local` ou `Aplicar versão Google`. `Cancelar` é o botão padrão, inclusive para acionamento por teclado, e abortar informa que nenhuma versão foi substituída. Testes verificam o resumo irreversível e os estados JavaFX dos botões. A suíte padrão aprovou 126 testes e o perfil JavaFX aprovou 194.
 
+### GSYNC-03.9 — Auditoria Google somente leitura
+
+**Status:** Concluído em 2026-08-31.
+
+**Problema:** a validação ao vivo exigia que o usuário abrisse e transcrevesse cada comparação, tornando a investigação lenta e sujeita a cliques acidentais. O comparador também reduzia todo `done = 1` a `Concluída`, ocultando estados locais mais ricos como `Cancelada`.
+
+**Resultado:** `GoogleTasksReadOnlyAudit` reutiliza a autorização persistida para consultar listas/tarefas e cruza os resultados com o SQLite sem sincronizar, resolver ou excluir. O relatório omite tokens, IDs remotos e conteúdo de notas; mostra contagens, conflitos, campos divergentes e listas vinculadas inacessíveis na conta atual. `ReviewVersion` agora separa o booleano compatível com Google do rótulo local real, preservando `Pendente`, `Em andamento`, `Concluída`, `Bloqueada` e `Cancelada` na interface e auditoria. Testes cobrem diferenças seletivas, indisponibilidade, cancelamento local e lista ausente. A suíte padrão aprovou 130 testes e o perfil JavaFX aprovou 198. A execução real encontrou 18 tarefas e 18 vínculos em `Minhas tarefas`, três conflitos somente de status e cinco vínculos de uma lista não retornada pela conta atual.
+
 ### GSYNC-04 — Interface e validação controlada
 
 **Status:** Concluído em 2026-08-27.
@@ -1169,7 +1177,7 @@ Este pacote sucede a auditoria de alertas. A validação ao vivo deve ocorrer so
 - [ ] LIVE-07 — Revisar os cinco conflitos existentes e validar uma exclusão controlada
 - [ ] LIVE-08 — Cancelar uma autorização pendente, tentar novamente e validar reconexão
 
-**Próxima ação:** comparar `Consulta Rosy` sem aplicar. Registrar título, status, data e notas das versões local e Google e escolher conscientemente qual lado preservar. Só depois repetir a segunda confirmação e aplicar uma única resolução; a contagem esperada deve cair de três para dois.
+**Próxima ação:** obter somente as decisões semânticas para os três conflitos já auditados: manter o estado local ou reabrir como pendente. Depois aplicar as escolhas de forma controlada, repetir a auditoria e investigar os cinco vínculos da lista inacessível antes da exclusão controlada do `LIVE-07`.
 
 ## 27. Implementação da interrupção e retomada
 

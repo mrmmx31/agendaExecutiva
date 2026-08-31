@@ -65,6 +65,17 @@ cd /home/lsi/IdeaProjects/agenda
 
 Os testes usam bancos SQLite temporários quando exercitam persistência. A matriz manual está em [UI_VALIDATION.md](UI_VALIDATION.md), a referência de uso em [USABILITY_BASELINE.md](USABILITY_BASELINE.md), e o fechamento rastreável nas seções 15 e 29 da [SPEC.md](SPEC.md).
 
+### Auditar Google Tasks sem alterar dados
+
+Com uma conta já conectada pela aplicação, o comando abaixo executa somente leituras das listas Google e do SQLite. Ele compara vínculos e conflitos, não sincroniza, não resolve decisões e não imprime tokens, IDs remotos ou conteúdo das notas.
+
+```bash
+./mvnw -q org.codehaus.mojo:exec-maven-plugin:3.1.0:java \
+  -Dexec.mainClass=com.pessoal.agenda.tools.GoogleTasksReadOnlyAudit
+```
+
+A autenticação pode renovar o token OAuth local se ele estiver expirado; nenhuma tarefa Google ou local é modificada.
+
 ## Compilar
 
 ```bash

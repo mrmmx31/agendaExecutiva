@@ -228,14 +228,20 @@ public class GoogleTasksSyncService {
         return task == null
                 ? ReviewVersion.unavailable()
                 : new ReviewVersion(true, displayTitle(task.title()), blankToNull(task.notes()),
-                        task.dueDate(), task.done());
+                        task.dueDate(), task.done(), localStatusLabel(task));
+    }
+
+    private static String localStatusLabel(Task task) {
+        if (task.status() != null) return task.status().label();
+        return task.done() ? "Concluída" : "Pendente";
     }
 
     private static ReviewVersion reviewVersion(GTask task) {
         return task == null || task.deleted()
                 ? ReviewVersion.unavailable()
                 : new ReviewVersion(true, displayTitle(task.title()), blankToNull(task.notes()),
-                        task.dueDate(), task.completed());
+                        task.dueDate(), task.completed(),
+                        task.completed() ? "Concluída" : "Pendente");
     }
 
     public ResolutionResult resolveReview(long mappingId, Resolution resolution)
@@ -524,9 +530,19 @@ public class GoogleTasksSyncService {
     public record ReviewDetails(ReviewItem item, ReviewVersion local, ReviewVersion google) {}
 
     public record ReviewVersion(boolean available, String title, String notes,
-                                LocalDate dueDate, boolean completed) {
+                                LocalDate dueDate, boolean completed, String statusLabel) {
+        public ReviewVersion(boolean available, String title, String notes,
+                             LocalDate dueDate, boolean completed) {
+            this(available, title, notes, dueDate, completed,
+                    available ? defaultStatusLabel(completed) : null);
+        }
+
+        private static String defaultStatusLabel(boolean completed) {
+            return completed ? "Concluída" : "Pendente";
+        }
+
         static ReviewVersion unavailable() {
-            return new ReviewVersion(false, null, null, null, false);
+            return new ReviewVersion(false, null, null, null, false, null);
         }
     }
 

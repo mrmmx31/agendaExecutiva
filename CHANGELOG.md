@@ -10,6 +10,7 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Fundação P2-03 com modelo de ameaça, pareamento em duas etapas e parser Android estrito para convite HTTPS fixado
 - Núcleo Android offline P2-02 com Room v2, captura local, réplica fictícia, protocolos e fila transacional de operações
 - Contrato móvel v1 com envelopes versionados, UUID, sequência, fuso e hash SHA-256, acompanhado por schemas JSON
 - Interface Compose para Hoje, Capturar, Protocolos e Fila, validada em temas claro e escuro no AVD reservado

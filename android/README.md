@@ -35,6 +35,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - Três testes instrumentados no AVD API 34: migração Room e dois fluxos Compose aprovados.
 - Renderização clara e escura no telefone virtual: inspecionada sem cortes ou resíduos de tema.
 - Fluxo fictício validado: uma captura mais início e quatro passos de protocolo geraram seis operações sequenciais na fila.
+- Parser do convite de pareamento aprovado em cinco testes de validade, expiração, campos fechados e bloqueio de downgrade HTTP.
 - Primeiro boot dos AVDs de telefone e Wear OS: aprovado.
 - Pareamento telefone-relógio: aprovado; o assistente confirmou `Successful pairing` entre os dois AVDs.
 - O Google Pixel Watch do AVD precisou das permissões de notificações e dispositivos próximos; isso não altera as permissões do aplicativo Agenda.
@@ -47,5 +48,6 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - Contrato atual: v1, catalogado em `contracts/README.md`.
 - Backup e transferência de dados Android estão desativados.
 - Nenhuma permissão sensível é solicitada.
+- A P2-03 ainda não adicionou `INTERNET` nem abriu servidor; o primeiro avanço cobre somente contrato, ameaça e validação local do convite.
 - Os dados demonstrativos são determinísticos e não representam dados pessoais.
 - Não usar telefone físico antes do gate previsto em `PROJECT2_SPEC.md`.

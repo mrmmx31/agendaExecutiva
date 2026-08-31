@@ -10,6 +10,9 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Especificação do Projeto 2 para Android/Wear OS, alertas sensoriais, sync offline, áudio, protocolos móveis, Health Connect, relatório e IA evolutiva
+- Mapa de manutenção com fontes de verdade, catálogo de componentes/permissões, contratos, ADRs, model cards, receitas e quality gates
+- Encerramento rastreável do piloto com cinco decisões `SEM EVIDÊNCIA`, sem inferir validação a partir de ausência de uso
 - Piloto de uso real com protocolo de baixa carga e critérios explícitos para as cinco hipóteses restantes
 - Fase 0 concluída com baseline humano inicial de foco, captura e retomada, além da referência técnica de janelas
 - Baseline: referência técnica atual de janelas e protocolo de até cinco amostras humanas para foco, captura e retomada

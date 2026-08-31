@@ -1396,30 +1396,31 @@ Este pacote corrige achados objetivos da auditoria final sem reabrir as Fases 0 
 
 ## 31. Piloto de uso real
 
-**Status do pacote:** Em andamento, 17% (1 de 6 itens concluídos). Fases 0 a 5 e estabilização permanecem em 100%.
+**Status do pacote:** Concluído em 31/08/2026, 100% (6 de 6 itens encerrados). Fases 0 a 5 e estabilização permanecem em 100%.
 
 O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e sem transformar uso da Agenda em nova obrigação.
 
-**Ordem operacional atual:** executar `PIL-01` em uso normal. O protocolo Google ao vivo foi concluído em `GSYNC-LIVE`; as próximas hipóteses do piloto permanecem bloqueadas contra mudanças de produto sem evidência.
+**Resultado operacional:** o protocolo Google ao vivo foi concluído em `GSYNC-LIVE`. As cinco hipóteses de uso foram encerradas como `SEM EVIDÊNCIA`, preservando os comportamentos atuais e sem autorizar mudanças de produto.
 
 **Estado operacional em 31/08/2026:**
 
-- `PIL-01` iniciado, ainda sem evidências de uso normal;
+- `PIL-01` a `PIL-05` encerrados sem evidências de uso normal;
 - inspeção agregada do SQLite encontrou zero planos diários registrados; conteúdo pessoal não foi consultado;
 - implementação e documentação enviadas para `origin/master` até `95be01dfd`;
 - worktree local e remoto conferidos sem divergência;
 - credenciais e tokens Google restritos a permissão `600`;
 - banco validado por `PRAGMA quick_check` e backups operacionais criados com permissão `600`;
 - teste Google ao vivo concluído em 100%, incluindo idempotência, ciclo de estado, conflitos, exclusão controlada, cancelamento OAuth e reconexão.
+- encerramento administrativo solicitado pelo usuário para liberar a especificação do Projeto 2; nenhuma conclusão comportamental foi inferida.
 
 **Checklist de avanço:**
 
 - [x] PIL-00 — Definir protocolo de observação de baixa carga
-- [ ] PIL-01 — Validar quantidade do plano diário
-- [ ] PIL-02 — Validar nome e efeito da capacidade reduzida
-- [ ] PIL-03 — Validar formato da captura universal
-- [ ] PIL-04 — Validar vínculo obrigatório da pista de retomada
-- [ ] PIL-05 — Validar acionamento manual do encerramento
+- [x] PIL-01 — Encerrar quantidade do plano diário como `SEM EVIDÊNCIA`
+- [x] PIL-02 — Encerrar nome e efeito da capacidade reduzida como `SEM EVIDÊNCIA`
+- [x] PIL-03 — Encerrar formato da captura universal como `SEM EVIDÊNCIA`
+- [x] PIL-04 — Encerrar vínculo obrigatório da pista de retomada como `SEM EVIDÊNCIA`
+- [x] PIL-05 — Encerrar acionamento manual do dia como `SEM EVIDÊNCIA`
 
 ### PIL-00 — Protocolo de observação
 
@@ -1433,10 +1434,30 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 ### PIL-01 — Quantidade do plano diário
 
-**Status:** Em andamento desde 30/08/2026, sem evidências registradas.
+**Status:** Encerrado em 31/08/2026 como `SEM EVIDÊNCIA`.
 
 **Escopo:** observar em uso normal se uma tarefa essencial e até duas de apoio reduzem decisões ou se deixam trabalho relevante sem lugar no plano.
 
 **Aceite:** duas observações independentes apontam benefício ou o mesmo atrito; exceção isolada não muda o limite; nenhum título ou conteúdo pessoal é registrado.
 
-**Próxima ação:** usar o plano normalmente e relatar somente quando o limite ajudar ou atrapalhar de forma perceptível.
+**Resultado:** a inspeção agregada encontrou zero planos diários. O aceite observacional não foi atingido e nenhuma validação comportamental é alegada. O limite atual permanece; uma evidência futura pode reabrir a hipótese sem reabrir as fases concluídas.
+
+### PIL-02 a PIL-05 — Encerramento sem evidência
+
+**Status:** Encerrados em 31/08/2026 como `SEM EVIDÊNCIA`.
+
+**Resultado:** `Capacidade reduzida`, janela de captura universal, vínculo obrigatório da pista e encerramento manual permanecem inalterados. `PILOT.md` registra separadamente a regra de reabertura de cada hipótese. O percentual de 100% representa encerramento rastreável do protocolo, não confirmação por uso real.
+
+## 32. Projeto 2 — Extensão móvel e sensorial
+
+**Status:** Especificado em 31/08/2026; implementação 0%.
+
+**Visão:** estender a Agenda para Android e Wear OS, mantendo o desktop como superfície de organização, o smartphone como nó móvel offline e o smartwatch como superfície curta de percepção e resposta. Alertas devem oferecer `Concluir` e `Adiar`; capturas e protocolos devem funcionar fora do notebook e convergir depois.
+
+**Escopo adicional:** áudio configurável da própria Agenda, fluxo `Vou sair`, Health Connect opt-in, registros voluntários de medicamentos/substâncias/sintomas, relatório revisável para acompanhamento médico e personalização evolutiva local-first.
+
+**Limite:** nenhuma função clínica, diagnóstica, terapêutica ou de ajuste de medicamento está autorizada. Dados de saúde ficam fora da recomendação automática inicial. IA em nuvem não é dependência e nunca recebe dado sensível por padrão.
+
+**Documentos:** requisitos, arquitetura, fases e gates estão em `PROJECT2_SPEC.md`. O ponto de entrada para manutenção, catálogos, contratos e retomada de contexto está em `MAINTENANCE_MAP.md`.
+
+**Próxima ação:** após aprovação da especificação, iniciar `P2-01` com scaffold Android e emuladores isolados. Não conectar telefone físico, banco pessoal, Health Connect ou IA nessa fase.

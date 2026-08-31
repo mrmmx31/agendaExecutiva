@@ -22,14 +22,16 @@ Aplicação desktop JavaFX para planejamento pessoal com persistência local em 
 
 ## Direção do produto
 
-A visão, os requisitos, os critérios de aceite e o plano de entrega estão em [SPEC.md](SPEC.md). As Fases 0 a 5 e o pacote de estabilização foram concluídos, assim como as auditorias de alertas e do Google Tasks. O ciclo diário cobre planejamento, foco, interrupção, retomada, encerramento e preparação de amanhã. O pacote Google está em 100%, com preview, revisão assistida e operações exclusivas; eventual teste ao vivo continua condicionado a confirmação explícita e lista descartável.
+A visão, os requisitos, os critérios de aceite e o plano de entrega do desktop estão em [SPEC.md](SPEC.md). As Fases 0 a 5, estabilização, auditorias, Google Tasks ao vivo e piloto foram encerrados. O piloto terminou com cinco decisões `SEM EVIDÊNCIA`, sem alegar validação comportamental. O Projeto 2 móvel/sensorial está especificado, mas sua implementação permanece em 0%.
 
 Documentação complementar:
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): camadas e decisões arquiteturais.
 - [DEVELOPMENT.md](DEVELOPMENT.md): convenções e mecânica de desenvolvimento.
+- [PROJECT2_SPEC.md](PROJECT2_SPEC.md): Android, Wear OS, sincronização offline, saúde, relatórios e IA.
+- [MAINTENANCE_MAP.md](MAINTENANCE_MAP.md): rota curta para manutenção, contratos, catálogos e quality gates.
 - [CHANGELOG.md](CHANGELOG.md): mudanças por versão.
-- [PILOT.md](PILOT.md): observação curta das hipóteses que dependem de uso real.
+- [PILOT.md](PILOT.md): encerramento e regras de reabertura das hipóteses de uso real.
 
 ## Dados
 

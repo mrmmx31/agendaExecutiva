@@ -64,10 +64,12 @@ ALTER TABLE tasks ADD COLUMN recurrence_days TEXT;
 - Leitura/listagem ainda via `DatabaseService` legado (migracao pendente)
 
 ## Proxima fase
-1. Migrar leituras da agenda para `TaskService` / `TaskRepository`
-2. Extrair controllers por aba (`AgendaController`, `FinanceController`, etc.)
-3. Mover layout para classes de view/fxml por modulo
-4. Remover gradualmente `DatabaseService` legado apos paridade completa
+1. Preservar as fronteiras atuais do desktop e corrigir o legado apenas quando necessário.
+2. Iniciar o Projeto 2 em um build Android separado, conforme `PROJECT2_SPEC.md`.
+3. Compartilhar contratos versionados e fixtures, não banco ou classes de persistência.
+4. Consultar `MAINTENANCE_MAP.md` antes de introduzir módulo, permissão, SDK ou modelo de IA.
+
+O Android será local-first com Room e fila de operações. Desktop e smartphone se comunicam por contrato HTTPS pareado; telefone e Wear OS usam notificações da plataforma e, quando necessário, Data Layer. Nenhum dispositivo acessa diretamente o banco SQLite de outro.
 
 ## Convencoes
 - Repositorio: sem regra de negocio

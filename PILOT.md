@@ -28,11 +28,11 @@ Adicionar linhas somente quando houver algo relevante. Ausência de registro nã
 
 Registrar quando faltar espaço útil, quando itens de apoio sobrarem repetidamente ou quando o limite reduzir decisões de forma clara.
 
-**Estado:** Em andamento desde 2026-08-30, ainda sem evidências.
+**Estado:** Encerrado em 2026-08-31, sem evidências.
 
 **Preparação técnica:** versão do piloto enviada ao GitHub; nenhuma alteração adicional de produto será feita enquanto esta hipótese não tiver evidência.
 
-**Decisão:** manter o limite até existirem pelo menos duas ocorrências semelhantes de excesso ou insuficiência. Não aumentar capacidade por uma exceção isolada.
+**Decisão:** `SEM EVIDÊNCIA`. Manter o limite atual; reabrir somente se uso futuro produzir duas ocorrências semelhantes de excesso ou insuficiência.
 
 ### H2 — Capacidade reduzida
 
@@ -40,9 +40,9 @@ Registrar quando faltar espaço útil, quando itens de apoio sobrarem repetidame
 
 Registrar confusão com o nome, sensação de culpa ou situação em que a redução ajudou a começar.
 
-**Estado:** Aguardando uso real.
+**Estado:** Encerrado em 2026-08-31, sem evidências.
 
-**Decisão:** texto pode mudar com uma ocorrência clara de incompreensão; comportamento só muda com padrão recorrente.
+**Decisão:** `SEM EVIDÊNCIA`. Manter o texto e o comportamento; reabrir com uma ocorrência clara de incompreensão ou padrão recorrente de pressão.
 
 ### H3 — Forma da captura
 
@@ -50,9 +50,9 @@ Registrar confusão com o nome, sensação de culpa ou situação em que a redu�
 
 Registrar perda de foco, dificuldade para encontrar a janela, bloqueio de conteúdo ou benefício de ela fechar rapidamente.
 
-**Estado:** Aguardando uso real.
+**Estado:** Encerrado em 2026-08-31, sem evidências.
 
-**Decisão:** manter a janela enquanto não houver duas ocorrências semelhantes de interrupção ou ocultação.
+**Decisão:** `SEM EVIDÊNCIA`. Manter a janela; reabrir se surgirem duas ocorrências semelhantes de interrupção ou ocultação.
 
 ### H4 — Retomada livre ou vinculada
 
@@ -60,9 +60,9 @@ Registrar perda de foco, dificuldade para encontrar a janela, bloqueio de conte�
 
 Registrar somente quando houver uma pista real que não possa ser associada honestamente a uma tarefa.
 
-**Estado:** Aguardando uso real.
+**Estado:** Encerrado em 2026-08-31, sem evidências.
 
-**Decisão:** não criar contexto livre sem pelo menos duas necessidades concretas; vínculo atual preserva clareza e integridade.
+**Decisão:** `SEM EVIDÊNCIA`. Manter o vínculo obrigatório; reabrir quando existirem pelo menos duas necessidades concretas de contexto livre.
 
 ### H5 — Encerramento do dia
 
@@ -70,9 +70,9 @@ Registrar somente quando houver uma pista real que não possa ser associada hone
 
 Registrar esquecimento recorrente, interrupção causada por convite indesejado ou uso espontâneo bem-sucedido.
 
-**Estado:** Aguardando uso real.
+**Estado:** Encerrado em 2026-08-31, sem evidências.
 
-**Decisão:** lembrete continua ausente por padrão. Qualquer convite futuro deve ser opcional, silencioso e nunca modal.
+**Decisão:** `SEM EVIDÊNCIA`. Manter acionamento manual; qualquer convite futuro dependerá de evidência e deverá ser opcional, silencioso e nunca modal.
 
 ## 4. Critério de decisão
 
@@ -88,8 +88,14 @@ Resultados possíveis: `MANTER`, `AJUSTAR`, `TESTAR ALTERNATIVA` ou `SEM EVIDÊN
 
 | Hipótese | Estado | Evidências | Decisão | Próxima ação |
 |---|---|---:|---|---|
-| H1 — Quantidade do plano | Em andamento | 0 | Sem evidência | Usar normalmente |
-| H2 — Capacidade reduzida | Aguardando | 0 | Sem evidência | Usar quando necessário |
-| H3 — Forma da captura | Aguardando | 0 | Sem evidência | Capturar normalmente |
-| H4 — Retomada vinculada | Aguardando | 0 | Sem evidência | Registrar interrupções reais |
-| H5 — Encerramento manual | Aguardando | 0 | Sem evidência | Encerrar quando fizer sentido |
+| H1 — Quantidade do plano | Encerrado | 0 | SEM EVIDÊNCIA | Manter limite; reabrir por evidência futura |
+| H2 — Capacidade reduzida | Encerrado | 0 | SEM EVIDÊNCIA | Manter nome e comportamento |
+| H3 — Forma da captura | Encerrado | 0 | SEM EVIDÊNCIA | Manter janela pequena |
+| H4 — Retomada vinculada | Encerrado | 0 | SEM EVIDÊNCIA | Manter vínculo obrigatório |
+| H5 — Encerramento manual | Encerrado | 0 | SEM EVIDÊNCIA | Manter acionamento manual |
+
+## 6. Encerramento
+
+O piloto foi encerrado em 2026-08-31 por decisão explícita do usuário para liberar o planejamento do Projeto 2. A inspeção agregada do SQLite encontrou zero planos diários e nenhum evento utilizável para as cinco hipóteses; nenhum conteúdo pessoal foi consultado. Assim, `100%` significa que o protocolo foi encerrado e documentado, não que os comportamentos foram comprovados por uso real.
+
+As cinco decisões `SEM EVIDÊNCIA` preservam os padrões atuais. Qualquer mudança futura deve citar o evento que reabriu a hipótese e não pode ser justificada apenas pelo encerramento administrativo deste piloto.

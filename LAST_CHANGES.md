@@ -7,25 +7,21 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | Automatiza resolução segura de conflitos Google |
-| Data | 2026-08-31 05:46:11 -0400 |
+| Mensagem | Conclui validação ao vivo do Google Tasks |
+| Data | 2026-08-31 06:10:56 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
 SPEC.md
-src/main/java/com/pessoal/agenda/tools/GoogleTasksConflictResolver.java
-src/test/java/com/pessoal/agenda/tools/GoogleTasksConflictResolverTest.java
 ```
 
 ## Diff Resumido
 
 ```diff
- SPEC.md                                            |  18 ++-
- .../agenda/tools/GoogleTasksConflictResolver.java  | 123 +++++++++++++++++++++
- .../tools/GoogleTasksConflictResolverTest.java     |  54 +++++++++
- 3 files changed, 192 insertions(+), 3 deletions(-)
+ SPEC.md | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 ```
 
 ---

@@ -1400,16 +1400,17 @@ Este pacote corrige achados objetivos da auditoria final sem reabrir as Fases 0 
 
 O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e sem transformar uso da Agenda em nova obrigação.
 
-**Ordem operacional acordada:** iniciar `PIL-01`; versionar e enviar o trabalho atual ao GitHub; depois executar o teste Google ao vivo com o protocolo de segurança já definido.
+**Ordem operacional atual:** executar `PIL-01` em uso normal. O protocolo Google ao vivo foi concluído em `GSYNC-LIVE`; as próximas hipóteses do piloto permanecem bloqueadas contra mudanças de produto sem evidência.
 
-**Estado operacional em 30/08/2026:**
+**Estado operacional em 31/08/2026:**
 
 - `PIL-01` iniciado, ainda sem evidências de uso normal;
-- implementação e documentação enviadas para `origin/master` até `205570a9d`;
+- inspeção agregada do SQLite encontrou zero planos diários registrados; conteúdo pessoal não foi consultado;
+- implementação e documentação enviadas para `origin/master` até `95be01dfd`;
 - worktree local e remoto conferidos sem divergência;
 - credenciais e tokens Google restritos a permissão `600`;
-- banco validado por `PRAGMA quick_check` e backup pré-teste criado com permissão `600`;
-- teste Google ao vivo iniciado pelo usuário; conexão, sincronização inicial e os dois sentidos básicos possuem evidência estrutural local, enquanto idempotência, ciclo de estado, conflitos/exclusão e reconexão permanecem pendentes.
+- banco validado por `PRAGMA quick_check` e backups operacionais criados com permissão `600`;
+- teste Google ao vivo concluído em 100%, incluindo idempotência, ciclo de estado, conflitos, exclusão controlada, cancelamento OAuth e reconexão.
 
 **Checklist de avanço:**
 

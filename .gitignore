@@ -32,6 +32,10 @@ target/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
+.gradle/
+local.properties
+captures/
+.cxx/
 
 ### VS Code ###
 .vscode/

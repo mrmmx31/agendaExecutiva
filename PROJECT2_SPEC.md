@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Especificado; implementação não iniciada |
+| Status | Implementação iniciada; 8% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -76,10 +76,11 @@ Dados de saúde, medicamentos e substâncias são dados sensíveis. A coleta ser
 ### 5.3 Ambiente inicial
 
 - SDK localizado em `/home/lsi/Android/Sdk`.
-- AVD de telefone disponível: `Tesouraria_API_34`.
+- AVD de telefone próprio: `Agenda_Phone_API_34`, Android 14/API 34 com Play Store.
+- AVD de relógio próprio: `Agenda_Wear_API_34`, Wear OS 5/API 34.
 - `adb` e emulador disponíveis.
 - Telefone físico Samsung detectado por USB, mas fica fora dos testes até o gate de dispositivo real.
-- Deve ser criado um AVD Wear OS e pareado ao AVD de telefone antes dos testes do relógio.
+- Os dois AVDs iniciam e respondem via `adb`; o pareamento pelo assistente do Android Studio ainda está pendente.
 
 ## 6. Arquitetura de referência
 
@@ -548,6 +549,21 @@ Entregas: esta spec, fechamento honesto do piloto, inventário Android, estraté
 
 Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, testes e CI local. Validar AVD API 34 e criar AVD Wear OS pareado. Nenhum dado real.
 
+**Status:** Em andamento em 2026-08-31, 83% (5 de 6 itens concluídos).
+
+**Checklist de avanço:**
+
+- [x] criar o projeto Gradle isolado e o módulo `app` em Kotlin/Compose;
+- [x] criar Room somente para metadados técnicos, exportar o schema e testar a persistência;
+- [x] aprovar testes locais, lint e montagem do APK;
+- [x] criar o AVD `Agenda_Phone_API_34` com Play Store e validar o app em temas claro e escuro;
+- [x] criar e inicializar o AVD `Agenda_Wear_API_34` com Wear OS 5;
+- [ ] parear os dois AVDs pelo assistente Wear do Android Studio e registrar a conexão.
+
+**Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot e responderam via `adb`. Nenhuma permissão sensível, dado real, Health Connect, rede da Agenda ou IA foi adicionada.
+
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. Como 5/6 da `P2-01` estão concluídos, o avanço geral arredondado é 8%. `P2-00` é especificação e não entra nesse percentual.
+
 ### P2-02 — Núcleo móvel offline
 
 Captura, réplica mínima, protocolos, fila de operações, schemas e dados fictícios. Sem rede e sem saúde.
@@ -627,4 +643,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Iniciar `P2-01` somente após aprovação desta especificação. O primeiro trabalho será criar o scaffold Android isolado e validar os emuladores, sem conectar o telefone físico, sem tocar no banco pessoal e sem implementar saúde ou IA.
+Concluir `P2-01` pareando `Agenda_Phone_API_34` e `Agenda_Wear_API_34` pelo assistente Wear do Android Studio. Não conectar o telefone físico, não tocar no banco pessoal e não implementar saúde ou IA. Após a evidência de pareamento, iniciar `P2-02` pelo modelo offline e dados exclusivamente fictícios.

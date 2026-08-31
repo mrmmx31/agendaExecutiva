@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: especificado; implementação em 0%.
+- Projeto 2: implementação em 8%; `P2-01` em 83% (5 de 6 itens), pendente apenas parear os AVDs pelo Android Studio.
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -58,9 +58,9 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 
 Regra: UI não executa SQL; repository não contém regra de negócio; service não depende de JavaFX.
 
-## 5. Estrutura prevista do Projeto 2
+## 5. Estrutura do Projeto 2
 
-Ainda não criar arquivos vazios. Quando `P2-01` começar, a estrutura alvo é:
+O scaffold `android/` foi criado em `P2-01`. Não criar arquivos vazios para fases futuras; a estrutura alvo continua:
 
 ```text
 agenda/
@@ -235,15 +235,15 @@ Sem model card e teste de fallback, o modelo não entra em release.
 git diff --check
 ```
 
-### Android futuro
+### Android
 
 ```bash
 cd android
-./gradlew test lint
-./gradlew connectedCheck
+./gradlew test lint assembleDebug
+ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 ```
 
-Comandos Android são alvos futuros, não evidência de implementação atual.
+Definir sempre `ANDROID_SERIAL` quando houver dispositivo físico conectado. Em `P2-01`, os AVDs reservados são `Agenda_Phone_API_34` e `Agenda_Wear_API_34`; o telefone físico permanece fora do gate.
 
 ### Gate documental
 

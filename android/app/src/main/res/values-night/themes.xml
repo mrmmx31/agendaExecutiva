@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.AgendaMobile" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#8CD6BE</item>
+        <item name="android:navigationBarColor">#101412</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

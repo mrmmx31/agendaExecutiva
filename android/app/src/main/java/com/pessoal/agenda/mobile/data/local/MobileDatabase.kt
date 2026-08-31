@@ -1,39 +1,28 @@
 package com.pessoal.agenda.mobile.data.local
 
 import android.content.Context
-import androidx.room.Dao
 import androidx.room.Database
-import androidx.room.Entity
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.PrimaryKey
-import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
-
-@Entity(tableName = "mobile_metadata")
-data class MobileMetadataEntity(
-    @PrimaryKey val key: String,
-    val value: String,
-    val updatedAt: String,
-)
-
-@Dao
-interface MobileMetadataDao {
-    @Query("SELECT * FROM mobile_metadata WHERE `key` = :key")
-    suspend fun find(key: String): MobileMetadataEntity?
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun save(metadata: MobileMetadataEntity)
-}
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [MobileMetadataEntity::class],
-    version = 1,
+    entities = [
+        MobileMetadataEntity::class,
+        TaskReplicaEntity::class,
+        CaptureEntity::class,
+        ProtocolTemplateEntity::class,
+        ProtocolStepEntity::class,
+        ProtocolRunEntity::class,
+        ProtocolRunStepEntity::class,
+        PendingOperationEntity::class,
+    ],
+    version = 2,
     exportSchema = true,
 )
 abstract class MobileDatabase : RoomDatabase() {
-    abstract fun metadata(): MobileMetadataDao
+    abstract fun offline(): OfflineDao
 
     companion object {
         const val DATABASE_NAME = "agenda-mobile.db"
@@ -45,7 +34,76 @@ abstract class MobileDatabase : RoomDatabase() {
                 context.applicationContext,
                 MobileDatabase::class.java,
                 DATABASE_NAME,
-            ).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+        }
+
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS task_replicas (
+                        id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, status TEXT NOT NULL,
+                        revision INTEGER NOT NULL, updatedAt TEXT NOT NULL, tombstone INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_task_replicas_status ON task_replicas(status)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS captures (
+                        id TEXT NOT NULL PRIMARY KEY, text TEXT NOT NULL, createdAt TEXT NOT NULL,
+                        organizationType TEXT, organizedEntityId TEXT, acknowledgedAt TEXT
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_captures_createdAt ON captures(createdAt)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS protocol_templates (
+                        id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, revision INTEGER NOT NULL,
+                        createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL, tombstone INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS protocol_steps (
+                        id TEXT NOT NULL PRIMARY KEY, protocolId TEXT NOT NULL, position INTEGER NOT NULL,
+                        label TEXT NOT NULL,
+                        FOREIGN KEY(protocolId) REFERENCES protocol_templates(id)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_protocol_steps_protocolId ON protocol_steps(protocolId)")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_protocol_steps_protocolId_position ON protocol_steps(protocolId, position)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS protocol_runs (
+                        id TEXT NOT NULL PRIMARY KEY, protocolId TEXT NOT NULL,
+                        protocolRevision INTEGER NOT NULL, startedAt TEXT NOT NULL, completedAt TEXT,
+                        FOREIGN KEY(protocolId) REFERENCES protocol_templates(id)
+                            ON UPDATE NO ACTION ON DELETE RESTRICT
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_protocol_runs_protocolId ON protocol_runs(protocolId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_protocol_runs_completedAt ON protocol_runs(completedAt)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS protocol_run_steps (
+                        runId TEXT NOT NULL, stepId TEXT NOT NULL, completedAt TEXT,
+                        PRIMARY KEY(runId, stepId),
+                        FOREIGN KEY(runId) REFERENCES protocol_runs(id)
+                            ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(stepId) REFERENCES protocol_steps(id)
+                            ON UPDATE NO ACTION ON DELETE RESTRICT
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_protocol_run_steps_stepId ON protocol_run_steps(stepId)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS pending_operations (
+                        operationId TEXT NOT NULL PRIMARY KEY, deviceId TEXT NOT NULL,
+                        sequence INTEGER NOT NULL, contractVersion INTEGER NOT NULL,
+                        entityType TEXT NOT NULL, entityId TEXT NOT NULL, commandType TEXT NOT NULL,
+                        occurredAt TEXT NOT NULL, timeZone TEXT NOT NULL, payloadJson TEXT NOT NULL,
+                        payloadHash TEXT NOT NULL, baseRevision INTEGER, status TEXT NOT NULL,
+                        errorCode TEXT, errorMessage TEXT
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_pending_operations_deviceId_sequence ON pending_operations(deviceId, sequence)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_pending_operations_status ON pending_operations(status)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_pending_operations_entityType_entityId ON pending_operations(entityType, entityId)")
+            }
         }
     }
 }

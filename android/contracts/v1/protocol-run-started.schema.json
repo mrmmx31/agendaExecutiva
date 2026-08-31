@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/protocol-run-started.schema.json",
+  "title": "Protocol run started payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "protocol_id", "protocol_revision", "started_at"],
+  "properties": {
+    "run_id": { "type": "string", "format": "uuid" },
+    "protocol_id": { "type": "string", "format": "uuid" },
+    "protocol_revision": { "type": "integer", "minimum": 1 },
+    "started_at": { "type": "string", "format": "date-time" }
+  }
+}

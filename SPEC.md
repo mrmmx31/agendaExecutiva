@@ -1455,7 +1455,7 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 ## 32. Projeto 2 — Extensão móvel e sensorial
 
-**Status:** Especificado em 31/08/2026; implementação 10%. A fase `P2-01` está concluída em 100% (6 de 6 itens).
+**Status:** Especificado em 31/08/2026; implementação 20%. As fases `P2-01` e `P2-02` estão concluídas em 100% (6 de 6 itens cada).
 
 **Visão:** estender a Agenda para Android e Wear OS, mantendo o desktop como superfície de organização, o smartphone como nó móvel offline e o smartwatch como superfície curta de percepção e resposta. Alertas devem oferecer `Concluir` e `Adiar`; capturas e protocolos devem funcionar fora do notebook e convergir depois.
 
@@ -1465,4 +1465,4 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 **Documentos:** requisitos, arquitetura, fases e gates estão em `PROJECT2_SPEC.md`. O ponto de entrada para manutenção, catálogos, contratos e retomada de contexto está em `MAINTENANCE_MAP.md`.
 
-**Próxima ação:** iniciar `P2-02` com núcleo móvel offline, contratos versionados e dados exclusivamente fictícios. O scaffold, Room técnico, testes, lint, APK, temas, boots e pareamento dos AVDs próprios já foram validados. Não conectar telefone físico, banco pessoal, Health Connect ou IA nessa fase.
+**Próxima ação:** iniciar `P2-03` com desenho seguro do pareamento e sync local, seguido por implementação sobre fixtures e bancos isolados. O núcleo móvel offline, contratos v1, Room v2, captura, protocolo e fila durável já foram validados. Não conectar telefone físico, banco pessoal, Health Connect ou IA nessa fase.

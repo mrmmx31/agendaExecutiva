@@ -30,10 +30,10 @@ class MobileDatabaseTest {
 
     @Test
     fun metadataIsStoredByStableKey() = runBlocking {
-        val metadata = requireNotNull(database).metadata()
-        assertNull(metadata.find("contract_version"))
+        val metadata = requireNotNull(database).offline()
+        assertNull(metadata.metadata("contract_version"))
 
-        metadata.save(
+        metadata.saveMetadata(
             MobileMetadataEntity(
                 key = "contract_version",
                 value = "1",
@@ -41,6 +41,6 @@ class MobileDatabaseTest {
             ),
         )
 
-        assertEquals("1", metadata.find("contract_version")?.value)
+        assertEquals("1", metadata.metadata("contract_version")?.value)
     }
 }

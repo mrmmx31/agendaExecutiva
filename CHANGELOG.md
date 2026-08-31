@@ -10,6 +10,10 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Núcleo Android offline P2-02 com Room v2, captura local, réplica fictícia, protocolos e fila transacional de operações
+- Contrato móvel v1 com envelopes versionados, UUID, sequência, fuso e hash SHA-256, acompanhado por schemas JSON
+- Interface Compose para Hoje, Capturar, Protocolos e Fila, validada em temas claro e escuro no AVD reservado
+- Testes do repositório offline, idempotência, migração Room `1 -> 2` e fluxos Compose de leitura e captura
 - Contrato de foco como âncora não exclusiva: atividades paralelas não pausam sessões nem são classificadas automaticamente como distração
 - Scaffold Android do Projeto 2 com Kotlin/Compose, Room técnico com schema exportado, testes, lint e APK validados
 - AVDs próprios Android 14 com Play Store e Wear OS 5, mantendo dispositivo físico fora dos testes da P2-01

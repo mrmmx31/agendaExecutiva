@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/capture-created.schema.json",
+  "title": "Capture created payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["capture_id", "text", "created_at"],
+  "properties": {
+    "capture_id": { "type": "string", "format": "uuid" },
+    "text": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

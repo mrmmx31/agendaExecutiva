@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/operation-envelope.schema.json",
+  "title": "Agenda offline operation envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "operation_id",
+    "device_id",
+    "sequence",
+    "contract_version",
+    "entity_type",
+    "entity_id",
+    "command_type",
+    "occurred_at",
+    "time_zone",
+    "payload",
+    "payload_hash"
+  ],
+  "properties": {
+    "operation_id": { "type": "string", "format": "uuid" },
+    "device_id": { "type": "string", "format": "uuid" },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "contract_version": { "const": 1 },
+    "entity_type": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "entity_id": { "type": "string", "format": "uuid" },
+    "command_type": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "time_zone": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "payload": { "type": "object" },
+    "payload_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "base_revision": { "type": ["integer", "null"], "minimum": 0 }
+  }
+}

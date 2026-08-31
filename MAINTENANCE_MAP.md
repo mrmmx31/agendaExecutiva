@@ -8,7 +8,7 @@ Este documento é o ponto de entrada para manutenção. Ele reduz a necessidade 
 |---|---|
 | Correção desktop existente | `MAINTENANCE_MAP.md` → seção relevante de `DEVELOPMENT.md` → código/testes locais |
 | Regra ou UX do produto atual | `SPEC.md` → `ARCHITECTURE.md` → código/testes |
-| Projeto Android/Wear | `PROJECT2_SPEC.md` → futuros `contracts/README.md` e `android/README.md` |
+| Projeto Android/Wear | `PROJECT2_SPEC.md` → `android/contracts/README.md` → `android/README.md` |
 | IA ou personalização | `PROJECT2_SPEC.md` seções 14, 15, 20 e 21 → model card correspondente |
 | Saúde ou relatório médico | `PROJECT2_SPEC.md` seções 2, 12, 13, 15 e 21 |
 | Google Tasks | `SPEC.md` seções 9.9 e 26 → classes `Google*` → testes correspondentes |
@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 10%; `P2-01` concluída em 100% (6 de 6 itens), incluindo o pareamento dos AVDs pelo Android Studio.
+- Projeto 2: implementação em 20%; `P2-01` e `P2-02` concluídas em 100% (6 de 6 itens cada).
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -66,13 +66,10 @@ O scaffold `android/` foi criado em `P2-01`. Não criar arquivos vazios para fas
 agenda/
 ├── android/
 │   ├── settings.gradle.kts
-│   ├── app/                  # smartphone
+│   ├── app/                  # smartphone: Compose, Room, repositório e fila offline
+│   ├── contracts/            # schemas móveis versionados; compartilhados a partir da P2-03
 │   ├── wear/                 # criado apenas em P2-05 ou antes se necessário ao teste
 │   └── README.md
-├── contracts/
-│   ├── README.md
-│   ├── v1/                   # JSON Schemas e fixtures sem dados pessoais
-│   └── compatibility/
 ├── docs/
 │   ├── adr/                  # decisões arquiteturais numeradas
 │   ├── models/               # model cards
@@ -85,6 +82,17 @@ agenda/
 Não criar um módulo Java/Kotlin compartilhado entre Maven desktop e Android antes de existir duplicação real. O contrato compartilhado inicial é schema + fixtures.
 
 ## 6. Componentes móveis planejados
+
+Implementado em `P2-02`:
+
+| Área | Local |
+|---|---|
+| Room v2, entidades, DAO e migração | `android/app/src/main/java/com/pessoal/agenda/mobile/data/local/` |
+| Transações, fixtures e fila | `android/app/src/main/java/com/pessoal/agenda/mobile/data/OfflineRepository.kt` |
+| Estado e ações da UI | `android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileViewModel.kt` |
+| Telas Compose | `android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileApp.kt` |
+| Contrato v1 | `android/contracts/README.md` e `android/contracts/v1/` |
+| Testes | `android/app/src/test/` e `android/app/src/androidTest/` |
 
 | Domínio | Android | Wear | Desktop |
 |---|---|---|---|

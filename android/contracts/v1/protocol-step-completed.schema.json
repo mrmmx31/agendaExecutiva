@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/protocol-step-completed.schema.json",
+  "title": "Protocol step completed payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "step_id", "completed_at"],
+  "properties": {
+    "run_id": { "type": "string", "format": "uuid" },
+    "step_id": { "type": "string", "format": "uuid" },
+    "completed_at": { "type": "string", "format": "date-time" }
+  }
+}

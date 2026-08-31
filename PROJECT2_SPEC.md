@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação iniciada; 10% do Projeto 2 |
+| Status | Implementação iniciada; 20% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,11 +565,26 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. Com `P2-01` concluída, o avanço geral é 10%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. Com `P2-01` e `P2-02` concluídas, o avanço geral é 20%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
 Captura, réplica mínima, protocolos, fila de operações, schemas e dados fictícios. Sem rede e sem saúde.
+
+**Status:** Concluído em 2026-08-31, 100% (6 de 6 itens concluídos).
+
+**Checklist de avanço:**
+
+- [x] definir o contrato v1 e schemas JSON para envelope, captura e execução de protocolos;
+- [x] evoluir o Room para a versão 2 com migração explícita, schema exportado e tabelas do núcleo offline;
+- [x] persistir captura e operação na mesma transação, com UUID, sequência monotônica, hash e estado pendente;
+- [x] fornecer réplica mínima e protocolo determinísticos, exclusivamente fictícios e sem criar operações de sync;
+- [x] entregar telas Compose utilizáveis para Hoje, captura, protocolos e inspeção da fila;
+- [x] aprovar testes unitários, migração, Compose, lint, APK e inspeção clara/escura no AVD reservado.
+
+**Evidência:** `./gradlew test lint assembleDebug` passou; o lint não registrou erros e manteve apenas avisos de versões mais novas de dependências. `ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest` executou três testes com sucesso, incluindo a migração Room `1 -> 2` e o fluxo de captura. No AVD, uma captura fictícia e um protocolo de quatro passos produziram exatamente seis operações pendentes, sequenciais; a execução desapareceu após o último passo. A interface foi inspecionada nos temas claro e escuro com texto legível e sem sobreposição. Os schemas passaram em `jq empty`.
+
+**Limites preservados:** não há `INTERNET`, sincronização, credencial, Health Connect, IA ou dado pessoal nesta fase. O telefone físico e o banco desktop não foram usados.
 
 ### P2-03 — Pareamento e sync local
 
@@ -646,4 +661,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Iniciar `P2-02` pelo modelo offline e dados exclusivamente fictícios: captura local, protocolos, fila de operações e contratos versionados, ainda sem rede, dados pessoais, Health Connect ou IA. Manter `ANDROID_SERIAL` explícito para não usar o telefone físico.
+Iniciar `P2-03` pelo desenho do pareamento e do protocolo de sincronização local: ameaça, bootstrap por QR, identidade do dispositivo, TLS fixado, cursores, idempotência, revogação e conflitos. Implementar primeiro com fixtures e bancos isolados; manter `ANDROID_SERIAL` explícito e não usar telefone físico, banco pessoal, Health Connect ou IA.

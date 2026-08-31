@@ -1,8 +1,14 @@
 package com.pessoal.agenda.mobile.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
+import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
@@ -11,13 +17,57 @@ class AgendaMobileAppTest {
     val compose = createComposeRule()
 
     @Test
-    fun firstScreenShowsCurrentStateWithoutUnavailableActions() {
-        compose.setContent { AgendaMobileApp() }
+    fun homeShowsOfflineStateAndFictitiousTask() {
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(
+                        tasks = listOf(
+                            TaskReplicaEntity(
+                                id = "task-id",
+                                title = "Tarefa fictícia",
+                                status = "PENDING",
+                                revision = 1,
+                                updatedAt = "2026-08-31T12:00:00Z",
+                            ),
+                        ),
+                    ),
+                    onSaveCapture = { _, _ -> },
+                    onStartProtocol = {},
+                    onCompleteStep = { _, _ -> },
+                    onFeedbackShown = {},
+                )
+            }
+        }
 
         compose.onNodeWithText("Agenda").assertIsDisplayed()
-        compose.onNodeWithText("Agora").assertIsDisplayed()
-        compose.onNodeWithText("Nenhum alerta ativo").assertIsDisplayed()
-        compose.onNodeWithText("Telefone").assertIsDisplayed()
-        compose.onNodeWithText("Relógio").assertIsDisplayed()
+        compose.onNodeWithText("Somente neste telefone").assertIsDisplayed()
+        compose.onNodeWithText("Tarefa fictícia").assertIsDisplayed()
+    }
+
+    @Test
+    fun captureDraftIsSentAndOnlyClearedBySuccessCallback() {
+        var received = ""
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(),
+                    onSaveCapture = { text, onSaved ->
+                        received = text
+                        onSaved()
+                    },
+                    onStartProtocol = {},
+                    onCompleteStep = { _, _ -> },
+                    onFeedbackShown = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText("Capturar").performClick()
+        compose.onNodeWithText("Texto livre").performTextInput("Ideia offline")
+        compose.onNodeWithText("Salvar no telefone").assertIsEnabled().performClick()
+
+        assertEquals("Ideia offline", received)
+        compose.onNodeWithText("Ideia offline").assertDoesNotExist()
     }
 }

@@ -375,7 +375,8 @@ A IA recomenda; o domínio valida; o usuário decide. O motor de agenda nunca de
 - tempo até confirmar;
 - adiamentos e duração;
 - preferência manual do usuário;
-- contexto de capacidade escolhido explicitamente.
+- contexto de capacidade escolhido explicitamente;
+- contexto paralelo informado explicitamente pelo usuário, sem inferir perda de foco.
 
 Dados cardíacos, medicamentos, substâncias e sintomas ficam fora do ranking automático inicial. Só poderão entrar em pesquisa posterior com hipótese explícita, consentimento separado, avaliação de risco e sem inferência clínica.
 
@@ -396,6 +397,8 @@ Dados cardíacos, medicamentos, substâncias e sintomas ficam fora do ranking au
 **AI-07:** métricas de qualidade incluem taxa de correção manual, latência, bateria, adiamentos repetidos e alertas perdidos; “mais engajamento” não é objetivo suficiente.
 
 **AI-08:** versões de modelo e regra possuem rollback imediato.
+
+**AI-09:** simultaneidade, troca de janela ou uso de outro dispositivo não são sinais negativos isolados. O sistema não infere distração, não encerra foco e não aumenta alertas sem combinação validada de contexto e preferência explícita.
 
 ### 14.6 Catálogo de modelos
 

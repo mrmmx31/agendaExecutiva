@@ -54,8 +54,9 @@ Ao abrir a agenda, o usuário deve conseguir começar algo útil em até 30 segu
 6. **Retomada é parte do fluxo:** interromper não deve significar perder o contexto.
 7. **Ações reversíveis:** adiar, arquivar, trocar foco e reorganizar devem evitar perda de dados.
 8. **Explicabilidade:** sugestões automáticas devem informar por que foram escolhidas.
-9. **Local e privado:** dados pessoais permanecem no SQLite local, salvo sincronização explicitamente acionada.
-10. **Consistência:** janelas, botões, termos, estados vazios e atalhos seguem contratos comuns.
+9. **Foco como âncora, não exclusividade:** a tarefa principal organiza a retomada, mas atividades paralelas não significam distração nem encerram a sessão por inferência.
+10. **Local e privado:** dados pessoais permanecem no SQLite local, salvo sincronização explicitamente acionada.
+11. **Consistência:** janelas, botões, termos, estados vazios e atalhos seguem contratos comuns.
 
 ## 4. Objetivos e não objetivos
 
@@ -189,6 +190,8 @@ Legenda: **Concluído**, **Parcial**, **Pendente**.
 
 **NOW-08 — Pendências antigas:** tarefas muito antigas não devem dominar continuamente o foco. Elas entram na revisão e só retornam ao “Agora” quando escolhidas, críticas ou explicitamente reativadas.
 
+**NOW-09 — Âncora não exclusiva:** “foco principal” identifica o contexto que deve ser preservado e retomado. Ele não afirma que o usuário executa somente uma atividade, nem deve gerar alerta ou correção apenas porque outras janelas, dispositivos ou tarefas estão em uso.
+
 #### Ordem determinística de escolha automática
 
 1. Timer ativo.
@@ -254,6 +257,8 @@ Empates são resolvidos por prioridade, data de vencimento e ID crescente. A ord
 **FOC-07 — Encerramento:** parar uma sessão deve permitir salvar duração e observação sem perder o vínculo real com `task_id`.
 
 **FOC-08 — Recuperação:** se o aplicativo fechar com timer ativo, a próxima inicialização deve oferecer recuperar ou descartar o intervalo, sem contabilizá-lo silenciosamente.
+
+**FOC-09 — Continuidade explícita:** manutenção da Agenda, sincronização, troca de janela ou uso paralelo de outro aplicativo/dispositivo não pausa, encerra ou troca a sessão ativa. Somente ação explícita do usuário ou recuperação após encerramento do processo altera esse estado.
 
 ### 9.5 Encerramento e revisão
 

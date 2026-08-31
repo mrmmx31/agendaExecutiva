@@ -10,6 +10,7 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Contrato de foco como âncora não exclusiva: atividades paralelas não pausam sessões nem são classificadas automaticamente como distração
 - Scaffold Android do Projeto 2 com Kotlin/Compose, Room técnico com schema exportado, testes, lint e APK validados
 - AVDs próprios Android 14 com Play Store e Wear OS 5, mantendo dispositivo físico fora dos testes da P2-01
 - Especificação do Projeto 2 para Android/Wear OS, alertas sensoriais, sync offline, áudio, protocolos móveis, Health Connect, relatório e IA evolutiva

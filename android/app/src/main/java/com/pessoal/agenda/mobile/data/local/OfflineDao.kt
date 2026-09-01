@@ -9,6 +9,60 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface OfflineDao {
+    @Query("SELECT * FROM alert_definitions WHERE id=:id")
+    suspend fun alertDefinition(id: String): AlertDefinitionEntity?
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAlertDefinition(value: AlertDefinitionEntity)
+
+    @Query("SELECT * FROM alert_materializations WHERE alertId=:alertId")
+    suspend fun alertMaterialization(alertId: String): AlertMaterializationEntity?
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAlertMaterialization(value: AlertMaterializationEntity)
+
+    @Query("SELECT * FROM alert_deliveries WHERE id=:id")
+    suspend fun alertDelivery(id: String): AlertDeliveryEntity?
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAlertDelivery(value: AlertDeliveryEntity)
+
+    @Query("SELECT * FROM alert_actions WHERE operationId=:operationId")
+    suspend fun alertAction(operationId: String): AlertActionEntity?
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAlertAction(value: AlertActionEntity)
+
+    @Query("SELECT * FROM sensory_profiles WHERE id=:id")
+    suspend fun sensoryProfile(id: String): SensoryProfileEntity?
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSensoryProfile(value: SensoryProfileEntity): Long
+
+    @Upsert
+    suspend fun upsertSensoryProfile(value: SensoryProfileEntity)
+
+    @Query("UPDATE alert_materializations SET state='COMPLETED', completedAt=:now, updatedAt=:now WHERE alertId=:alertId AND state!='COMPLETED'")
+    suspend fun completeAlert(alertId: String, now: String): Int
+
+    @Query("UPDATE alert_materializations SET state='SNOOZED', nextEligibleAt=:until, snoozeCount=snoozeCount+1, updatedAt=:now WHERE alertId=:alertId AND state!='COMPLETED' AND snoozeCount<:maximumCount")
+    suspend fun snoozeAlert(alertId: String, until: String, now: String, maximumCount: Int): Int
+
+    @Query("UPDATE alert_materializations SET state='DELIVERED', deliveryCount=deliveryCount+1, lastDeliveryAt=:now, updatedAt=:now WHERE alertId=:alertId AND state!='COMPLETED' AND deliveryCount<:maximumDeliveries")
+    suspend fun markAlertDelivered(alertId: String, now: String, maximumDeliveries: Int): Int
+
+    @Query("UPDATE alert_materializations SET state=:state, updatedAt=:now WHERE alertId=:alertId AND state!='COMPLETED'")
+    suspend fun markAlertDeliveryOutcome(alertId: String, state: String, now: String): Int
+
+    @Query("SELECT COUNT(*) FROM alert_definitions")
+    suspend fun alertDefinitionCount(): Int
+
+    @Query("SELECT COUNT(*) FROM alert_deliveries")
+    suspend fun alertDeliveryCount(): Int
+
+    @Query("SELECT COUNT(*) FROM alert_actions")
+    suspend fun alertActionCount(): Int
+
     @Query("SELECT * FROM mobile_metadata WHERE `key` = :key")
     suspend fun metadata(key: String): MobileMetadataEntity?
 

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação iniciada; 31,7% do Projeto 2 |
+| Status | Implementação iniciada; 33,3% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01`, `P2-02` e `P2-03` estão concluídas; `P2-04` tem 1 de 6 itens. O avanço geral é 31,7% e restam 68,3%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01`, `P2-02` e `P2-03` estão concluídas; `P2-04` tem 2 de 6 itens. O avanço geral é 33,3% e restam 66,7%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -617,18 +617,20 @@ Servidor desktop, QR, TLS fixado, Keystore, cursores, snapshots, idempotência, 
 
 Notificações, concluir/adiar, horário silencioso, cooldown, WorkManager, perfis sensoriais, teste de rota e fallback.
 
-**Status:** Em andamento, 16,7% (1 de 6 itens concluídos).
+**Status:** Em andamento, 33,3% (2 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
 - [x] definir contratos fechados e guardrails puros para opt-in, janela válida, silêncio, pausa, cooldown, sobreposição, canais, repetição, `Concluir` e `Adiar`;
-- [ ] persistir definições, materializações, entregas, ações e perfil sensorial em Room com migração testada;
+- [x] persistir definições, materializações, entregas, ações e perfil sensorial em Room com migração testada;
 - [ ] agendar e reavaliar alertas com WorkManager, incluindo reboot, Doze, expiração e cancelamento imediato;
 - [ ] publicar notificação Android opt-in com ações idempotentes `Concluir` e `Adiar`, sem estímulo na instalação;
 - [ ] criar configurações de perfil, presets, pausa, canais e política de áudio com teste curto cancelável e fallback visível;
 - [ ] aprovar matriz no AVD para permissão negada/concedida, silêncio, cooldown, sobreposição, ações offline, reinício e mudança de rota.
 
 **Evidência do primeiro item:** `alert/AlertContracts.kt` fixa formas versionadas e limites; `AlertPolicy` decide sem efeitos colaterais e registra razão técnica de toda supressão. A instalação começa com o controle geral desligado e somente o canal visual pré-selecionado. Três schemas e fixtures compartilhados cobrem definição, perfil e ação; os leitores Kotlin e Java aceitam as mesmas formas fechadas. Seis testes novos cobrem opt-in, interseção de canais, silêncio atravessando meia-noite, pausa, cooldown, sobreposição, limite de entregas e validação temporal de concluir/adiar. `./gradlew testDebugUnitTest` passou com 26 testes e o teste Java de fixtures passou sem emitir notificação, vibração ou som.
+
+**Evidência do segundo item:** Room v4 separa `alert_definitions`, `alert_materializations`, `alert_deliveries`, `alert_actions` e `sensory_profiles`, com chaves estrangeiras, índices de estado/tempo e schema exportado. `AlertStore` materializa definição e estado atomicamente, rejeita reutilização divergente de IDs, preserva repetição idempotente, limita entregas/adiamentos e mantém somente códigos técnicos nas falhas. O perfil cauteloso desligado é criado no startup, sem solicitar permissão nem emitir estímulo. Cinco testes do store passaram dentro da suíte local de 31 testes; 13 testes instrumentados no `emulator-5556` validaram inclusive migrações `1 -> 4`, `2 -> 4` e `3 -> 4`. O telefone físico não foi usado.
 
 ### P2-05 — Wear OS
 
@@ -697,4 +699,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Prosseguir em `P2-04` pela persistência Room de definições, materializações, entregas, ações e perfil sensorial, com migração `3 -> 4` testada. Nenhuma notificação ou saída sensorial deve ser ativada nessa entrega.
+Prosseguir em `P2-04` pelo agendamento e reavaliação com WorkManager: trabalho único por alerta, expiração, cancelamento, reboot/Doze e rechecagem de todas as barreiras antes de qualquer entrega. A saída concreta continuará simulada nessa etapa.

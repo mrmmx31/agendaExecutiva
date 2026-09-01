@@ -18,8 +18,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ProtocolRunStepEntity::class,
         PendingOperationEntity::class,
         SyncConflictEntity::class,
+        AlertDefinitionEntity::class,
+        AlertMaterializationEntity::class,
+        AlertDeliveryEntity::class,
+        AlertActionEntity::class,
+        SensoryProfileEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class MobileDatabase : RoomDatabase() {
@@ -35,7 +40,7 @@ abstract class MobileDatabase : RoomDatabase() {
                 context.applicationContext,
                 MobileDatabase::class.java,
                 DATABASE_NAME,
-            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
         }
 
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -131,6 +136,70 @@ abstract class MobileDatabase : RoomDatabase() {
                 """.trimIndent())
                 database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_sync_conflicts_operationId ON sync_conflicts(operationId)")
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_sync_conflicts_status ON sync_conflicts(status)")
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS alert_definitions (
+                        id TEXT NOT NULL PRIMARY KEY, contractVersion INTEGER NOT NULL,
+                        origin TEXT NOT NULL, referenceId TEXT, text TEXT NOT NULL,
+                        reason TEXT NOT NULL, sourceDeviceId TEXT NOT NULL,
+                        scheduledAt TEXT NOT NULL, validUntil TEXT NOT NULL,
+                        criticality TEXT NOT NULL, allowedChannelsJson TEXT NOT NULL,
+                        maxDeliveries INTEGER NOT NULL, minimumIntervalMinutes INTEGER NOT NULL,
+                        actionsJson TEXT NOT NULL, createdAt TEXT NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_alert_definitions_scheduledAt ON alert_definitions(scheduledAt)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_alert_definitions_validUntil ON alert_definitions(validUntil)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS alert_materializations (
+                        alertId TEXT NOT NULL PRIMARY KEY, state TEXT NOT NULL,
+                        nextEligibleAt TEXT NOT NULL, deliveryCount INTEGER NOT NULL,
+                        snoozeCount INTEGER NOT NULL, lastDeliveryAt TEXT, completedAt TEXT,
+                        updatedAt TEXT NOT NULL,
+                        FOREIGN KEY(alertId) REFERENCES alert_definitions(id)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_alert_materializations_state_nextEligibleAt ON alert_materializations(state, nextEligibleAt)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS alert_deliveries (
+                        id TEXT NOT NULL PRIMARY KEY, alertId TEXT NOT NULL,
+                        deviceId TEXT NOT NULL, channelsJson TEXT NOT NULL,
+                        state TEXT NOT NULL, technicalReason TEXT, attemptedAt TEXT NOT NULL,
+                        FOREIGN KEY(alertId) REFERENCES alert_definitions(id)
+                            ON UPDATE NO ACTION ON DELETE RESTRICT
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_alert_deliveries_alertId ON alert_deliveries(alertId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_alert_deliveries_state ON alert_deliveries(state)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS alert_actions (
+                        operationId TEXT NOT NULL PRIMARY KEY, alertId TEXT NOT NULL,
+                        sourceDeviceId TEXT NOT NULL, action TEXT NOT NULL,
+                        occurredAt TEXT NOT NULL, snoozeUntil TEXT, syncState TEXT NOT NULL,
+                        createdAt TEXT NOT NULL,
+                        FOREIGN KEY(alertId) REFERENCES alert_definitions(id)
+                            ON UPDATE NO ACTION ON DELETE RESTRICT
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_alert_actions_alertId ON alert_actions(alertId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_alert_actions_syncState ON alert_actions(syncState)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS sensory_profiles (
+                        id TEXT NOT NULL PRIMARY KEY, contractVersion INTEGER NOT NULL,
+                        globalEnabled INTEGER NOT NULL, enabledChannelsJson TEXT NOT NULL,
+                        quietStartsAt TEXT, quietEndsAt TEXT, pausedUntil TEXT,
+                        cooldownMinutes INTEGER NOT NULL, audioRoute TEXT NOT NULL,
+                        snoozePresetMinutesJson TEXT NOT NULL,
+                        snoozeMinimumMinutes INTEGER NOT NULL,
+                        snoozeMaximumMinutes INTEGER NOT NULL,
+                        snoozeMaximumCount INTEGER NOT NULL, updatedAt TEXT NOT NULL
+                    )
+                """.trimIndent())
             }
         }
     }

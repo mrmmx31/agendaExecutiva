@@ -1,7 +1,6 @@
 package com.pessoal.agenda.mobile.data.local
 
 import androidx.room.testing.MigrationTestHelper
-import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -14,12 +13,11 @@ class MobileDatabaseMigrationTest {
     @get:Rule
     val helper = MigrationTestHelper(
         InstrumentationRegistry.getInstrumentation(),
-        MobileDatabase::class.java.canonicalName,
-        FrameworkSQLiteOpenHelperFactory(),
+        MobileDatabase::class.java,
     )
 
     @Test
-    fun migrateFromMetadataOnlyDatabaseToOfflineCore() {
+    fun migrateMetadataDatabaseThroughDurableAlerts() {
         helper.createDatabase(TEST_DATABASE, 1).use { database ->
             database.execSQL(
                 "INSERT INTO mobile_metadata (`key`, value, updatedAt) VALUES (?, ?, ?)",
@@ -29,10 +27,11 @@ class MobileDatabaseMigrationTest {
 
         helper.runMigrationsAndValidate(
             TEST_DATABASE,
-            3,
+            4,
             true,
             MobileDatabase.MIGRATION_1_2,
             MobileDatabase.MIGRATION_2_3,
+            MobileDatabase.MIGRATION_3_4,
         ).use { database ->
             database.query("SELECT value FROM mobile_metadata WHERE `key`='contract_version'").use { cursor ->
                 cursor.moveToFirst()
@@ -68,7 +67,7 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            QUEUE_DATABASE, 3, true, MobileDatabase.MIGRATION_2_3,
+            QUEUE_DATABASE, 4, true, MobileDatabase.MIGRATION_2_3, MobileDatabase.MIGRATION_3_4,
         ).use { database ->
             database.query("SELECT status, attemptCount, updatedAt FROM pending_operations").use { cursor ->
                 cursor.moveToFirst()
@@ -79,8 +78,27 @@ class MobileDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun migrateSyncDatabaseToDurableAlerts() {
+        helper.createDatabase(ALERT_DATABASE, 3).close()
+
+        helper.runMigrationsAndValidate(
+            ALERT_DATABASE, 4, true, MobileDatabase.MIGRATION_3_4,
+        ).use { database ->
+            database.query("SELECT COUNT(*) FROM alert_definitions").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+            database.query("SELECT COUNT(*) FROM sensory_profiles").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
     private companion object {
         const val TEST_DATABASE = "agenda-mobile-migration-test.db"
         const val QUEUE_DATABASE = "agenda-mobile-queue-migration-test.db"
+        const val ALERT_DATABASE = "agenda-mobile-alert-migration-test.db"
     }
 }

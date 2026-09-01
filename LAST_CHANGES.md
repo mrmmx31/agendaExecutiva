@@ -7,8 +7,8 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | feat(alerts): definir contratos sensoriais P2-04 |
-| Data | 2026-09-01 14:33:17 -0400 |
+| Mensagem | feat(alerts): persistir estado sensorial no Room |
+| Data | 2026-09-01 14:53:44 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
@@ -19,43 +19,33 @@ MAINTENANCE_MAP.md
 PROJECT2_SPEC.md
 SPEC.md
 android/README.md
-android/app/src/main/java/com/pessoal/agenda/mobile/alert/AlertContracts.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/alert/AlertPolicy.kt
-android/app/src/test/java/com/pessoal/agenda/mobile/alert/AlertContractsTest.kt
-android/app/src/test/java/com/pessoal/agenda/mobile/sync/SharedContractFixtureTest.kt
-android/contracts/ALERTS_V1.md
-android/contracts/README.md
-android/contracts/fixtures/v1/alert-action.valid.json
-android/contracts/fixtures/v1/alert-definition.valid.json
-android/contracts/fixtures/v1/sensory-profile.valid.json
-android/contracts/v1/alert-action.schema.json
-android/contracts/v1/alert-definition.schema.json
-android/contracts/v1/sensory-profile.schema.json
-src/test/java/com/pessoal/agenda/contracts/SharedContractFixtureTest.java
+android/app/schemas/com.pessoal.agenda.mobile.data.local.MobileDatabase/4.json
+android/app/src/androidTest/java/com/pessoal/agenda/mobile/data/local/MobileDatabaseMigrationTest.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/AlertStore.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/local/AlertEntities.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/local/MobileDatabase.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/local/OfflineDao.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileViewModel.kt
+android/app/src/test/java/com/pessoal/agenda/mobile/data/AlertStoreTest.kt
 ```
 
 ## Diff Resumido
 
 ```diff
- CHANGELOG.md                                       |   1 +
- MAINTENANCE_MAP.md                                 |   3 +-
- PROJECT2_SPEC.md                                   |  19 ++-
- SPEC.md                                            |   4 +-
- android/README.md                                  |   3 +-
- .../pessoal/agenda/mobile/alert/AlertContracts.kt  | 188 +++++++++++++++++++++
- .../com/pessoal/agenda/mobile/alert/AlertPolicy.kt |  71 ++++++++
- .../agenda/mobile/alert/AlertContractsTest.kt      | 142 ++++++++++++++++
- .../mobile/sync/SharedContractFixtureTest.kt       |  11 +-
- android/contracts/ALERTS_V1.md                     |  34 ++++
- android/contracts/README.md                        |   5 +
- .../contracts/fixtures/v1/alert-action.valid.json  |   9 +
- .../fixtures/v1/alert-definition.valid.json        |  18 ++
- .../fixtures/v1/sensory-profile.valid.json         |  12 ++
- android/contracts/v1/alert-action.schema.json      |  16 ++
- android/contracts/v1/alert-definition.schema.json  |  40 +++++
- android/contracts/v1/sensory-profile.schema.json   |  28 +++
- .../contracts/SharedContractFixtureTest.java       |   8 +
- 18 files changed, 604 insertions(+), 8 deletions(-)
+ CHANGELOG.md                                       |    1 +
+ MAINTENANCE_MAP.md                                 |    3 +-
+ PROJECT2_SPEC.md                                   |   12 +-
+ SPEC.md                                            |    4 +-
+ android/README.md                                  |    3 +-
+ .../4.json                                         | 1170 ++++++++++++++++++++
+ .../data/local/MobileDatabaseMigrationTest.kt      |   30 +-
+ .../com/pessoal/agenda/mobile/data/AlertStore.kt   |  263 +++++
+ .../agenda/mobile/data/local/AlertEntities.kt      |  108 ++
+ .../agenda/mobile/data/local/MobileDatabase.kt     |   73 +-
+ .../pessoal/agenda/mobile/data/local/OfflineDao.kt |   54 +
+ .../agenda/mobile/ui/AgendaMobileViewModel.kt      |    3 +
+ .../pessoal/agenda/mobile/data/AlertStoreTest.kt   |  191 ++++
+ 13 files changed, 1898 insertions(+), 17 deletions(-)
 ```
 
 ---

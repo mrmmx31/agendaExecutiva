@@ -9,9 +9,12 @@ import com.pessoal.agenda.mobile.alert.AlertOrigin
 import com.pessoal.agenda.mobile.alert.AlertRepeatPolicy
 import com.pessoal.agenda.mobile.alert.FunctionalCriticality
 import com.pessoal.agenda.mobile.alert.SensoryChannel
+import com.pessoal.agenda.mobile.alert.output.AlertSensoryOutput
+import com.pessoal.agenda.mobile.alert.output.SensoryOutputResult
 import com.pessoal.agenda.mobile.alert.scheduling.AlertSchedulingCoordinator
 import com.pessoal.agenda.mobile.alert.scheduling.AlertWorkEnqueuer
 import com.pessoal.agenda.mobile.data.AlertDeliveryCandidate
+import com.pessoal.agenda.mobile.data.AlertDeliveryReason
 import com.pessoal.agenda.mobile.data.AlertSchedule
 import com.pessoal.agenda.mobile.data.AlertStore
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
@@ -89,6 +92,41 @@ class AlertNotificationDeliveryTest {
     }
 
     @Test
+    fun audioOnlyDeliveryDoesNotPublishVisualNotification() = runBlocking {
+        enableChannels(setOf(SensoryChannel.AUDIO))
+        store.materialize(alert(ALERT_ID, setOf(SensoryChannel.AUDIO)))
+        val sensory = RecordingSensoryOutput(
+            SensoryOutputResult(setOf(SensoryChannel.AUDIO), AlertDeliveryReason.AUDIO_FALLBACK),
+        )
+
+        processor(sensory).process(ALERT_ID, DELIVERY_ID)
+
+        assertTrue(publisher.published.isEmpty())
+        val delivery = requireNotNull(database.offline().alertDelivery(DELIVERY_ID))
+        assertEquals("DELIVERED", delivery.state)
+        assertEquals("AUDIO_FALLBACK", delivery.technicalReason)
+        assertTrue(delivery.channelsJson.contains("AUDIO"))
+    }
+
+    @Test
+    fun failedSensoryChannelRecordsPartialVisualDelivery() = runBlocking {
+        val channels = setOf(SensoryChannel.VISUAL, SensoryChannel.PHONE_VIBRATION)
+        enableChannels(channels)
+        store.materialize(alert(ALERT_ID, channels))
+        val sensory = RecordingSensoryOutput(
+            SensoryOutputResult(emptySet(), AlertDeliveryReason.ROUTE_UNAVAILABLE),
+        )
+
+        processor(sensory).process(ALERT_ID, DELIVERY_ID)
+
+        val delivery = requireNotNull(database.offline().alertDelivery(DELIVERY_ID))
+        assertEquals("DELIVERED", delivery.state)
+        assertEquals("PARTIAL_DELIVERY", delivery.technicalReason)
+        assertTrue(delivery.channelsJson.contains("VISUAL"))
+        assertFalse(delivery.channelsJson.contains("PHONE_VIBRATION"))
+    }
+
+    @Test
     fun completeActionIsIdempotentAndCancelsNotificationAndWork() = runBlocking {
         store.materialize(alert(ALERT_ID))
         val action = AlertNotificationAction(
@@ -134,10 +172,11 @@ class AlertNotificationDeliveryTest {
         assertEquals(listOf(ALERT_ID, ALERT_ID), publisher.cancelled)
     }
 
-    private fun processor() = AlertDeliveryProcessor(
+    private fun processor(sensoryOutput: AlertSensoryOutput = NoSensoryOutput) = AlertDeliveryProcessor(
         store = store,
         enqueuer = enqueuer,
         publisher = publisher,
+        sensoryOutput = sensoryOutput,
         deviceIdProvider = { DEVICE_ID },
         clock = clock,
     )
@@ -149,7 +188,15 @@ class AlertNotificationDeliveryTest {
         deviceIdProvider = { DEVICE_ID },
     )
 
-    private fun alert(id: String) = AlertDefinition(
+    private suspend fun enableChannels(channels: Set<SensoryChannel>) {
+        val stored = store.ensureInstallationProfile()
+        store.saveProfile(stored.profile.copy(enabledChannels = channels), stored.snoozePolicy)
+    }
+
+    private fun alert(
+        id: String,
+        channels: Set<SensoryChannel> = setOf(SensoryChannel.VISUAL),
+    ) = AlertDefinition(
         contractVersion = 1,
         alertId = id,
         origin = AlertOrigin.TASK,
@@ -160,7 +207,7 @@ class AlertNotificationDeliveryTest {
         scheduledAt = now.minusSeconds(60).toString(),
         validUntil = now.plusSeconds(3_600).toString(),
         criticality = FunctionalCriticality.ROUTINE,
-        allowedChannels = setOf(SensoryChannel.VISUAL),
+        allowedChannels = channels,
         repeatPolicy = AlertRepeatPolicy(2, 15),
         actions = setOf(AlertActionType.COMPLETE, AlertActionType.SNOOZE),
     )
@@ -187,6 +234,14 @@ class AlertNotificationDeliveryTest {
             return result
         }
         override fun cancel(alertId: String) { cancelled += alertId }
+    }
+
+    private data object NoSensoryOutput : AlertSensoryOutput {
+        override suspend fun deliver(candidate: AlertDeliveryCandidate) = SensoryOutputResult(emptySet())
+    }
+
+    private class RecordingSensoryOutput(private val result: SensoryOutputResult) : AlertSensoryOutput {
+        override suspend fun deliver(candidate: AlertDeliveryCandidate) = result
     }
 
     private companion object {

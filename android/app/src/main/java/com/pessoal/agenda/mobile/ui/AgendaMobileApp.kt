@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Checklist
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
@@ -78,6 +80,7 @@ import com.pessoal.agenda.mobile.data.local.PendingOperationEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
 import com.pessoal.agenda.mobile.data.local.SyncConflictEntity
+import com.pessoal.agenda.mobile.alert.SensoryChannel
 import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
 import java.time.Instant
 import java.time.ZoneId
@@ -118,6 +121,8 @@ fun AgendaMobileApp(
                 if (!enabled) {
                     viewModel.setVisualAlertsEnabled(false)
                 } else if (
+                    SensoryChannel.VISUAL in state.sensorySettings.profile.enabledChannels
+                    &&
                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                     && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED
@@ -127,6 +132,21 @@ fun AgendaMobileApp(
                     viewModel.setVisualAlertsEnabled(true)
                 }
             },
+            onSaveSensorySettings = { profile, snooze ->
+                viewModel.saveSensorySettings(profile, snooze)
+                if (
+                    state.sensorySettings.profile.globalEnabled
+                    && SensoryChannel.VISUAL in profile.enabledChannels
+                    && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED
+                ) {
+                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            },
+            onPauseSensoryAlerts = viewModel::pauseSensoryAlerts,
+            onTestAudio = viewModel::toggleAudioTest,
+            onRefreshAudioRoute = viewModel::refreshAudioRoute,
             initialPairingInvitation = initialPairingInvitation,
         )
     }
@@ -146,9 +166,14 @@ internal fun AgendaMobileScreen(
     onFeedbackShown: () -> Unit,
     initialPairingInvitation: String? = null,
     onVisualAlertsChanged: (Boolean) -> Unit = {},
+    onSaveSensorySettings: (com.pessoal.agenda.mobile.alert.SensoryProfile, com.pessoal.agenda.mobile.alert.SnoozePolicy) -> Unit = { _, _ -> },
+    onPauseSensoryAlerts: (Int?) -> Unit = {},
+    onTestAudio: () -> Unit = {},
+    onRefreshAudioRoute: () -> Unit = {},
 ) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var showPairing by rememberSaveable { mutableStateOf(false) }
+    var showSensorySettings by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.feedback) {
         state.feedback?.let {
@@ -181,12 +206,28 @@ internal fun AgendaMobileScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Agenda")
-                        Text(
-                            text = "Núcleo offline",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Text(if (showSensorySettings) "Configurações sensoriais" else "Agenda")
+                        if (!showSensorySettings) {
+                            Text(
+                                text = "Núcleo offline",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
+                navigationIcon = {
+                    if (showSensorySettings) {
+                        IconButton(onClick = { showSensorySettings = false }) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Voltar")
+                        }
+                    }
+                },
+                actions = {
+                    if (!showSensorySettings) {
+                        IconButton(onClick = { showSensorySettings = true }) {
+                            Icon(Icons.Outlined.Settings, contentDescription = "Configurações sensoriais")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -194,49 +235,65 @@ internal fun AgendaMobileScreen(
         },
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            NavigationBar {
-                MobileSection.entries.forEachIndexed { index, section ->
-                    NavigationBarItem(
-                        selected = selected == index,
-                        onClick = { selected = index },
-                        icon = { Icon(section.icon, contentDescription = null) },
-                        label = { Text(section.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    )
+            if (!showSensorySettings) {
+                NavigationBar {
+                    MobileSection.entries.forEachIndexed { index, section ->
+                        NavigationBarItem(
+                            selected = selected == index,
+                            onClick = { selected = index },
+                            icon = { Icon(section.icon, contentDescription = null) },
+                            label = { Text(section.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        )
+                    }
                 }
             }
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            OfflineStatusBand(
-                state.operations.count { it.status in setOf("PENDING", "RETRYABLE", "IN_FLIGHT") },
-                state.canSync,
-                state.busy,
-                onSync,
-                onPair = { showPairing = true },
-            )
-            VisualAlertsOptInBand(
-                enabled = state.visualAlertsEnabled,
-                busy = state.busy,
-                onChanged = onVisualAlertsChanged,
-            )
-            when (MobileSection.entries[selected]) {
-                MobileSection.TODAY -> TodayScreen(state.tasks)
-                MobileSection.CAPTURE -> CaptureScreen(state, onSaveCapture)
-                MobileSection.PROTOCOLS -> ProtocolScreen(
-                    state.protocols,
-                    state.activeRunSteps,
-                    state.busy,
-                    onStartProtocol,
-                    onCompleteStep,
+            if (showSensorySettings) {
+                SensorySettingsScreen(
+                    state = state.sensorySettings,
+                    alertsEnabled = state.sensorySettings.profile.globalEnabled,
+                    visualNotificationsAvailable = state.visualAlertsEnabled,
+                    busy = state.busy,
+                    onGlobalChanged = onVisualAlertsChanged,
+                    onSave = onSaveSensorySettings,
+                    onPause = onPauseSensoryAlerts,
+                    onTestAudio = onTestAudio,
+                    onRefreshRoute = onRefreshAudioRoute,
                 )
-                MobileSection.QUEUE -> QueueScreen(state.operations, state.conflicts)
+            } else {
+                OfflineStatusBand(
+                    state.operations.count { it.status in setOf("PENDING", "RETRYABLE", "IN_FLIGHT") },
+                    state.canSync,
+                    state.busy,
+                    onSync,
+                    onPair = { showPairing = true },
+                )
+                AlertsOptInBand(
+                    enabled = state.sensorySettings.profile.globalEnabled,
+                    busy = state.busy,
+                    onChanged = onVisualAlertsChanged,
+                )
+                when (MobileSection.entries[selected]) {
+                    MobileSection.TODAY -> TodayScreen(state.tasks)
+                    MobileSection.CAPTURE -> CaptureScreen(state, onSaveCapture)
+                    MobileSection.PROTOCOLS -> ProtocolScreen(
+                        state.protocols,
+                        state.activeRunSteps,
+                        state.busy,
+                        onStartProtocol,
+                        onCompleteStep,
+                    )
+                    MobileSection.QUEUE -> QueueScreen(state.operations, state.conflicts)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun VisualAlertsOptInBand(
+private fun AlertsOptInBand(
     enabled: Boolean,
     busy: Boolean,
     onChanged: (Boolean) -> Unit,
@@ -257,9 +314,9 @@ private fun VisualAlertsOptInBand(
             ) {
                 Icon(Icons.Outlined.NotificationsNone, contentDescription = null)
                 Column {
-                    Text("Alertas visuais", style = MaterialTheme.typography.labelLarge)
+                    Text("Alertas sensoriais", style = MaterialTheme.typography.labelLarge)
                     Text(
-                        if (enabled) "Ativados e silenciosos" else "Desativados",
+                        if (enabled) "Ativados conforme o perfil" else "Desativados",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -270,7 +327,7 @@ private fun VisualAlertsOptInBand(
                 onCheckedChange = onChanged,
                 enabled = !busy,
                 modifier = Modifier.semantics {
-                    contentDescription = if (enabled) "Desativar alertas visuais" else "Ativar alertas visuais"
+                    contentDescription = if (enabled) "Desativar alertas" else "Ativar alertas"
                 },
             )
         }

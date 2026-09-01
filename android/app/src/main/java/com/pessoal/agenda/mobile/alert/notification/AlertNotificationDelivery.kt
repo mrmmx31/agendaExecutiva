@@ -16,6 +16,8 @@ import com.pessoal.agenda.mobile.alert.AlertActionCommand
 import com.pessoal.agenda.mobile.alert.AlertActionType
 import com.pessoal.agenda.mobile.alert.AlertDefinition
 import com.pessoal.agenda.mobile.alert.SensoryChannel
+import com.pessoal.agenda.mobile.alert.output.AlertSensoryOutput
+import com.pessoal.agenda.mobile.alert.output.SensoryOutputResult
 import com.pessoal.agenda.mobile.alert.scheduling.AlertSchedulingCoordinator
 import com.pessoal.agenda.mobile.alert.scheduling.AlertWorkEnqueuer
 import com.pessoal.agenda.mobile.data.AlertDeliveryCandidate
@@ -33,6 +35,7 @@ class AlertDeliveryProcessor(
     private val store: AlertStore,
     private val enqueuer: AlertWorkEnqueuer,
     private val publisher: AlertNotificationPublisher,
+    private val sensoryOutput: AlertSensoryOutput,
     private val deviceIdProvider: () -> String,
     private val clock: Clock = Clock.systemUTC(),
 ) {
@@ -56,29 +59,13 @@ class AlertDeliveryProcessor(
             occurredAt = occurredAt,
             snoozeUntil = occurredAt.plusSeconds(evaluation.candidate.snoozeMinutes * 60L),
         )
-        val result = publisher.publish(evaluation.candidate, command)
-        val outcome = when (result) {
-            NotificationPublishResult.PUBLISHED -> DeliveryOutcome(
-                AlertDeliveryOutcome.DELIVERED,
-                setOf(SensoryChannel.VISUAL),
-                null,
-            )
-            NotificationPublishResult.PERMISSION_DENIED -> DeliveryOutcome(
-                AlertDeliveryOutcome.SUPPRESSED,
-                emptySet(),
-                AlertDeliveryReason.PERMISSION_DENIED,
-            )
-            NotificationPublishResult.ROUTE_UNAVAILABLE -> DeliveryOutcome(
-                AlertDeliveryOutcome.FAILED,
-                emptySet(),
-                AlertDeliveryReason.ROUTE_UNAVAILABLE,
-            )
-            NotificationPublishResult.SYSTEM_FAILURE -> DeliveryOutcome(
-                AlertDeliveryOutcome.FAILED,
-                emptySet(),
-                AlertDeliveryReason.SYSTEM_FAILURE,
-            )
+        val visualResult = if (SensoryChannel.VISUAL in evaluation.candidate.channels) {
+            publisher.publish(evaluation.candidate, command)
+        } else {
+            null
         }
+        val sensoryResult = sensoryOutput.deliver(evaluation.candidate)
+        val outcome = outcome(evaluation.candidate.channels, visualResult, sensoryResult)
         store.recordDelivery(
             AlertDeliveryRecord(
                 deliveryId = deliveryId,
@@ -90,11 +77,41 @@ class AlertDeliveryProcessor(
                 attemptedAt = occurredAt.toString(),
             ),
         )
-        if (result == NotificationPublishResult.PUBLISHED) {
+        if (outcome.outcome == AlertDeliveryOutcome.DELIVERED) {
             evaluation.nextEvaluationAt
                 ?.let { store.scheduleEvaluation(evaluation.candidate.alertId, it) }
                 ?.let(enqueuer::append)
         }
+    }
+
+    private fun outcome(
+        requested: Set<SensoryChannel>,
+        visualResult: NotificationPublishResult?,
+        sensoryResult: SensoryOutputResult,
+    ): DeliveryOutcome {
+        val delivered = sensoryResult.deliveredChannels.toMutableSet()
+        if (visualResult == NotificationPublishResult.PUBLISHED) delivered += SensoryChannel.VISUAL
+        if (delivered.isNotEmpty()) {
+            val incomplete = requested.any { it !in delivered }
+            val reason = when {
+                incomplete -> AlertDeliveryReason.PARTIAL_DELIVERY
+                sensoryResult.reason == AlertDeliveryReason.AUDIO_FALLBACK -> AlertDeliveryReason.AUDIO_FALLBACK
+                else -> null
+            }
+            return DeliveryOutcome(AlertDeliveryOutcome.DELIVERED, delivered, reason)
+        }
+        val reason = when {
+            visualResult == NotificationPublishResult.PERMISSION_DENIED -> AlertDeliveryReason.PERMISSION_DENIED
+            visualResult == NotificationPublishResult.SYSTEM_FAILURE -> AlertDeliveryReason.SYSTEM_FAILURE
+            sensoryResult.reason != null -> sensoryResult.reason
+            else -> AlertDeliveryReason.ROUTE_UNAVAILABLE
+        }
+        val outcome = if (reason == AlertDeliveryReason.PERMISSION_DENIED) {
+            AlertDeliveryOutcome.SUPPRESSED
+        } else {
+            AlertDeliveryOutcome.FAILED
+        }
+        return DeliveryOutcome(outcome, emptySet(), reason)
     }
 
     private fun operationId(deliveryId: String, action: AlertActionType): String = UUID.nameUUIDFromBytes(

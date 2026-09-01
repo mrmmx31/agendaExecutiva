@@ -135,6 +135,7 @@ class AlertStore(
                     channels = decision.channels,
                     actions = definition.actions,
                     snoozeMinutes = storedProfile.snoozePolicy.presetMinutes.first(),
+                    audioRoute = storedProfile.profile.audioRoute,
                 ),
                 nextEvaluationAt = nextEvaluationAt,
             )
@@ -386,6 +387,7 @@ data class AlertDeliveryCandidate(
     val channels: Set<SensoryChannel>,
     val actions: Set<AlertActionType>,
     val snoozeMinutes: Int,
+    val audioRoute: AudioRoutePolicy,
 )
 
 data class AlertDeliveryRecord(
@@ -403,7 +405,10 @@ data class AlertDeliveryRecord(
         UUID.fromString(deviceId)
         Instant.parse(attemptedAt)
         if (outcome == AlertDeliveryOutcome.DELIVERED) {
-            require(channels.isNotEmpty() && technicalReason == null) { "Entrega confirmada inválida." }
+            require(
+                channels.isNotEmpty()
+                    && technicalReason in setOf(null, AlertDeliveryReason.AUDIO_FALLBACK, AlertDeliveryReason.PARTIAL_DELIVERY),
+            ) { "Entrega confirmada inválida." }
         } else {
             require(technicalReason != null) { "Resultado técnico sem razão." }
         }
@@ -426,4 +431,7 @@ enum class AlertDeliveryReason {
     PERMISSION_DENIED,
     ROUTE_UNAVAILABLE,
     SYSTEM_FAILURE,
+    SYSTEM_POLICY,
+    AUDIO_FALLBACK,
+    PARTIAL_DELIVERY,
 }

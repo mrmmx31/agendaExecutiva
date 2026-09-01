@@ -11,7 +11,11 @@ import com.pessoal.agenda.mobile.data.AlertStore
 import com.pessoal.agenda.mobile.data.OfflineRepository
 import com.pessoal.agenda.mobile.alert.scheduling.AlertSchedulingCoordinator
 import com.pessoal.agenda.mobile.alert.SensoryChannel
+import com.pessoal.agenda.mobile.alert.SensoryProfile
+import com.pessoal.agenda.mobile.alert.SnoozePolicy
 import com.pessoal.agenda.mobile.alert.notification.AndroidAlertNotificationPublisher
+import com.pessoal.agenda.mobile.alert.output.AndroidSensoryOutput
+import com.pessoal.agenda.mobile.alert.output.AudioRouteStatus
 import com.pessoal.agenda.mobile.data.local.ActiveRunStepRow
 import com.pessoal.agenda.mobile.data.local.CaptureEntity
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
@@ -34,6 +38,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.ZoneId
 
 data class MobileUiState(
     val tasks: List<TaskReplicaEntity> = emptyList(),
@@ -48,6 +54,20 @@ data class MobileUiState(
     val pairingInProgress: Boolean = false,
     val pairingCompletion: Long = 0,
     val visualAlertsEnabled: Boolean = false,
+    val sensorySettings: SensorySettingsUiState = SensorySettingsUiState(),
+)
+
+data class SensorySettingsUiState(
+    val profile: SensoryProfile = SensoryProfile.installationDefault(),
+    val snoozePolicy: SnoozePolicy = SnoozePolicy.cautiousDefault(),
+    val routeStatus: AudioRouteStatus = AudioRouteStatus(
+        policy = SensoryProfile.installationDefault().audioRoute,
+        effectiveLabel = "Rota automática do sistema",
+        fallbackReason = null,
+        headphonesAvailable = false,
+        phoneSpeakerAvailable = true,
+    ),
+    val audioTestRunning: Boolean = false,
 )
 
 class AgendaMobileViewModel(application: Application) : AndroidViewModel(application) {
@@ -64,6 +84,9 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     private val pairingInProgress = MutableStateFlow(false)
     private val pairingCompletion = MutableStateFlow(0L)
     private val visualAlertsEnabled = MutableStateFlow(false)
+    private val sensorySettings = MutableStateFlow(SensorySettingsUiState())
+    private val sensoryOutput = AndroidSensoryOutput(application)
+    private var audioTestJob: Job? = null
     private var pairingJob: Job? = null
     private var pairingClient: PairingClient? = null
 
@@ -85,8 +108,9 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         pairingInProgress,
         pairingCompletion,
         visualAlertsEnabled,
-    ) { inProgress, completion, alertsEnabled ->
-        PairingUiState(inProgress, completion, alertsEnabled)
+        sensorySettings,
+    ) { inProgress, completion, alertsEnabled, settings ->
+        PairingUiState(inProgress, completion, alertsEnabled, settings)
     }
 
     val state: StateFlow<MobileUiState> = combine(
@@ -105,6 +129,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             pairingInProgress = pairingState.inProgress,
             pairingCompletion = pairingState.completion,
             visualAlertsEnabled = pairingState.visualAlertsEnabled,
+            sensorySettings = pairingState.sensorySettings,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MobileUiState())
 
@@ -116,8 +141,9 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
                 }
                 repository.alignDeviceIdentity()
                 repository.initializeFictitiousData()
-                visualAlertsEnabled.value = alertStore.ensureInstallationProfile().profile.globalEnabled
-                    && notificationsAllowed()
+                val storedProfile = alertStore.ensureInstallationProfile()
+                visualAlertsEnabled.value = storedProfile.profile.globalEnabled && notificationsAllowed()
+                sensorySettings.value = storedProfile.settingsState()
                 alertScheduling.reconcile()
             }
                 .onFailure { feedback.value = it.safeMessage("Não foi possível preparar os dados locais.") }
@@ -195,17 +221,17 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         successMessage = if (enabled) "Alertas visuais ativados." else "Alertas visuais desativados.",
     ) {
         val stored = alertStore.ensureInstallationProfile()
+        val updatedProfile = stored.profile.copy(globalEnabled = enabled)
         alertStore.saveProfile(
-            stored.profile.copy(
-                globalEnabled = enabled,
-                enabledChannels = setOf(SensoryChannel.VISUAL),
-            ),
+            updatedProfile,
             stored.snoozePolicy,
         )
         visualAlertsEnabled.value = enabled
+        sensorySettings.value = sensorySettings.value.copy(profile = updatedProfile)
         if (enabled) {
             alertScheduling.reactivate()
         } else {
+            audioTestJob?.cancel()
             alertScheduling.pause()
             AndroidAlertNotificationPublisher(getApplication()).cancelAllVisualAlerts()
         }
@@ -213,8 +239,95 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
 
     fun notificationPermissionDenied() {
         visualAlertsEnabled.value = false
-        feedback.value = "Permissão não concedida; alertas continuam desligados."
+        feedback.value = "Permissão não concedida; notificações visuais continuam indisponíveis."
     }
+
+    fun saveSensorySettings(profile: SensoryProfile, snoozePolicy: SnoozePolicy) = execute(
+        successMessage = "Perfil sensorial salvo.",
+    ) {
+        val current = alertStore.ensureInstallationProfile()
+        val effective = profile.copy(globalEnabled = current.profile.globalEnabled)
+        alertStore.saveProfile(effective, snoozePolicy)
+        sensorySettings.value = SensorySettingsUiState(
+            profile = effective,
+            snoozePolicy = snoozePolicy,
+            routeStatus = sensoryOutput.routeStatus(effective.audioRoute),
+        )
+        if (effective.globalEnabled) alertScheduling.reactivate() else alertScheduling.pause()
+    }
+
+    fun pauseSensoryAlerts(minutes: Int?) = execute(
+        successMessage = if (minutes == null) "Alertas retomados." else "Alertas pausados temporariamente.",
+    ) {
+        val stored = alertStore.ensureInstallationProfile()
+        val pausedUntil = minutes?.let { Instant.now().plusSeconds(it * 60L).toString() }
+        val profile = stored.profile.copy(pausedUntil = pausedUntil)
+        alertStore.saveProfile(profile, stored.snoozePolicy)
+        audioTestJob?.cancel()
+        alertScheduling.pause()
+        AndroidAlertNotificationPublisher(getApplication()).cancelAllVisualAlerts()
+        sensorySettings.value = SensorySettingsUiState(
+            profile = profile,
+            snoozePolicy = stored.snoozePolicy,
+            routeStatus = sensoryOutput.routeStatus(profile.audioRoute),
+        )
+        if (profile.globalEnabled) alertScheduling.reactivate()
+    }
+
+    fun refreshAudioRoute() {
+        val current = sensorySettings.value
+        sensorySettings.value = current.copy(routeStatus = sensoryOutput.routeStatus(current.profile.audioRoute))
+    }
+
+    fun toggleAudioTest() {
+        audioTestJob?.let {
+            it.cancel()
+            audioTestJob = null
+            sensorySettings.value = sensorySettings.value.copy(audioTestRunning = false)
+            feedback.value = "Teste de áudio interrompido."
+            return
+        }
+        val profile = sensorySettings.value.profile
+        if (!profile.globalEnabled || SensoryChannel.AUDIO !in profile.enabledChannels) {
+            feedback.value = "Ative os alertas e o canal de áudio antes do teste."
+            return
+        }
+        val now = Instant.now()
+        if (profile.pausedUntil?.let(Instant::parse)?.isAfter(now) == true) {
+            feedback.value = "Os alertas estão pausados; retome-os antes do teste."
+            return
+        }
+        if (profile.quietHours?.contains(now.atZone(ZoneId.systemDefault()).toLocalTime()) == true) {
+            feedback.value = "Teste bloqueado pelo horário silencioso configurado."
+            return
+        }
+        audioTestJob = viewModelScope.launch {
+            sensorySettings.value = sensorySettings.value.copy(audioTestRunning = true)
+            try {
+                val result = withContext(Dispatchers.IO) { sensoryOutput.testTone(profile.audioRoute) }
+                result.routeStatus?.let { status ->
+                    sensorySettings.value = sensorySettings.value.copy(routeStatus = status)
+                }
+                feedback.value = when {
+                    SensoryChannel.AUDIO in result.deliveredChannels -> "Teste de áudio concluído."
+                    result.reason == com.pessoal.agenda.mobile.data.AlertDeliveryReason.SYSTEM_POLICY ->
+                        "Teste bloqueado pelo modo silencioso ou Não perturbe."
+                    result.reason == com.pessoal.agenda.mobile.data.AlertDeliveryReason.SENSORY_OVERLAP ->
+                        "Já existe uma saída sensorial em andamento."
+                    else -> "Não foi possível reproduzir o teste na rota atual."
+                }
+            } finally {
+                audioTestJob = null
+                sensorySettings.value = sensorySettings.value.copy(audioTestRunning = false)
+            }
+        }
+    }
+
+    private fun com.pessoal.agenda.mobile.data.StoredSensoryProfile.settingsState() = SensorySettingsUiState(
+        profile = profile,
+        snoozePolicy = snoozePolicy,
+        routeStatus = sensoryOutput.routeStatus(profile.audioRoute),
+    )
 
     private fun notificationsAllowed(): Boolean {
         val application = getApplication<Application>()
@@ -261,4 +374,5 @@ private data class PairingUiState(
     val inProgress: Boolean,
     val completion: Long,
     val visualAlertsEnabled: Boolean,
+    val sensorySettings: SensorySettingsUiState,
 )

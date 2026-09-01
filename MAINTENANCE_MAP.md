@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 36,7%, restando 63,3%; `P2-01`, `P2-02` e `P2-03` concluídas, `P2-04` em 66,7% (4 de 6 itens).
+- Projeto 2: implementação em 38,3%, restando 61,7%; `P2-01`, `P2-02` e `P2-03` concluídas, `P2-04` em 83,3% (5 de 6 itens).
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -106,6 +106,8 @@ Implementado em `P2-02`:
 | Persistência de alertas | `AlertStore.kt`, `AlertEntities.kt`, `OfflineDao.kt` e `MobileDatabase.MIGRATION_3_4` |
 | Agendamento de alertas | `alert/scheduling/AlertWorkScheduler.kt`; nome único `agenda-alert-<uuid>` e tag `agenda-alert-evaluation` |
 | Notificação e ações Android | `alert/notification/`; canal visual v1, publisher, processor e receiver interno |
+| Saída sensorial Android | `alert/output/AndroidSensoryOutput.kt`; tom curto, vibração, foco transitório, rota por faixa e bloqueio de sobreposição |
+| Configuração sensorial | `ui/SensorySettingsScreen.kt` + `AgendaMobileViewModel.kt`; presets explícitos, pausa, silêncio, cooldown, teste e fallback |
 
 | Domínio | Android | Wear | Desktop |
 |---|---|---|---|
@@ -152,6 +154,7 @@ Nenhuma permissão entra “para uso futuro”. Cada uma exige requisito, tela e
 | `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` | P2-04 | permissões normais transitivas do WorkManager para persistência | sem trabalho após suspensão/reboot |
 | `ACCESS_NETWORK_STATE`, `FOREGROUND_SERVICE` | P2-04 | capacidades normais declaradas pelo runtime WorkManager; o worker atual não usa rede nem foreground | revisar ao atualizar/remover WorkManager |
 | `POST_NOTIFICATIONS` | P2-04 | alertas visuais opt-in após switch contextual | perfil permanece desligado e entregas são suprimidas sem consumir repetição |
+| `VIBRATE` | P2-04 | pulso curto opt-in no canal `PHONE_VIBRATION` | canal de vibração fica indisponível; visual e áudio seguem independentes |
 | Bluetooth/Wear APIs | P2-05 | comunicação oficial com Wear | telefone continua funcional |
 | Health Connect por tipo | P2-07 | relatório autorizado | categoria fica vazia |
 | histórico/background health | posterior | somente hipótese aprovada | leitura limitada ao permitido |

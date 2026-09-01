@@ -10,6 +10,7 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Configurações sensoriais Android com presets explícitos, pausa, silêncio, cooldown, vibração opt-in, teste de áudio cancelável e fallback de rota visível
 - Notificação Android visual opt-in, privada e silenciosa, com permissão contextual e ações offline idempotentes `Concluir` e `Adiar`
 - Agendamento WorkManager único e cancelável para reavaliar alertas após processo/reboot e encaminhar a entrega visual
 - Room v4 e store transacional para materializações, entregas, ações e perfil sensorial, com migrações desde v1

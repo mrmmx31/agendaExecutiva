@@ -9,6 +9,7 @@ import com.pessoal.agenda.mobile.alert.AlertActionType
 import com.pessoal.agenda.mobile.alert.AlertDefinition
 import com.pessoal.agenda.mobile.alert.AlertOrigin
 import com.pessoal.agenda.mobile.alert.AlertRepeatPolicy
+import com.pessoal.agenda.mobile.alert.AudioRoutePolicy
 import com.pessoal.agenda.mobile.alert.FunctionalCriticality
 import com.pessoal.agenda.mobile.alert.SensoryChannel
 import com.pessoal.agenda.mobile.data.AlertDeliveryCandidate
@@ -126,6 +127,7 @@ class AlertNotificationPublisherTest {
         channels = setOf(SensoryChannel.VISUAL),
         actions = setOf(AlertActionType.COMPLETE, AlertActionType.SNOOZE),
         snoozeMinutes = 10,
+        audioRoute = AudioRoutePolicy.SYSTEM_DEFAULT,
     )
 
     private fun command() = AlertNotificationCommand(

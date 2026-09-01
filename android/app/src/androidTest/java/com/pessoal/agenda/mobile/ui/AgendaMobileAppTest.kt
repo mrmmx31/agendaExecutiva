@@ -5,9 +5,14 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.runtime.mutableStateOf
+import com.pessoal.agenda.mobile.alert.SensoryChannel
+import com.pessoal.agenda.mobile.alert.SensoryProfile
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
 import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
 import org.junit.Assert.assertEquals
@@ -129,8 +134,50 @@ class AgendaMobileAppTest {
 
         compose.onNodeWithText("Desativados").assertIsDisplayed()
         assertEquals(null, requested)
-        compose.onNodeWithContentDescription("Ativar alertas visuais").performClick()
+        compose.onNodeWithContentDescription("Ativar alertas").performClick()
         assertEquals(true, requested)
+    }
+
+    @Test
+    fun sensorySettingsRequireExplicitSaveAndExposePauseControls() {
+        var saved: SensoryProfile? = null
+        var pausedFor: Int? = null
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(
+                        visualAlertsEnabled = true,
+                        sensorySettings = SensorySettingsUiState(
+                            profile = SensoryProfile.installationDefault().copy(globalEnabled = true),
+                        ),
+                    ),
+                    onSaveCapture = { _, _ -> },
+                    onStartProtocol = {},
+                    onCompleteStep = { _, _ -> },
+                    onSync = {},
+                    onPair = { _, _ -> },
+                    onCancelPairing = {},
+                    onPairingCompletionShown = {},
+                    onFeedbackShown = {},
+                    onSaveSensorySettings = { profile, _ -> saved = profile },
+                    onPauseSensoryAlerts = { pausedFor = it },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Configurações sensoriais").performClick()
+        compose.onNodeWithText("Configurações sensoriais").assertIsDisplayed()
+        compose.onNodeWithText("Saída efetiva").assertIsDisplayed()
+        assertEquals(null, saved)
+        compose.onNodeWithText("Pausar 30 min").performClick()
+        assertEquals(30, pausedFor)
+        compose.onNodeWithText("Discreto").performClick()
+        repeat(4) { compose.onRoot().performTouchInput { swipeUp() } }
+        compose.onNodeWithText("Salvar perfil").performClick()
+        assertEquals(
+            setOf(SensoryChannel.VISUAL, SensoryChannel.PHONE_VIBRATION),
+            saved?.enabledChannels,
+        )
     }
 
     @Test

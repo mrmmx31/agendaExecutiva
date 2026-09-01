@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativo Android do Projeto 2 com núcleo offline e `P2-03` concluídos. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot e conflitos. `P2-04` possui contratos, Room v4, WorkManager e notificações visuais opt-in; áudio, saúde e IA ainda não estão ativos.
+Aplicativo Android do Projeto 2 com núcleo offline e `P2-03` concluídos. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot e conflitos. `P2-04` possui contratos, Room v4, WorkManager, notificações visuais opt-in e saída sensorial configurável; saúde e IA ainda não estão ativas.
 
 ## Requisitos
 
@@ -46,6 +46,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - Room v4 persiste definições, materializações, entregas, ações e perfil; 31 testes locais e 13 instrumentados passam, incluindo migrações desde v1.
 - WorkManager 2.9.1 mantém trabalho único por alerta, reconcilia no startup e cancela em Room/sistema; 36 testes locais e 15 instrumentados passam sem entrega sensorial.
 - Notificação visual exige switch e permissão contextual; canal privado/silencioso e ações offline idempotentes foram aprovados com 42 testes locais e 19 instrumentados.
+- Perfis `Visual`, `Discreto` e `Fone`, pausa, silêncio, cooldown, áudio por faixa, vibração e teste cancelável foram aprovados com 44 testes locais e 23 instrumentados; nenhuma suíte toca áudio automaticamente.
 - Primeiro boot dos AVDs de telefone e Wear OS: aprovado.
 - Pareamento telefone-relógio: aprovado; o assistente confirmou `Successful pairing` entre os dois AVDs.
 - O Google Pixel Watch do AVD precisou das permissões de notificações e dispositivos próximos; isso não altera as permissões do aplicativo Agenda.

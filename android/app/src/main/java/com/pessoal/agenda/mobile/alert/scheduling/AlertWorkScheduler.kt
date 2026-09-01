@@ -10,6 +10,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.pessoal.agenda.mobile.alert.notification.AlertDeliveryProcessor
 import com.pessoal.agenda.mobile.alert.notification.AndroidAlertNotificationPublisher
+import com.pessoal.agenda.mobile.alert.output.AndroidSensoryOutput
 import com.pessoal.agenda.mobile.data.AlertSchedule
 import com.pessoal.agenda.mobile.data.AlertStore
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
@@ -119,6 +120,7 @@ class AlertEvaluationWorker(
                 store = store,
                 enqueuer = WorkManagerAlertEnqueuer(applicationContext),
                 publisher = AndroidAlertNotificationPublisher(applicationContext),
+                sensoryOutput = AndroidSensoryOutput(applicationContext),
                 deviceIdProvider = { DeviceCredentialStore(applicationContext).deviceId },
             ).process(alertId, id.toString())
             Result.success()

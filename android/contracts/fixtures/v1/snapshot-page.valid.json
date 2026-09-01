@@ -1,0 +1,9 @@
+{
+  "snapshot_id": "10000000-0000-4000-8000-000000000006",
+  "server_cursor": 12,
+  "page": 1,
+  "has_more": false,
+  "next_page_token": null,
+  "tasks": [],
+  "protocols": []
+}

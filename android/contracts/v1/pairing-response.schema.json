@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/pairing-response.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "status", "retry_after_seconds", "completion_token", "device_id", "contract_min", "contract_max", "encrypted_credential", "granted_roles"],
+  "properties": {
+    "request_id": { "type": "string", "format": "uuid" },
+    "status": { "enum": ["PENDING", "APPROVED", "REJECTED", "EXPIRED"] },
+    "retry_after_seconds": { "type": ["integer", "null"], "minimum": 1, "maximum": 10 },
+    "completion_token": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9_-]{43,128}$" },
+    "device_id": { "type": ["string", "null"], "format": "uuid" },
+    "contract_min": { "type": ["integer", "null"], "minimum": 1 },
+    "contract_max": { "type": ["integer", "null"], "minimum": 1 },
+    "encrypted_credential": { "type": ["string", "null"], "minLength": 1, "maxLength": 2048 },
+    "granted_roles": { "type": "array", "uniqueItems": true, "items": { "enum": ["TASKS_READ", "CAPTURES_WRITE", "PROTOCOLS_EXECUTE"] } }
+  }
+}

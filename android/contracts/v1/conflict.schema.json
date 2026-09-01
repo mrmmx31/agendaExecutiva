@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/conflict.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["conflict_id", "operation_id", "entity_type", "entity_id", "base_revision", "server_revision", "reason", "local_value", "server_value", "created_at"],
+  "properties": {
+    "conflict_id": { "type": "string", "format": "uuid" },
+    "operation_id": { "type": "string", "format": "uuid" },
+    "entity_type": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "entity_id": { "type": "string", "format": "uuid" },
+    "base_revision": { "type": ["integer", "null"], "minimum": 0 },
+    "server_revision": { "type": "integer", "minimum": 0 },
+    "reason": { "enum": ["TEXT_DIVERGED", "STRUCTURE_DIVERGED", "STATE_DIVERGED", "TOMBSTONE_DIVERGED"] },
+    "local_value": { "type": "object" },
+    "server_value": { "type": "object" },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

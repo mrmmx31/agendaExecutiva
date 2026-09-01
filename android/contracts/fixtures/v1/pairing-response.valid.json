@@ -1,0 +1,11 @@
+{
+  "request_id": "10000000-0000-4000-8000-000000000004",
+  "status": "PENDING",
+  "retry_after_seconds": 2,
+  "completion_token": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+  "device_id": null,
+  "contract_min": null,
+  "contract_max": null,
+  "encrypted_credential": null,
+  "granted_roles": []
+}

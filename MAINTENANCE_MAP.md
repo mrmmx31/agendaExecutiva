@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 21,7%; `P2-01` e `P2-02` concluídas, `P2-03` em 16,7% (1 de 6 itens).
+- Projeto 2: implementação em 23,3%, restando 76,7%; `P2-01` e `P2-02` concluídas, `P2-03` em 33,3% (2 de 6 itens).
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -125,6 +125,7 @@ Atualizar esta tabela quando uma dependência for adicionada ou removida.
 | ONNX Runtime Mobile | inferência/treino portátil | features minimizadas | alternativa | LiteRT ou regras |
 | Provedor LLM | resumo textual revisável | somente seleção consentida | não | processamento local/manual |
 | Google Tasks | sync de tarefas | tarefas autorizadas | opcional atual | uso só local |
+| Gson 2.10.1 | leitura das fixtures no teste Java | somente JSON fictício versionado | teste P2-03 | remover após adotar codec de produção |
 
 Para cada SDK novo registrar: versão fixa, licença, origem, permissões, rede, telemetria, tamanho, política de atualização, CVEs e teste de remoção.
 

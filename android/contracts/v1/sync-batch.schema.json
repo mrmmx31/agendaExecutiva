@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/sync-batch.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "device_id", "last_server_cursor", "operations"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "device_id": { "type": "string", "format": "uuid" },
+    "last_server_cursor": { "type": "integer", "minimum": 0 },
+    "operations": { "type": "array", "maxItems": 100, "items": { "$ref": "operation-envelope.schema.json" } }
+  }
+}

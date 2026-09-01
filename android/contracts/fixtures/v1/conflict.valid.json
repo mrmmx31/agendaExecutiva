@@ -1,0 +1,12 @@
+{
+  "conflict_id": "10000000-0000-4000-8000-000000000007",
+  "operation_id": "10000000-0000-4000-8000-000000000005",
+  "entity_type": "task",
+  "entity_id": "10000000-0000-4000-8000-000000000008",
+  "base_revision": 2,
+  "server_revision": 3,
+  "reason": "TEXT_DIVERGED",
+  "local_value": { "title": "Texto local fictício" },
+  "server_value": { "title": "Texto desktop fictício" },
+  "created_at": "2026-09-01T12:00:00Z"
+}

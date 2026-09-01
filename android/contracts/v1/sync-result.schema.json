@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/sync-result.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operation_id", "status", "error_code", "server_revision", "conflict_id"],
+  "properties": {
+    "operation_id": { "type": "string", "format": "uuid" },
+    "status": { "enum": ["APPLIED", "CONFLICT", "REJECTED", "RETRYABLE"] },
+    "error_code": { "type": ["string", "null"], "enum": [null, "CONTRACT_INCOMPATIBLE", "DEVICE_REVOKED", "ID_REUSED", "SEQUENCE_REUSED", "PAYLOAD_INVALID", "ROLE_DENIED", "BUSINESS_RULE", "STATE_CONFLICT", "TEMPORARY_FAILURE"] },
+    "server_revision": { "type": ["integer", "null"], "minimum": 0 },
+    "conflict_id": { "type": ["string", "null"], "format": "uuid" }
+  }
+}

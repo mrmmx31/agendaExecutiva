@@ -12,6 +12,12 @@ mesma versão.
 | `capture-created.schema.json` | criação imutável de captura livre |
 | `protocol-run-started.schema.json` | início de uma execução de protocolo |
 | `protocol-step-completed.schema.json` | confirmação idempotente de um passo |
+| `pairing-request.schema.json` | solicitação móvel antes da aprovação desktop |
+| `pairing-response.schema.json` | estado pendente ou conclusão do pareamento |
+| `sync-batch.schema.json` | lote limitado de operações e cursor conhecido |
+| `sync-result.schema.json` | resultado terminal ou repetível por operação |
+| `snapshot-page.schema.json` | página consistente da réplica inicial |
+| `conflict.schema.json` | divergência explícita para revisão |
 
 O pareamento e o modelo de ameaça da fase seguinte estão em
 `PAIRING_V1.md` e `THREAT_MODEL_P2_03.md`.
@@ -25,4 +31,6 @@ Validação sintática local:
 
 ```bash
 jq empty contracts/v1/*.json
+./gradlew test
+cd .. && ./mvnw -Dtest=SharedContractFixtureTest test
 ```

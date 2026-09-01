@@ -1,0 +1,12 @@
+{
+  "contract_version": 1,
+  "global_enabled": false,
+  "enabled_channels": ["VISUAL"],
+  "quiet_hours": {
+    "starts_at": "22:30",
+    "ends_at": "07:00"
+  },
+  "paused_until": null,
+  "cooldown_minutes": 5,
+  "audio_route": "SYSTEM_DEFAULT"
+}

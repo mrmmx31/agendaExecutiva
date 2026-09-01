@@ -1,0 +1,18 @@
+{
+  "contract_version": 1,
+  "alert_id": "30000000-0000-4000-8000-000000000001",
+  "origin": "TASK",
+  "reference_id": "30000000-0000-4000-8000-000000000002",
+  "text": "Revisar a tarefa atual",
+  "reason": "Horário planejado da tarefa",
+  "source_device_id": "30000000-0000-4000-8000-000000000003",
+  "scheduled_at": "2026-09-01T14:00:00Z",
+  "valid_until": "2026-09-01T18:00:00Z",
+  "criticality": "ROUTINE",
+  "allowed_channels": ["VISUAL", "PHONE_VIBRATION"],
+  "repeat_policy": {
+    "max_deliveries": 2,
+    "minimum_interval_minutes": 15
+  },
+  "actions": ["COMPLETE", "SNOOZE"]
+}

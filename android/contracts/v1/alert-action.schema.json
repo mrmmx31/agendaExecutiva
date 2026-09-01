@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/alert-action.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "operation_id", "alert_id", "source_device_id", "action", "occurred_at", "snooze_until"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "operation_id": { "type": "string", "format": "uuid" },
+    "alert_id": { "type": "string", "format": "uuid" },
+    "source_device_id": { "type": "string", "format": "uuid" },
+    "action": { "enum": ["COMPLETE", "SNOOZE"] },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "snooze_until": { "type": ["string", "null"], "format": "date-time" }
+  }
+}

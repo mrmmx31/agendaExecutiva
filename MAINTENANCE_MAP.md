@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 30%, restando 70%; `P2-01`, `P2-02` e `P2-03` concluídas.
+- Projeto 2: implementação em 31,7%, restando 68,3%; `P2-01`, `P2-02` e `P2-03` concluídas, `P2-04` em 16,7% (1 de 6 itens).
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -102,6 +102,7 @@ Implementado em `P2-02`:
 | Lotes e snapshots desktop | `SyncBatchProcessor` e `DesktopSyncRepository` |
 | Testes | `android/app/src/test/` e `android/app/src/androidTest/` |
 | Gate desktop + AVD | `LocalPairingAndroidGate` em `src/test`; executar somente com SQLite temporário e `adb reverse` |
+| Contratos e política de alertas | `android/.../alert/`, `contracts/v1/alert-*.schema.json`, `sensory-profile.schema.json` e `ALERTS_V1.md` |
 
 | Domínio | Android | Wear | Desktop |
 |---|---|---|---|

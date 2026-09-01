@@ -18,10 +18,15 @@ class SharedContractFixtureTest {
         assertKeys("sync-batch-response.valid.json", SYNC_BATCH_RESPONSE_KEYS)
         assertKeys("snapshot-page.valid.json", SNAPSHOT_KEYS)
         assertKeys("conflict.valid.json", CONFLICT_KEYS)
+        assertKeys("alert-definition.valid.json", ALERT_DEFINITION_KEYS)
+        assertKeys("sensory-profile.valid.json", SENSORY_PROFILE_KEYS)
+        assertKeys("alert-action.valid.json", ALERT_ACTION_KEYS)
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").requiredText("status"))
         assertEquals("APPLIED", fixture("sync-result.valid.json").requiredText("status"))
         assertEquals("TEXT_DIVERGED", fixture("conflict.valid.json").requiredText("reason"))
+        assertFalse(fixture("sensory-profile.valid.json").requiredText("global_enabled").toBoolean())
+        assertEquals("SNOOZE", fixture("alert-action.valid.json").requiredText("action"))
     }
 
     @Test
@@ -37,7 +42,8 @@ class SharedContractFixtureTest {
     private fun assertKeys(name: String, expected: Set<String>) = assertEquals(expected, fixture(name).keys)
 
     private fun fixture(name: String): JsonObject {
-        val stream = requireNotNull(javaClass.classLoader.getResourceAsStream("fixtures/v1/$name"))
+        val classLoader = requireNotNull(javaClass.classLoader)
+        val stream = requireNotNull(classLoader.getResourceAsStream("fixtures/v1/$name"))
         return stream.bufferedReader().use { Json.parseToJsonElement(it.readText()) as JsonObject }
     }
 
@@ -51,6 +57,9 @@ class SharedContractFixtureTest {
         val SYNC_BATCH_RESPONSE_KEYS = setOf("contract_version", "client_contiguous_sequence", "server_cursor", "results", "conflicts")
         val SNAPSHOT_KEYS = setOf("snapshot_id", "server_cursor", "page", "has_more", "next_page_token", "tasks", "protocols")
         val CONFLICT_KEYS = setOf("conflict_id", "operation_id", "entity_type", "entity_id", "base_revision", "server_revision", "reason", "local_value", "server_value", "created_at")
+        val ALERT_DEFINITION_KEYS = setOf("contract_version", "alert_id", "origin", "reference_id", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "criticality", "allowed_channels", "repeat_policy", "actions")
+        val SENSORY_PROFILE_KEYS = setOf("contract_version", "global_enabled", "enabled_channels", "quiet_hours", "paused_until", "cooldown_minutes", "audio_route")
+        val ALERT_ACTION_KEYS = setOf("contract_version", "operation_id", "alert_id", "source_device_id", "action", "occurred_at", "snooze_until")
         val RESULT_STATES = setOf("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE")
     }
 }

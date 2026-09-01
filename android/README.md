@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativo Android do Projeto 2 com núcleo offline e `P2-03` concluídos. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot e conflitos. Alertas, saúde e IA ainda não existem.
+Aplicativo Android do Projeto 2 com núcleo offline e `P2-03` concluídos. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot e conflitos. `P2-04` possui contratos e guardrails puros de alertas; notificações, áudio, saúde e IA ainda não estão ativos.
 
 ## Requisitos
 
@@ -42,6 +42,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - Transporte HTTPS local com certificado fixado, lote limitado, snapshot paginado e ação de sync visível quando pareado.
 - Pareamento Android cancelável por `agenda://pair` ou colagem, com reconexão e criptografia fora da thread principal.
 - Gate real desktop + AVD aprovado com captura móvel entregue em banco temporário (`PAIRING_GATE_SYNCED`).
+- Contratos de alertas, perfil sensorial e ações validados em Kotlin/Java; 26 testes locais Android passam sem produzir estímulo.
 - Primeiro boot dos AVDs de telefone e Wear OS: aprovado.
 - Pareamento telefone-relógio: aprovado; o assistente confirmou `Successful pairing` entre os dois AVDs.
 - O Google Pixel Watch do AVD precisou das permissões de notificações e dispositivos próximos; isso não altera as permissões do aplicativo Agenda.

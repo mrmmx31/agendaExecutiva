@@ -23,10 +23,15 @@ class SharedContractFixtureTest {
         assertKeys("sync-batch-response.valid.json", SYNC_BATCH_RESPONSE_KEYS);
         assertKeys("snapshot-page.valid.json", SNAPSHOT_KEYS);
         assertKeys("conflict.valid.json", CONFLICT_KEYS);
+        assertKeys("alert-definition.valid.json", ALERT_DEFINITION_KEYS);
+        assertKeys("sensory-profile.valid.json", SENSORY_PROFILE_KEYS);
+        assertKeys("alert-action.valid.json", ALERT_ACTION_KEYS);
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").get("status").getAsString());
         assertEquals("APPLIED", fixture("sync-result.valid.json").get("status").getAsString());
         assertEquals("TEXT_DIVERGED", fixture("conflict.valid.json").get("reason").getAsString());
+        assertFalse(fixture("sensory-profile.valid.json").get("global_enabled").getAsBoolean());
+        assertEquals("SNOOZE", fixture("alert-action.valid.json").get("action").getAsString());
     }
 
     @Test
@@ -56,5 +61,8 @@ class SharedContractFixtureTest {
     private static final Set<String> SYNC_BATCH_RESPONSE_KEYS = Set.of("contract_version", "client_contiguous_sequence", "server_cursor", "results", "conflicts");
     private static final Set<String> SNAPSHOT_KEYS = Set.of("snapshot_id", "server_cursor", "page", "has_more", "next_page_token", "tasks", "protocols");
     private static final Set<String> CONFLICT_KEYS = Set.of("conflict_id", "operation_id", "entity_type", "entity_id", "base_revision", "server_revision", "reason", "local_value", "server_value", "created_at");
+    private static final Set<String> ALERT_DEFINITION_KEYS = Set.of("contract_version", "alert_id", "origin", "reference_id", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "criticality", "allowed_channels", "repeat_policy", "actions");
+    private static final Set<String> SENSORY_PROFILE_KEYS = Set.of("contract_version", "global_enabled", "enabled_channels", "quiet_hours", "paused_until", "cooldown_minutes", "audio_route");
+    private static final Set<String> ALERT_ACTION_KEYS = Set.of("contract_version", "operation_id", "alert_id", "source_device_id", "action", "occurred_at", "snooze_until");
     private static final Set<String> RESULT_STATES = Set.of("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE");
 }

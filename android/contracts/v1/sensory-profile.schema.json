@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/sensory-profile.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "global_enabled", "enabled_channels", "quiet_hours", "paused_until", "cooldown_minutes", "audio_route"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "global_enabled": { "type": "boolean" },
+    "enabled_channels": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["VISUAL", "PHONE_VIBRATION", "WEAR_VIBRATION", "AUDIO"] }
+    },
+    "quiet_hours": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["starts_at", "ends_at"],
+      "properties": {
+        "starts_at": { "type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$" },
+        "ends_at": { "type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$" }
+      }
+    },
+    "paused_until": { "type": ["string", "null"], "format": "date-time" },
+    "cooldown_minutes": { "type": "integer", "minimum": 1, "maximum": 60 },
+    "audio_route": { "enum": ["SYSTEM_DEFAULT", "PREFER_HEADPHONES", "PREFER_PHONE", "VIBRATION_ONLY", "NONE"] }
+  }
+}

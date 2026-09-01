@@ -10,6 +10,8 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Pareamento P2-03 com HTTPS efêmero, certificado fixado, QR/código, aprovação e revogação no desktop
+- Credencial Android protegida por RSA e AES-GCM com chaves não exportáveis do Keystore e testes instrumentados no AVD
 - Persistência desktop P2-03 para identidade, UUIDs globais, dispositivos, papéis, revogação, operações idempotentes e cursores contíguos
 - Contratos P2-03 para solicitação de pareamento, lote, resultado, snapshot e conflito, com fixtures compartilhadas entre Java e Kotlin
 - Fundação P2-03 com modelo de ameaça, pareamento em duas etapas e parser Android estrito para convite HTTPS fixado

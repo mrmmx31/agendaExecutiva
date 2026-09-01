@@ -139,6 +139,30 @@ public final class DesktopSyncRepository {
         }
     }
 
+    public List<DeviceRecord> listDevices() {
+        try (Connection connection = database.connect();
+             PreparedStatement statement = connection.prepareStatement("""
+                     SELECT device_id, device_name, contract_min, contract_max,
+                            status, approved_at, revoked_at
+                     FROM mobile_devices
+                     ORDER BY CASE status WHEN 'ACTIVE' THEN 0 ELSE 1 END, approved_at DESC
+                     """);
+             ResultSet rows = statement.executeQuery()) {
+            List<DeviceRecord> devices = new java.util.ArrayList<>();
+            while (rows.next()) {
+                String deviceId = rows.getString("device_id");
+                devices.add(new DeviceRecord(
+                        deviceId, rows.getString("device_name"), rows.getInt("contract_min"),
+                        rows.getInt("contract_max"), rows.getString("status"),
+                        rows.getString("approved_at"), rows.getString("revoked_at"),
+                        roles(connection, deviceId)));
+            }
+            return List.copyOf(devices);
+        } catch (SQLException error) {
+            throw failure("lista de dispositivos", error);
+        }
+    }
+
     public boolean revokeDevice(String deviceId) {
         requireUuid(deviceId, "device_id");
         try (Connection connection = database.connect();

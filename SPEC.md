@@ -1455,7 +1455,7 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 ## 32. Projeto 2 — Extensão móvel e sensorial
 
-**Status:** Especificado em 31/08/2026; implementação 25%, com 75% restantes. `P2-01` e `P2-02` estão concluídas; `P2-03` está em 50% (3 de 6 itens).
+**Status:** Especificado em 31/08/2026; implementação 26,7%, com 73,3% restantes. `P2-01` e `P2-02` estão concluídas; `P2-03` está em 66,7% (4 de 6 itens).
 
 **Visão:** estender a Agenda para Android e Wear OS, mantendo o desktop como superfície de organização, o smartphone como nó móvel offline e o smartwatch como superfície curta de percepção e resposta. Alertas devem oferecer `Concluir` e `Adiar`; capturas e protocolos devem funcionar fora do notebook e convergir depois.
 
@@ -1465,4 +1465,4 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 **Documentos:** requisitos, arquitetura, fases e gates estão em `PROJECT2_SPEC.md`. O ponto de entrada para manutenção, catálogos, contratos e retomada de contexto está em `MAINTENANCE_MAP.md`.
 
-**Próxima ação:** continuar `P2-03` com HTTPS efêmero, aprovação/revogação no desktop e Android Keystore. Persistência e idempotência já passam em banco temporário. Usar somente loopback e AVD; não conectar o telefone físico ou banco pessoal ao fluxo.
+**Próxima ação:** continuar `P2-03` com cliente Android, push/pull idempotente, snapshot paginado e revisão de conflitos. HTTPS efêmero, aprovação/revogação e Android Keystore já passam em banco temporário e AVD. Não conectar o telefone físico ou banco pessoal ao fluxo.

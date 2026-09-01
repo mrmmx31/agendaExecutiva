@@ -13,6 +13,7 @@ import com.pessoal.agenda.service.GoogleAuthService;
 import com.pessoal.agenda.service.GoogleSyncErrorPresenter;
 import com.pessoal.agenda.ui.view.GoogleAccountConnectionFlow;
 import com.pessoal.agenda.ui.view.GoogleTasksSyncWindow;
+import com.pessoal.agenda.ui.view.MobilePairingWindow;
 import com.pessoal.agenda.ui.view.ThemeManager;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -109,7 +110,7 @@ public class ConfigController {
                 buildQuickCaptureSection());
         if (localMetricsService != null) general.getChildren().add(buildLocalMetricsSection());
 
-        VBox integrations = new VBox(14, buildGoogleTasksSection());
+        VBox integrations = new VBox(14, buildGoogleTasksSection(), buildMobilePairingSection());
         VBox categories = new VBox(14, row1, row2, row3);
 
         TabPane sections = new TabPane(
@@ -309,6 +310,28 @@ public class ConfigController {
         section.getStyleClass().addAll("config-section", "config-google-tasks");
         section.setPadding(new Insets(12, 14, 12, 14));
         refreshState.run();
+        return section;
+    }
+
+    private VBox buildMobilePairingSection() {
+        Label title = new Label("Aplicativo móvel");
+        title.getStyleClass().add("section-title");
+        Label state = new Label();
+        long active = AppContextHolder.get().desktopSyncRepository().listDevices().stream()
+                .filter(device -> device.status().equals("ACTIVE"))
+                .count();
+        state.setText(active == 1 ? "1 dispositivo ativo" : active + " dispositivos ativos");
+        state.getStyleClass().add(active > 0 ? "t-success" : "t-muted");
+
+        Button manage = new Button("Gerenciar dispositivos");
+        manage.setId("mobile-pairing-manage");
+        manage.getStyleClass().add("secondary-button");
+        manage.setOnAction(event -> new MobilePairingWindow().show());
+
+        VBox section = new VBox(10, title, state, manage);
+        section.setId("config-mobile-pairing");
+        section.getStyleClass().add("config-section");
+        section.setPadding(new Insets(12, 14, 12, 14));
         return section;
     }
 

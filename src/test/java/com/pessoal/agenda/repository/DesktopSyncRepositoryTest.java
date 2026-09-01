@@ -92,6 +92,22 @@ class DesktopSyncRepositoryTest {
     }
 
     @Test
+    void deviceListIncludesActiveAndRevokedDevicesWithoutCredentialHash() {
+        approveDevice();
+
+        var active = repository.listDevices();
+        assertEquals(1, active.size());
+        assertEquals(DEVICE_ID, active.getFirst().deviceId());
+        assertEquals("ACTIVE", active.getFirst().status());
+
+        repository.revokeDevice(DEVICE_ID);
+        var revoked = repository.listDevices();
+        assertEquals(1, revoked.size());
+        assertEquals("REVOKED", revoked.getFirst().status());
+        assertNotNull(revoked.getFirst().revokedAt());
+    }
+
+    @Test
     void repeatedOperationReturnsStoredResultWithoutDuplicatingEffect() {
         approveDevice();
         var input = operation("10000000-0000-4000-8000-000000000101", 1, HASH_A);

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação iniciada; 25% do Projeto 2 |
+| Status | Implementação iniciada; 26,7% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` e `P2-02` estão concluídas; `P2-03` tem 3 de 6 itens. O avanço geral é 25% e restam 75%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` e `P2-02` estão concluídas; `P2-03` tem 4 de 6 itens. O avanço geral é 26,7% e restam 73,3%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -590,22 +590,24 @@ Captura, réplica mínima, protocolos, fila de operações, schemas e dados fict
 
 Servidor desktop, QR, TLS fixado, Keystore, cursores, snapshots, idempotência, conflitos e revogação.
 
-**Status:** Em andamento, 50% (3 de 6 itens concluídos).
+**Status:** Em andamento, 66,7% (4 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
 - [x] definir ameaça, convite estrito e fluxo de aprovação em duas etapas, com parser Android testado;
 - [x] versionar schemas e fixtures compartilhadas de pareamento, lote, resultado, snapshot e conflito;
 - [x] persistir identidade, dispositivos, papéis, revogação, operações aplicadas e cursores no desktop isolado;
-- [ ] implementar servidor HTTPS efêmero, aprovação/revogação no desktop e credencial protegida no Android Keystore;
+- [x] implementar servidor HTTPS efêmero, aprovação/revogação no desktop e credencial protegida no Android Keystore;
 - [ ] implementar push/pull idempotente, snapshot paginado, estados da fila e revisão de conflitos;
 - [ ] aprovar matriz integrada em banco temporário e AVD, incluindo repetição, expiração, certificado incorreto e reconexão.
 
-**Decisão inicial:** diferentemente da ativação direta usada como referência mecânica no Motoclube, a Agenda não emite credencial após apenas ler QR e código. A solicitação fica pendente até o usuário conferir nome e papéis no desktop. Nenhuma permissão de rede foi adicionada neste primeiro avanço.
+**Decisão inicial:** diferentemente da ativação direta usada como referência mecânica no Motoclube, a Agenda não emite credencial após apenas ler QR e código. A solicitação fica pendente até o usuário conferir nome e papéis no desktop. A permissão Android de rede continua ausente até existir o cliente de sync do próximo item.
 
-**Evidência contratual:** seis novos schemas e oito fixtures fictícias ficam em `android/contracts/`. A mesma pasta é carregada pelas suítes Maven e Gradle: dois testes Java e dois testes Kotlin verificam campos fechados e enums, enquanto `jq empty` valida a sintaxe. `./gradlew test lint assembleDebug` passou sem adicionar `INTERNET`; Gson 2.10.1 existe apenas no escopo de teste do desktop.
+**Evidência contratual:** seis novos schemas e oito fixtures fictícias ficam em `android/contracts/`. A mesma pasta é carregada pelas suítes Maven e Gradle: dois testes Java e dois testes Kotlin verificam campos fechados e enums, enquanto `jq empty` valida a sintaxe. `./gradlew test lint assembleDebug` passou sem adicionar `INTERNET`; Gson 2.10.1 passou a ser o codec JSON do fluxo desktop.
 
-**Evidência de persistência:** a migration aditiva cria tabelas `mobile_*`, popula uma única vez `sync_uuid` de tarefas, protocolos e passos existentes e mantém os IDs inteiros apenas como identidade local. O repositório persiste somente hash da credencial, papéis, revogação, resultado terminal e cursores. Oito testes em `@TempDir` cobrem estabilidade, reexecução da migration, normalização, revogação, replay, UUID/sequence reutilizados, lacuna de cursor e revisão nula. O telefone físico e o banco pessoal não foram acessados.
+**Evidência de persistência:** a migration aditiva cria tabelas `mobile_*`, popula uma única vez `sync_uuid` de tarefas, protocolos e passos existentes e mantém os IDs inteiros apenas como identidade local. O repositório persiste somente hash da credencial, papéis, revogação, resultado terminal e cursores. Nove testes em `@TempDir` cobrem estabilidade, reexecução da migration, normalização, listagem, revogação, replay, UUID/sequence reutilizados, lacuna de cursor e revisão nula. O telefone físico e o banco pessoal não foram acessados.
+
+**Evidência de pareamento seguro:** o desktop abre HTTPS apenas durante uma sessão de cinco minutos, com certificado ECDSA P-256 efêmero e impressão digital no convite. QR, código, nome, papéis, aprovação, rejeição, expiração e revogação ficam em uma janela acessível por `Configurações > Integrações`. A credencial aleatória só é emitida após aprovação, chega cifrada por RSA-OAEP e permanece apenas como hash no desktop. No Android, RSA e AES-GCM usam chaves não exportáveis do Keystore; preferências privadas guardam somente o ciphertext. Quatro testes de servidor cobrem aprovação, rejeição, código incorreto e certificado incorreto; três testes instrumentados de credencial rodam somente no AVD. A suíte desktop completa passou com 148 testes, sem acessar o banco pessoal ou o telefone físico.
 
 ### P2-04 — Alertas e áudio no smartphone
 
@@ -678,4 +680,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Continuar `P2-03` com servidor HTTPS efêmero e aprovação/revogação no desktop, seguidos pela credencial protegida no Android Keystore. Testar primeiro em loopback, banco temporário e AVD; o telefone físico permanece fora do gate.
+Continuar `P2-03` com o cliente Android e os endpoints de push/pull idempotente, snapshot paginado, estados da fila e revisão de conflitos. Testar em loopback, banco temporário e AVD; o telefone físico permanece fora do gate.

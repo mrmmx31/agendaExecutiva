@@ -46,6 +46,7 @@ public class AppContext {
     private final com.pessoal.agenda.repository.TaskSessionRepository taskSessionRepository;
     private final com.pessoal.agenda.repository.GoogleTasksMappingRepository googleTasksMappingRepository;
     private final com.pessoal.agenda.repository.GoogleTasksSyncRepository googleTasksSyncRepository;
+    private final DesktopSyncRepository desktopSyncRepository;
     private final DailyPlanRepository dailyPlanRepository;
     private final DayReviewRepository dayReviewRepository;
     private final InboxCaptureRepository inboxCaptureRepository;
@@ -89,6 +90,7 @@ public class AppContext {
         this.taskSessionRepository = new com.pessoal.agenda.repository.TaskSessionRepository(database);
         this.googleTasksMappingRepository = new com.pessoal.agenda.repository.GoogleTasksMappingRepository(database);
         this.googleTasksSyncRepository = new com.pessoal.agenda.repository.GoogleTasksSyncRepository(database);
+        this.desktopSyncRepository = new DesktopSyncRepository(database);
         this.dailyPlanRepository = new DailyPlanRepository(database);
         this.dayReviewRepository = new DayReviewRepository(database);
         this.inboxCaptureRepository = new InboxCaptureRepository(database);
@@ -213,6 +215,10 @@ public class AppContext {
 
     public com.pessoal.agenda.repository.GoogleTasksSyncRepository googleTasksSyncRepository() {
         return googleTasksSyncRepository;
+    }
+
+    public DesktopSyncRepository desktopSyncRepository() {
+        return desktopSyncRepository;
     }
 
     public StudyAttendanceService studyAttendanceService() {

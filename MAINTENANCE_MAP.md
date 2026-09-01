@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 25%, restando 75%; `P2-01` e `P2-02` concluídas, `P2-03` em 50% (3 de 6 itens).
+- Projeto 2: implementação em 26,7%, restando 73,3%; `P2-01` e `P2-02` concluídas, `P2-03` em 66,7% (4 de 6 itens).
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -95,6 +95,8 @@ Implementado em `P2-02`:
 | Pareamento v1 e ameaça | `android/contracts/PAIRING_V1.md` e `android/contracts/THREAT_MODEL_P2_03.md` |
 | Parser de convite | `android/app/src/main/java/com/pessoal/agenda/mobile/pairing/PairingInvitation.kt` |
 | Persistência desktop de sync | `Database.applyMobileSyncMigration()` e `DesktopSyncRepository` |
+| Servidor e UI de pareamento desktop | `infra/pairing/` e `MobilePairingWindow` |
+| Credencial Android | `android/app/src/main/java/com/pessoal/agenda/mobile/pairing/DeviceCredentialStore.kt` |
 | Testes | `android/app/src/test/` e `android/app/src/androidTest/` |
 
 | Domínio | Android | Wear | Desktop |
@@ -126,7 +128,9 @@ Atualizar esta tabela quando uma dependência for adicionada ou removida.
 | ONNX Runtime Mobile | inferência/treino portátil | features minimizadas | alternativa | LiteRT ou regras |
 | Provedor LLM | resumo textual revisável | somente seleção consentida | não | processamento local/manual |
 | Google Tasks | sync de tarefas | tarefas autorizadas | opcional atual | uso só local |
-| Gson 2.10.1 | leitura das fixtures no teste Java | somente JSON fictício versionado | teste P2-03 | remover após adotar codec de produção |
+| Gson 2.10.1 | codec do contrato JSON desktop | convites e respostas locais | P2-03 | substituir exige teste de compatibilidade de schema |
+| Bouncy Castle 1.78.1 | certificado ECDSA efêmero | chave/certificado somente em memória | P2-03 | JSSE não fornece builder X.509 público |
+| ZXing Core 3.5.3 | QR do convite local | URI temporária de pareamento | P2-03 | convite também pode ser copiado como texto |
 
 Para cada SDK novo registrar: versão fixa, licença, origem, permissões, rede, telemetria, tamanho, política de atualização, CVEs e teste de remoção.
 

@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 28,3%, restando 71,7%; `P2-01` e `P2-02` concluídas, `P2-03` em 83,3% (5 de 6 itens).
+- Projeto 2: implementação em 30%, restando 70%; `P2-01`, `P2-02` e `P2-03` concluídas.
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -97,9 +97,11 @@ Implementado em `P2-02`:
 | Persistência desktop de sync | `Database.applyMobileSyncMigration()` e `DesktopSyncRepository` |
 | Servidor e UI de pareamento desktop | `infra/pairing/` e `MobilePairingWindow` |
 | Credencial Android | `android/app/src/main/java/com/pessoal/agenda/mobile/pairing/DeviceCredentialStore.kt` |
+| Cliente e UI de pareamento Android | `pairing/PairingClient.kt`, `MainActivity.kt` e `AgendaMobileApp.kt` |
 | Transporte e máquina de estados Android | `android/app/src/main/java/com/pessoal/agenda/mobile/sync/` |
 | Lotes e snapshots desktop | `SyncBatchProcessor` e `DesktopSyncRepository` |
 | Testes | `android/app/src/test/` e `android/app/src/androidTest/` |
+| Gate desktop + AVD | `LocalPairingAndroidGate` em `src/test`; executar somente com SQLite temporário e `adb reverse` |
 
 | Domínio | Android | Wear | Desktop |
 |---|---|---|---|

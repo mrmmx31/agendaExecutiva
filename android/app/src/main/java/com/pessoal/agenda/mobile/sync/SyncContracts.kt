@@ -22,7 +22,7 @@ data class OperationEnvelope(
 
 @Serializable
 data class SyncBatch(
-    @SerialName("contract_version") val contractVersion: Int = 1,
+    @SerialName("contract_version") val contractVersion: Int,
     @SerialName("device_id") val deviceId: String,
     @SerialName("last_server_cursor") val lastServerCursor: Long,
     val operations: List<OperationEnvelope>,

@@ -17,17 +17,19 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.OAEPParameterSpec
 import javax.crypto.spec.PSource
 
-class DeviceCredentialStore(context: Context) {
+class DeviceCredentialStore(context: Context) : PairingCredentialStore {
     private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-    private val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+    private val keyStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+    }
 
-    val deviceId: String
+    override val deviceId: String
         get() = preferences.getString(DEVICE_ID, null)?.also(UUID::fromString)
             ?: UUID.randomUUID().toString().also {
                 preferences.edit().putString(DEVICE_ID, it).commit()
             }
 
-    val deviceName: String
+    override val deviceName: String
         get() = listOf(Build.MANUFACTURER, Build.MODEL)
             .filter(String::isNotBlank)
             .joinToString(" ")
@@ -35,7 +37,7 @@ class DeviceCredentialStore(context: Context) {
             .take(100)
             .ifBlank { "Android" }
 
-    fun publicKeyBase64Url(): String {
+    override fun publicKeyBase64Url(): String {
         ensureRsaKey()
         return Base64.getUrlEncoder().withoutPadding()
             .encodeToString(requireNotNull(keyStore.getCertificate(RSA_ALIAS)).publicKey.encoded)
@@ -74,16 +76,57 @@ class DeviceCredentialStore(context: Context) {
         }
     }
 
+    override fun completePairing(
+        encryptedCredential: String,
+        desktopId: String,
+        grantedRoles: Set<String>,
+        pairingEndpoint: String,
+        fingerprint: String,
+    ) {
+        val syncBase = validatedSyncBase(pairingEndpoint, fingerprint)
+        UUID.fromString(desktopId)
+        require(grantedRoles.isNotEmpty() && ALLOWED_ROLES.containsAll(grantedRoles)) {
+            "Papéis de pareamento inválidos."
+        }
+        ensureRsaKey()
+        val privateKey = requireNotNull(keyStore.getKey(RSA_ALIAS, null))
+        val rsa = Cipher.getInstance(RSA_TRANSFORMATION)
+        rsa.init(Cipher.DECRYPT_MODE, privateKey, OAEP_SPEC)
+        val credential = rsa.doFinal(Base64.getUrlDecoder().decode(encryptedCredential))
+        require(credential.size == CREDENTIAL_BYTES) { "Credencial de pareamento inválida." }
+        try {
+            val cipher = Cipher.getInstance(AES_TRANSFORMATION)
+            cipher.init(Cipher.ENCRYPT_MODE, aesKey())
+            val ciphertext = cipher.doFinal(credential)
+            check(
+                preferences.edit()
+                    .putString(CREDENTIAL, Base64.getEncoder().encodeToString(ciphertext))
+                    .putString(CREDENTIAL_IV, Base64.getEncoder().encodeToString(cipher.iv))
+                    .putString(DESKTOP_ID, desktopId)
+                    .putStringSet(GRANTED_ROLES, grantedRoles)
+                    .putString(SYNC_BASE, syncBase)
+                    .putString(TLS_FINGERPRINT, fingerprint)
+                    .commit(),
+            ) { "Não foi possível persistir o pareamento." }
+        } finally {
+            credential.fill(0)
+        }
+    }
+
     fun storeServerConnection(pairingEndpoint: String, fingerprint: String) {
-        val uri = URI.create(pairingEndpoint)
-        require(uri.scheme == "https" && uri.host != null && uri.rawQuery == null && uri.fragment == null)
-        require(uri.path == "/api/v1/pair/requests") { "Endpoint de pareamento inválido." }
-        require(fingerprint.matches(Regex("[a-f0-9]{64}"))) { "Impressão digital inválida." }
-        val syncBase = URI("https", null, uri.host, uri.port, "/api/v1/sync", null, null).toString()
+        val syncBase = validatedSyncBase(pairingEndpoint, fingerprint)
         check(preferences.edit()
             .putString(SYNC_BASE, syncBase)
             .putString(TLS_FINGERPRINT, fingerprint)
             .commit()) { "Não foi possível persistir a conexão." }
+    }
+
+    private fun validatedSyncBase(pairingEndpoint: String, fingerprint: String): String {
+        val uri = URI.create(pairingEndpoint)
+        require(uri.scheme == "https" && uri.host != null && uri.rawQuery == null && uri.fragment == null)
+        require(uri.path == "/api/v1/pair/requests") { "Endpoint de pareamento inválido." }
+        require(fingerprint.matches(Regex("[a-f0-9]{64}"))) { "Impressão digital inválida." }
+        return URI("https", null, uri.host, uri.port, "/api/v1/sync", null, null).toString()
     }
 
     fun syncBaseUrl(): String? = if (hasReadableCredential()) {

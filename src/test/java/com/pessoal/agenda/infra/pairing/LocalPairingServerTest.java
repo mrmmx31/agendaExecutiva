@@ -25,6 +25,9 @@ import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.cert.X509Certificate;
 import java.security.spec.MGF1ParameterSpec;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -72,8 +75,12 @@ class LocalPairingServerTest {
             JsonObject approved = complete(
                     invitation.get("endpoint"), invitation.get("fingerprint"), requestId,
                     pending.get("completion_token").getAsString(), 200);
+            JsonObject repeated = complete(
+                    invitation.get("endpoint"), invitation.get("fingerprint"), requestId,
+                    pending.get("completion_token").getAsString(), 200);
 
             assertEquals("APPROVED", approved.get("status").getAsString());
+            assertEquals(approved, repeated);
             assertTrue(approved.has("completion_token"));
             assertTrue(approved.get("completion_token").isJsonNull());
             assertEquals(32, decryptCredential(
@@ -177,8 +184,69 @@ class LocalPairingServerTest {
         }
     }
 
+    @Test
+    void expiredSessionCannotCompletePendingRequest() throws Exception {
+        MutableClock clock = new MutableClock(Instant.parse("2026-09-01T12:00:00Z"));
+        try (var server = server(clock)) {
+            PairingSession session = server.start();
+            Map<String, String> invitation = invitation(session.invitation());
+            JsonObject pending = createRequest(session, invitation, rsaKeys(), session.oneTimeCode());
+
+            clock.advanceSeconds(301);
+
+            complete(invitation.get("endpoint"), invitation.get("fingerprint"),
+                    pending.get("request_id").getAsString(),
+                    pending.get("completion_token").getAsString(), 409);
+            assertNull(server.pendingRequest());
+            assertNull(repository.findDevice(DEVICE_ID));
+        }
+    }
+
+    @Test
+    void newSessionInvalidatesOldTokenAndAllowsReconnect() throws Exception {
+        try (var server = server()) {
+            PairingSession firstSession = server.start();
+            Map<String, String> firstInvitation = invitation(firstSession.invitation());
+            JsonObject firstPending = createRequest(
+                    firstSession, firstInvitation, rsaKeys(), firstSession.oneTimeCode());
+
+            PairingSession secondSession = server.start();
+            Map<String, String> secondInvitation = invitation(secondSession.invitation());
+
+            assertFalse(firstInvitation.get("session_id").equals(secondInvitation.get("session_id")));
+            assertFalse(firstInvitation.get("fingerprint").equals(secondInvitation.get("fingerprint")));
+            complete(secondInvitation.get("endpoint"), secondInvitation.get("fingerprint"),
+                    firstPending.get("request_id").getAsString(),
+                    firstPending.get("completion_token").getAsString(), 409);
+
+            JsonObject secondPending = createRequest(
+                    secondSession, secondInvitation, rsaKeys(), secondSession.oneTimeCode());
+            server.approve(secondPending.get("request_id").getAsString(), Set.of("TASKS_READ"));
+            JsonObject approved = complete(
+                    secondInvitation.get("endpoint"), secondInvitation.get("fingerprint"),
+                    secondPending.get("request_id").getAsString(),
+                    secondPending.get("completion_token").getAsString(), 200);
+
+            assertEquals("APPROVED", approved.get("status").getAsString());
+            assertEquals("ACTIVE", repository.findDevice(DEVICE_ID).status());
+        }
+    }
+
     private LocalPairingServer server() throws Exception {
         return new LocalPairingServer(repository, InetAddress.getByName("127.0.0.1"), 0);
+    }
+
+    private LocalPairingServer server(Clock clock) throws Exception {
+        return new LocalPairingServer(repository, clock, InetAddress.getByName("127.0.0.1"), 0);
+    }
+
+    private static final class MutableClock extends Clock {
+        private Instant now;
+        private MutableClock(Instant now) { this.now = now; }
+        void advanceSeconds(long seconds) { now = now.plusSeconds(seconds); }
+        @Override public ZoneId getZone() { return ZoneId.of("UTC"); }
+        @Override public Clock withZone(ZoneId zone) { return this; }
+        @Override public Instant instant() { return now; }
     }
 
     private JsonObject createRequest(PairingSession session, Map<String, String> invitation,

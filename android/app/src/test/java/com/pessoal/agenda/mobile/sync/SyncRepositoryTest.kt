@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -52,7 +54,11 @@ class SyncRepositoryTest {
     fun appliedCaptureIsAcknowledgedAndSnapshotIsPersisted() = runBlocking {
         offline.createCapture("Captura para sincronizar")
         val transport = FakeTransport(
-            result = { batch -> response(batch, "APPLIED") },
+            result = { batch ->
+                assertEquals(1, batch.contractVersion)
+                assertTrue(Json.encodeToString(batch).contains("\"contract_version\":1"))
+                response(batch, "APPLIED")
+            },
             pages = ArrayDeque(listOf(snapshot(cursor = 7))),
         )
 

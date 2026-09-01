@@ -10,6 +10,7 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Cliente Android de pareamento por QR/deep link ou colagem, espera cancelável, reconexão e gate real desktop + AVD
 - Sync local P2-03 com lotes idempotentes, snapshots paginados, cursores monotônicos e conflitos explícitos
 - Room v3 no Android com estados completos da fila, recuperação de envio, réplica desktop e revisão das duas versões em conflito
 - Transporte Android HTTPS fixado, limite de resposta, identidade única do Keystore e ação manual quando pareado

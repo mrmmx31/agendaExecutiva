@@ -19,10 +19,12 @@ import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -38,6 +40,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -55,6 +58,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -77,7 +82,10 @@ private enum class MobileSection(val label: String, val icon: ImageVector) {
 }
 
 @Composable
-fun AgendaMobileApp(viewModel: AgendaMobileViewModel = viewModel()) {
+fun AgendaMobileApp(
+    initialPairingInvitation: String? = null,
+    viewModel: AgendaMobileViewModel = viewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     AgendaMobileTheme {
         AgendaMobileScreen(
@@ -86,7 +94,11 @@ fun AgendaMobileApp(viewModel: AgendaMobileViewModel = viewModel()) {
             onStartProtocol = viewModel::startProtocol,
             onCompleteStep = viewModel::completeStep,
             onSync = viewModel::syncNow,
+            onPair = viewModel::pairDesktop,
+            onCancelPairing = viewModel::cancelPairing,
+            onPairingCompletionShown = viewModel::acknowledgePairingCompletion,
             onFeedbackShown = viewModel::clearFeedback,
+            initialPairingInvitation = initialPairingInvitation,
         )
     }
 }
@@ -99,15 +111,40 @@ internal fun AgendaMobileScreen(
     onStartProtocol: (String) -> Unit,
     onCompleteStep: (String, String) -> Unit,
     onSync: () -> Unit,
+    onPair: (String, String) -> Unit,
+    onCancelPairing: () -> Unit,
+    onPairingCompletionShown: () -> Unit,
     onFeedbackShown: () -> Unit,
+    initialPairingInvitation: String? = null,
 ) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
+    var showPairing by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.feedback) {
         state.feedback?.let {
             snackbar.showSnackbar(it)
             onFeedbackShown()
         }
+    }
+    LaunchedEffect(state.pairingCompletion) {
+        if (state.pairingCompletion > 0) {
+            showPairing = false
+            onPairingCompletionShown()
+        }
+    }
+    LaunchedEffect(initialPairingInvitation) {
+        if (!initialPairingInvitation.isNullOrBlank()) showPairing = true
+    }
+    if (showPairing) {
+        PairingDialog(
+            inProgress = state.pairingInProgress,
+            initialInvitation = initialPairingInvitation.orEmpty(),
+            onPair = onPair,
+            onCancel = {
+                if (state.pairingInProgress) onCancelPairing()
+                showPairing = false
+            },
+        )
     }
     Scaffold(
         topBar = {
@@ -145,6 +182,7 @@ internal fun AgendaMobileScreen(
                 state.canSync,
                 state.busy,
                 onSync,
+                onPair = { showPairing = true },
             )
             when (MobileSection.entries[selected]) {
                 MobileSection.TODAY -> TodayScreen(state.tasks)
@@ -168,6 +206,7 @@ private fun OfflineStatusBand(
     canSync: Boolean,
     busy: Boolean,
     onSync: () -> Unit,
+    onPair: () -> Unit,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.secondaryContainer,
@@ -191,10 +230,69 @@ private fun OfflineStatusBand(
                     IconButton(onClick = onSync, enabled = !busy) {
                         Icon(Icons.Outlined.Sync, contentDescription = "Sincronizar agora")
                     }
+                } else {
+                    IconButton(onClick = onPair, enabled = !busy) {
+                        Icon(Icons.Outlined.Link, contentDescription = "Conectar ao desktop")
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun PairingDialog(
+    inProgress: Boolean,
+    initialInvitation: String,
+    onPair: (String, String) -> Unit,
+    onCancel: () -> Unit,
+) {
+    var invitation by rememberSaveable(initialInvitation) { mutableStateOf(initialInvitation) }
+    var code by rememberSaveable { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Conectar ao desktop") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = invitation,
+                    onValueChange = { invitation = it.take(4096) },
+                    enabled = !inProgress,
+                    label = { Text("Convite") },
+                    minLines = 3,
+                    maxLines = 5,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = { value -> code = value.filter(Char::isDigit).take(6) },
+                    enabled = !inProgress,
+                    label = { Text("Código de seis dígitos") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (inProgress) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.height(22.dp), strokeWidth = 2.dp)
+                        Text("Aguardando aprovação no desktop")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onPair(invitation, code) },
+                enabled = !inProgress && invitation.isNotBlank() && code.length == 6,
+            ) { Text("Conectar") }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onCancel) { Text("Cancelar") }
+        },
+    )
 }
 
 @Composable
@@ -432,6 +530,6 @@ private fun String.userDateTime(): String = runCatching {
 @Composable
 private fun MobileHomePreview() {
     AgendaMobileTheme {
-        AgendaMobileScreen(MobileUiState(), { _, _ -> }, {}, { _, _ -> }, {}, {})
+        AgendaMobileScreen(MobileUiState(), { _, _ -> }, {}, { _, _ -> }, {}, { _, _ -> }, {}, {}, {})
     }
 }

@@ -54,6 +54,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 
 public final class LocalPairingServer implements AutoCloseable {
     private static final int CONTRACT_VERSION = 1;
@@ -73,6 +74,7 @@ public final class LocalPairingServer implements AutoCloseable {
     private final int port;
     private final Gson gson = new GsonBuilder().serializeNulls().create();
     private final SyncBatchProcessor syncProcessor;
+    private final Consumer<String> diagnostic;
 
     private HttpsServer server;
     private ExecutorService executor;
@@ -87,16 +89,22 @@ public final class LocalPairingServer implements AutoCloseable {
     private final Map<String, SnapshotPagePointer> snapshotTokens = new HashMap<>();
 
     public LocalPairingServer(DesktopSyncRepository repository, InetAddress bindAddress, int port) {
-        this(repository, Clock.systemUTC(), bindAddress, port);
+        this(repository, Clock.systemUTC(), bindAddress, port, ignored -> {});
     }
 
     LocalPairingServer(DesktopSyncRepository repository, Clock clock,
                        InetAddress bindAddress, int port) {
+        this(repository, clock, bindAddress, port, ignored -> {});
+    }
+
+    LocalPairingServer(DesktopSyncRepository repository, Clock clock,
+                       InetAddress bindAddress, int port, Consumer<String> diagnostic) {
         this.repository = repository;
         this.clock = clock;
         this.bindAddress = bindAddress;
         this.port = port;
         this.syncProcessor = new SyncBatchProcessor(repository);
+        this.diagnostic = diagnostic;
     }
 
     public synchronized PairingSession start() {
@@ -200,6 +208,7 @@ public final class LocalPairingServer implements AutoCloseable {
         }
         String deviceId = authenticate(exchange);
         if (deviceId == null) {
+            diagnostic.accept("sync authentication rejected");
             respond(exchange, 401, new ErrorResponse("Sincronização recusada."));
             return;
         }
@@ -207,6 +216,9 @@ public final class LocalPairingServer implements AutoCloseable {
             byte[] body = limitedBody(exchange, MAX_SYNC_BODY_BYTES);
             respond(exchange, 200, syncProcessor.process(deviceId, body));
         } catch (Exception error) {
+            diagnostic.accept("sync batch rejected: " + error.getClass().getSimpleName()
+                    + " at "
+                    + java.util.Arrays.stream(error.getStackTrace()).limit(4).toList());
             respond(exchange, 400, new ErrorResponse("Lote de sincronização inválido."));
         }
     }

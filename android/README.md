@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativo Android do Projeto 2 com núcleo offline concluído em `P2-02` e transporte local implementado em `P2-03`. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, Keystore, HTTPS fixado, snapshot e conflitos. O pareamento Android visual e a matriz ponta a ponta permanecem para o último item de `P2-03`; alertas, saúde e IA ainda não existem.
+Aplicativo Android do Projeto 2 com núcleo offline e `P2-03` concluídos. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot e conflitos. Alertas, saúde e IA ainda não existem.
 
 ## Requisitos
 
@@ -32,7 +32,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 
 - `test`, `lint` e `assembleDebug`: aprovados.
 - Testes Room e do repositório offline com Robolectric: aprovados.
-- Oito testes instrumentados no AVD API 34: duas migrações Room, três fluxos Compose e três testes do Keystore aprovados.
+- Doze testes instrumentados no AVD API 34: migrações Room, cinco fluxos Compose, Keystore e matriz HTTPS aprovados.
 - Renderização clara e escura no telefone virtual: inspecionada sem cortes ou resíduos de tema.
 - Fluxo fictício validado: uma captura mais início e quatro passos de protocolo geraram seis operações sequenciais na fila.
 - Parser do convite de pareamento aprovado em cinco testes de validade, expiração, campos fechados e bloqueio de downgrade HTTP.
@@ -40,6 +40,8 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - Credencial de pareamento recifrada com AES-GCM e chaves RSA/AES não exportáveis do Android Keystore; nenhum segredo em texto aberto nas preferências.
 - Room v3 com estados completos da fila, cursor confirmado, conflitos revisáveis e migração `2 -> 3` validada.
 - Transporte HTTPS local com certificado fixado, lote limitado, snapshot paginado e ação de sync visível quando pareado.
+- Pareamento Android cancelável por `agenda://pair` ou colagem, com reconexão e criptografia fora da thread principal.
+- Gate real desktop + AVD aprovado com captura móvel entregue em banco temporário (`PAIRING_GATE_SYNCED`).
 - Primeiro boot dos AVDs de telefone e Wear OS: aprovado.
 - Pareamento telefone-relógio: aprovado; o assistente confirmou `Successful pairing` entre os dois AVDs.
 - O Google Pixel Watch do AVD precisou das permissões de notificações e dispositivos próximos; isso não altera as permissões do aplicativo Agenda.

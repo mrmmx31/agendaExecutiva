@@ -1,17 +1,11 @@
 package com.pessoal.agenda.mobile.sync
 
-import android.annotation.SuppressLint
 import com.pessoal.agenda.mobile.pairing.DeviceCredentialStore
 import java.io.ByteArrayOutputStream
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
-import java.security.cert.CertificateException
-import java.security.cert.X509Certificate
 import java.util.Base64
 import javax.net.ssl.HttpsURLConnection
-import javax.net.ssl.SSLContext
-import javax.net.ssl.X509TrustManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
@@ -38,14 +32,11 @@ class HttpsSyncTransport(private val credentials: DeviceCredentialStore) : SyncT
             ?: throw SyncTransportException("Certificado do desktop ausente.")
         val credential = credentials.credential()
         try {
-            val connection = java.net.URI.create(base + path).toURL().openConnection()
-                    as HttpsURLConnection
-            connection.sslSocketFactory = pinnedContext(fingerprint).socketFactory
+            val connection = PinnedHttpsConnectionFactory.open(
+                java.net.URI.create(base + path),
+                fingerprint,
+            )
             connection.requestMethod = method
-            connection.connectTimeout = 8_000
-            connection.readTimeout = 15_000
-            connection.useCaches = false
-            connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("X-Agenda-Device", credentials.deviceId)
             connection.setRequestProperty(
                 "Authorization",
@@ -87,23 +78,6 @@ class HttpsSyncTransport(private val credentials: DeviceCredentialStore) : SyncT
         } finally {
             credential.fill(0)
         }
-    }
-
-    @SuppressLint("CustomX509TrustManager")
-    private fun pinnedContext(expectedHex: String): SSLContext {
-        val expected = expectedHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-        val trust = object : X509TrustManager {
-            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
-            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
-            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
-                if (chain.isEmpty()) throw CertificateException("Certificado ausente")
-                val actual = MessageDigest.getInstance("SHA-256").digest(chain[0].encoded)
-                if (!MessageDigest.isEqual(expected, actual)) {
-                    throw CertificateException("Certificado não corresponde ao convite")
-                }
-            }
-        }
-        return SSLContext.getInstance("TLS").apply { init(null, arrayOf(trust), null) }
     }
 
     private companion object {

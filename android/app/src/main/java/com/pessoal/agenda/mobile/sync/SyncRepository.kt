@@ -123,6 +123,7 @@ class SyncRepository(
     }
 
     private suspend fun batch(operations: List<PendingOperationEntity>): SyncBatch = SyncBatch(
+        contractVersion = 1,
         deviceId = operations.firstOrNull()?.deviceId
             ?: requireNotNull(dao.metadata(DEVICE_ID_KEY)?.value) { "Identidade do aparelho ausente." },
         lastServerCursor = serverCursor(),

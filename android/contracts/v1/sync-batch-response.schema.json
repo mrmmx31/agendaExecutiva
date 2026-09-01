@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/sync-batch-response.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "client_contiguous_sequence", "server_cursor", "results", "conflicts"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "client_contiguous_sequence": { "type": "integer", "minimum": 0 },
+    "server_cursor": { "type": "integer", "minimum": 0 },
+    "results": { "type": "array", "maxItems": 100, "items": { "$ref": "sync-result.schema.json" } },
+    "conflicts": { "type": "array", "maxItems": 100, "items": { "$ref": "conflict.schema.json" } }
+  }
+}

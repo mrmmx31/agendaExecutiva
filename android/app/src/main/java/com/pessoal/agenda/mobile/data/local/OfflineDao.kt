@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -23,6 +24,9 @@ interface OfflineDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertTasks(values: List<TaskReplicaEntity>)
 
+    @Upsert
+    suspend fun upsertTasks(values: List<TaskReplicaEntity>)
+
     @Query("SELECT * FROM captures ORDER BY createdAt DESC")
     fun observeCaptures(): Flow<List<CaptureEntity>>
 
@@ -35,8 +39,14 @@ interface OfflineDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertProtocol(value: ProtocolTemplateEntity)
 
+    @Upsert
+    suspend fun upsertProtocols(values: List<ProtocolTemplateEntity>)
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertProtocolSteps(values: List<ProtocolStepEntity>)
+
+    @Upsert
+    suspend fun upsertProtocolSteps(values: List<ProtocolStepEntity>)
 
     @Query("SELECT * FROM protocol_templates WHERE tombstone = 0 ORDER BY title")
     fun observeProtocols(): Flow<List<ProtocolTemplateEntity>>
@@ -99,6 +109,43 @@ interface OfflineDao {
 
     @Query("SELECT * FROM pending_operations ORDER BY sequence DESC")
     fun observeOperations(): Flow<List<PendingOperationEntity>>
+
+    @Query("SELECT * FROM pending_operations WHERE status IN ('PENDING','RETRYABLE') ORDER BY sequence LIMIT :limit")
+    suspend fun operationsForSync(limit: Int = 100): List<PendingOperationEntity>
+
+    @Query("UPDATE pending_operations SET status='IN_FLIGHT', attemptCount=attemptCount+1, updatedAt=:now WHERE operationId IN (:ids) AND status IN ('PENDING','RETRYABLE')")
+    suspend fun markInFlight(ids: List<String>, now: String): Int
+
+    @Query("UPDATE pending_operations SET status='RETRYABLE', errorCode='TEMPORARY_FAILURE', updatedAt=:now WHERE operationId IN (:ids) AND status='IN_FLIGHT'")
+    suspend fun markRetryable(ids: List<String>, now: String): Int
+
+    @Query("UPDATE pending_operations SET status=:status, errorCode=:errorCode, serverRevision=:serverRevision, conflictId=:conflictId, updatedAt=:now WHERE operationId=:operationId AND status='IN_FLIGHT'")
+    suspend fun applySyncResult(
+        operationId: String,
+        status: String,
+        errorCode: String?,
+        serverRevision: Long?,
+        conflictId: String?,
+        now: String,
+    ): Int
+
+    @Query("UPDATE captures SET acknowledgedAt=:now WHERE id=:captureId AND acknowledgedAt IS NULL")
+    suspend fun acknowledgeCapture(captureId: String, now: String): Int
+
+    @Query("UPDATE pending_operations SET status='RETRYABLE', errorCode='TEMPORARY_FAILURE', updatedAt=:now WHERE status='IN_FLIGHT'")
+    suspend fun recoverInFlight(now: String): Int
+
+    @Query("UPDATE pending_operations SET deviceId=:newDeviceId WHERE deviceId=:oldDeviceId")
+    suspend fun replaceOperationDeviceId(oldDeviceId: String, newDeviceId: String): Int
+
+    @Upsert
+    suspend fun upsertConflicts(values: List<SyncConflictEntity>)
+
+    @Query("SELECT * FROM sync_conflicts WHERE status='OPEN' ORDER BY createdAt")
+    fun observeOpenConflicts(): Flow<List<SyncConflictEntity>>
+
+    @Query("SELECT * FROM sync_conflicts WHERE status='OPEN' ORDER BY createdAt")
+    suspend fun openConflicts(): List<SyncConflictEntity>
 }
 
 data class ActiveRunStepRow(

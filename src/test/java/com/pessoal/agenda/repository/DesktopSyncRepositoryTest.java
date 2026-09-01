@@ -177,6 +177,57 @@ class DesktopSyncRepositoryTest {
         assertEquals(0, count("SELECT COUNT(*) FROM mobile_applied_operations"));
     }
 
+    @Test
+    void credentialAuthenticationUsesHashAndHonorsRevocation() throws Exception {
+        byte[] credential = new byte[32];
+        java.util.Arrays.fill(credential, (byte) 7);
+        String hash = java.util.HexFormat.of().formatHex(
+                java.security.MessageDigest.getInstance("SHA-256").digest(credential));
+        repository.approveDevice(DEVICE_ID, "Android fictício", hash, 1, 1,
+                Set.of("CAPTURES_WRITE"));
+
+        assertTrue(repository.credentialsMatch(DEVICE_ID, credential));
+        credential[0] = 8;
+        assertFalse(repository.credentialsMatch(DEVICE_ID, credential));
+        repository.revokeDevice(DEVICE_ID);
+        credential[0] = 7;
+        assertFalse(repository.credentialsMatch(DEVICE_ID, credential));
+    }
+
+    @Test
+    void captureEffectAndTerminalResultAreIdempotentTogether() {
+        approveDevice();
+        var input = operation("10000000-0000-4000-8000-000000000101", 1, HASH_A);
+
+        var first = repository.applyCapture(
+                input, "Captura móvel fictícia", Instant.parse("2026-09-01T11:59:00Z"));
+        var replay = repository.applyCapture(
+                input, "Captura móvel fictícia", Instant.parse("2026-09-01T11:59:00Z"));
+
+        assertFalse(first.replay());
+        assertTrue(replay.replay());
+        assertEquals(1, count("SELECT COUNT(*) FROM inbox_captures"));
+        assertEquals(1, count("SELECT COUNT(*) FROM mobile_applied_operations"));
+    }
+
+    @Test
+    void snapshotCursorChangesOnlyWhenDesktopContentChanges() {
+        database.execute("INSERT INTO tasks(title, due_date) VALUES('Tarefa fictícia','2026-09-01')");
+        database.execute("INSERT INTO protocols(name) VALUES('Protocolo fictício')");
+
+        var first = repository.refreshSnapshot();
+        var unchanged = repository.refreshSnapshot();
+        assertEquals(1, first.taskJson().size());
+        assertEquals(1, first.protocolJson().size());
+        assertEquals(first.serverCursor(), unchanged.serverCursor());
+
+        database.execute("UPDATE tasks SET title='Tarefa fictícia alterada'");
+        var changed = repository.refreshSnapshot();
+        assertTrue(changed.serverCursor() > first.serverCursor());
+        assertTrue(changed.taskJson().getFirst().contains("Tarefa fictícia alterada"));
+        assertTrue(changed.taskJson().getFirst().contains("\"revision\":2"));
+    }
+
     private void approveDevice() {
         repository.approveDevice(
                 DEVICE_ID, "  Android   fictício  ", HASH_A, 1, 1,
@@ -187,7 +238,7 @@ class DesktopSyncRepositoryTest {
         return new DesktopSyncRepository.OperationInput(
                 id, DEVICE_ID, sequence, "CAPTURE_CREATED", "capture", ENTITY_ID,
                 hash, "APPLIED", null, 1L, null,
-                "{\"operation_id\":\"" + id + "\",\"status\":\"APPLIED\"}",
+                DesktopSyncRepository.resultJson(id, "APPLIED", null, 1L, null),
                 "2026-09-01T11:59:00Z");
     }
 

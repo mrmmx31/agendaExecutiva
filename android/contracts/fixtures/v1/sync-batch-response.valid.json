@@ -1,0 +1,13 @@
+{
+  "contract_version": 1,
+  "client_contiguous_sequence": 1,
+  "server_cursor": 3,
+  "results": [{
+    "operation_id": "10000000-0000-4000-8000-000000000005",
+    "status": "APPLIED",
+    "error_code": null,
+    "server_revision": 1,
+    "conflict_id": null
+  }],
+  "conflicts": []
+}

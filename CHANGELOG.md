@@ -10,6 +10,9 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Sync local P2-03 com lotes idempotentes, snapshots paginados, cursores monotônicos e conflitos explícitos
+- Room v3 no Android com estados completos da fila, recuperação de envio, réplica desktop e revisão das duas versões em conflito
+- Transporte Android HTTPS fixado, limite de resposta, identidade única do Keystore e ação manual quando pareado
 - Pareamento P2-03 com HTTPS efêmero, certificado fixado, QR/código, aprovação e revogação no desktop
 - Credencial Android protegida por RSA e AES-GCM com chaves não exportáveis do Keystore e testes instrumentados no AVD
 - Persistência desktop P2-03 para identidade, UUIDs globais, dispositivos, papéis, revogação, operações idempotentes e cursores contíguos

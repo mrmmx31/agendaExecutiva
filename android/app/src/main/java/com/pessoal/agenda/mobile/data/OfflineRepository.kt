@@ -27,6 +27,7 @@ class OfflineRepository(
     private val clock: Clock = Clock.systemUTC(),
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val newId: () -> String = { UUID.randomUUID().toString() },
+    private val deviceIdProvider: (() -> String)? = null,
 ) {
     private val dao = database.offline()
 
@@ -35,6 +36,8 @@ class OfflineRepository(
     val protocols: Flow<List<ProtocolTemplateEntity>> = dao.observeProtocols()
     val activeRunSteps: Flow<List<ActiveRunStepRow>> = dao.observeActiveRunSteps()
     val operations: Flow<List<PendingOperationEntity>> = dao.observeOperations()
+
+    suspend fun alignDeviceIdentity() = database.withTransaction { deviceId(instant()) }
 
     suspend fun initializeFictitiousData() = database.withTransaction {
         val now = instant()
@@ -180,7 +183,18 @@ class OfflineRepository(
     }
 
     private suspend fun deviceId(now: String): String {
-        dao.metadata(DEVICE_ID_KEY)?.let { return it.value.also(UUID::fromString) }
+        val authoritative = deviceIdProvider?.invoke()?.also(UUID::fromString)
+        val existing = dao.metadata(DEVICE_ID_KEY)?.value?.also(UUID::fromString)
+        if (authoritative != null) {
+            if (existing != null && existing != authoritative) {
+                dao.replaceOperationDeviceId(existing, authoritative)
+            }
+            if (existing != authoritative) {
+                dao.saveMetadata(MobileMetadataEntity(DEVICE_ID_KEY, authoritative, now))
+            }
+            return authoritative
+        }
+        if (existing != null) return existing
         return validId().also { dao.saveMetadata(MobileMetadataEntity(DEVICE_ID_KEY, it, now)) }
     }
 

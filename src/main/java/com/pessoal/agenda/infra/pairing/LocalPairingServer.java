@@ -2,6 +2,7 @@ package com.pessoal.agenda.infra.pairing;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
 import com.pessoal.agenda.repository.DesktopSyncRepository;
@@ -27,6 +28,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
@@ -45,6 +47,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -53,6 +58,7 @@ import java.util.concurrent.ExecutorService;
 public final class LocalPairingServer implements AutoCloseable {
     private static final int CONTRACT_VERSION = 1;
     private static final int MAX_BODY_BYTES = 32 * 1024;
+    private static final int MAX_SYNC_BODY_BYTES = 256 * 1024;
     private static final Duration SESSION_DURATION = Duration.ofMinutes(5);
     private static final Set<String> REQUEST_FIELDS = Set.of(
             "contract_version", "session_id", "desktop_id", "device_id", "device_name",
@@ -66,6 +72,7 @@ public final class LocalPairingServer implements AutoCloseable {
     private final InetAddress bindAddress;
     private final int port;
     private final Gson gson = new GsonBuilder().serializeNulls().create();
+    private final SyncBatchProcessor syncProcessor;
 
     private HttpsServer server;
     private ExecutorService executor;
@@ -77,6 +84,7 @@ public final class LocalPairingServer implements AutoCloseable {
     private String code;
     private Instant expiresAt;
     private PendingState pending;
+    private final Map<String, SnapshotPagePointer> snapshotTokens = new HashMap<>();
 
     public LocalPairingServer(DesktopSyncRepository repository, InetAddress bindAddress, int port) {
         this(repository, Clock.systemUTC(), bindAddress, port);
@@ -88,6 +96,7 @@ public final class LocalPairingServer implements AutoCloseable {
         this.clock = clock;
         this.bindAddress = bindAddress;
         this.port = port;
+        this.syncProcessor = new SyncBatchProcessor(repository);
     }
 
     public synchronized PairingSession start() {
@@ -100,6 +109,8 @@ public final class LocalPairingServer implements AutoCloseable {
             server = HttpsServer.create(new InetSocketAddress(bindAddress, port), 0);
             server.setHttpsConfigurator(new HttpsConfigurator(sslContext(certificateKeys, certificate)));
             server.createContext("/api/v1/pair/requests", this::handleRequest);
+            server.createContext("/api/v1/sync/batches", this::handleRequest);
+            server.createContext("/api/v1/sync/snapshot", this::handleRequest);
             executor = Executors.newVirtualThreadPerTaskExecutor();
             server.setExecutor(executor);
 
@@ -177,7 +188,56 @@ public final class LocalPairingServer implements AutoCloseable {
         String path = exchange.getRequestURI().getPath();
         if (path.equals("/api/v1/pair/requests")) handleCreate(exchange);
         else if (path.matches("/api/v1/pair/requests/[0-9a-fA-F-]{36}/complete")) handleComplete(exchange);
+        else if (path.equals("/api/v1/sync/batches")) handleSyncBatch(exchange);
+        else if (path.equals("/api/v1/sync/snapshot")) handleSnapshot(exchange);
         else respond(exchange, 404, new ErrorResponse("Pareamento recusado."));
+    }
+
+    private void handleSyncBatch(HttpExchange exchange) throws IOException {
+        if (!"POST".equals(exchange.getRequestMethod()) || expired()) {
+            respond(exchange, 409, new ErrorResponse("Sincronização indisponível."));
+            return;
+        }
+        String deviceId = authenticate(exchange);
+        if (deviceId == null) {
+            respond(exchange, 401, new ErrorResponse("Sincronização recusada."));
+            return;
+        }
+        try {
+            byte[] body = limitedBody(exchange, MAX_SYNC_BODY_BYTES);
+            respond(exchange, 200, syncProcessor.process(deviceId, body));
+        } catch (Exception error) {
+            respond(exchange, 400, new ErrorResponse("Lote de sincronização inválido."));
+        }
+    }
+
+    private synchronized void handleSnapshot(HttpExchange exchange) throws IOException {
+        if (!"GET".equals(exchange.getRequestMethod()) || expired()) {
+            respond(exchange, 409, new ErrorResponse("Sincronização indisponível."));
+            return;
+        }
+        String deviceId = authenticate(exchange);
+        if (deviceId == null || !repository.hasRole(deviceId, "TASKS_READ")) {
+            respond(exchange, 401, new ErrorResponse("Sincronização recusada."));
+            return;
+        }
+        try {
+            String token = queryParameter(exchange, "page_token");
+            SnapshotPagePointer pointer;
+            if (token == null) {
+                DesktopSyncRepository.SnapshotRecord snapshot = repository.refreshSnapshot();
+                pointer = new SnapshotPagePointer(
+                        deviceId, UUID.randomUUID().toString(), snapshot, 0);
+            } else {
+                pointer = snapshotTokens.get(token);
+                if (pointer == null || !pointer.deviceId.equals(deviceId)) {
+                    throw new IllegalArgumentException();
+                }
+            }
+            respond(exchange, 200, snapshotPage(pointer));
+        } catch (Exception error) {
+            respond(exchange, 400, new ErrorResponse("Snapshot inválido."));
+        }
     }
 
     private synchronized void handleCreate(HttpExchange exchange) throws IOException {
@@ -186,7 +246,7 @@ public final class LocalPairingServer implements AutoCloseable {
             return;
         }
         try {
-            byte[] body = limitedBody(exchange);
+            byte[] body = limitedBody(exchange, MAX_BODY_BYTES);
             JsonObject object = gson.fromJson(new String(body, StandardCharsets.UTF_8), JsonObject.class);
             if (object == null || !object.keySet().equals(REQUEST_FIELDS)) throw new IllegalArgumentException();
             PairRequest request = gson.fromJson(object, PairRequest.class);
@@ -240,10 +300,78 @@ public final class LocalPairingServer implements AutoCloseable {
         }
     }
 
-    private byte[] limitedBody(HttpExchange exchange) throws IOException {
-        byte[] body = exchange.getRequestBody().readNBytes(MAX_BODY_BYTES + 1);
-        if (body.length > MAX_BODY_BYTES) throw new IllegalArgumentException();
+    private byte[] limitedBody(HttpExchange exchange, int maximum) throws IOException {
+        byte[] body = exchange.getRequestBody().readNBytes(maximum + 1);
+        if (body.length > maximum) throw new IllegalArgumentException();
         return body;
+    }
+
+    private String authenticate(HttpExchange exchange) {
+        String deviceId = exchange.getRequestHeaders().getFirst("X-Agenda-Device");
+        String authorization = exchange.getRequestHeaders().getFirst("Authorization");
+        if (deviceId == null || authorization == null
+                || !authorization.startsWith("AgendaCredential ")) return null;
+        byte[] credential = null;
+        try {
+            UUID.fromString(deviceId);
+            credential = Base64.getUrlDecoder().decode(
+                    authorization.substring("AgendaCredential ".length()));
+            return repository.credentialsMatch(deviceId, credential) ? deviceId : null;
+        } catch (RuntimeException error) {
+            return null;
+        } finally {
+            if (credential != null) java.util.Arrays.fill(credential, (byte) 0);
+        }
+    }
+
+    private JsonObject snapshotPage(SnapshotPagePointer pointer) {
+        List<String> allTasks = pointer.snapshot.taskJson();
+        List<String> allProtocols = pointer.snapshot.protocolJson();
+        int taskStart = pointer.page * 200;
+        int protocolStart = pointer.page * 50;
+        int taskEnd = Math.min(taskStart + 200, allTasks.size());
+        int protocolEnd = Math.min(protocolStart + 50, allProtocols.size());
+        boolean hasMore = taskEnd < allTasks.size() || protocolEnd < allProtocols.size();
+
+        JsonArray tasks = new JsonArray();
+        if (taskStart < allTasks.size()) {
+            allTasks.subList(taskStart, taskEnd).forEach(value ->
+                    tasks.add(gson.fromJson(value, JsonObject.class)));
+        }
+        JsonArray protocols = new JsonArray();
+        if (protocolStart < allProtocols.size()) {
+            allProtocols.subList(protocolStart, protocolEnd).forEach(value ->
+                    protocols.add(gson.fromJson(value, JsonObject.class)));
+        }
+        String nextToken = null;
+        if (hasMore) {
+            nextToken = randomBase64(32);
+            snapshotTokens.put(nextToken, new SnapshotPagePointer(
+                    pointer.deviceId, pointer.snapshotId, pointer.snapshot, pointer.page + 1));
+        }
+        JsonObject result = new JsonObject();
+        result.addProperty("snapshot_id", pointer.snapshotId);
+        result.addProperty("server_cursor", pointer.snapshot.serverCursor());
+        result.addProperty("page", pointer.page + 1);
+        result.addProperty("has_more", hasMore);
+        if (nextToken == null) result.add("next_page_token", com.google.gson.JsonNull.INSTANCE);
+        else result.addProperty("next_page_token", nextToken);
+        result.add("tasks", tasks);
+        result.add("protocols", protocols);
+        return result;
+    }
+
+    private static String queryParameter(HttpExchange exchange, String name) {
+        String query = exchange.getRequestURI().getRawQuery();
+        if (query == null || query.isBlank()) return null;
+        for (String pair : query.split("&")) {
+            String[] parts = pair.split("=", 2);
+            if (URLDecoder.decode(parts[0], StandardCharsets.UTF_8).equals(name)) {
+                return parts.length == 2
+                        ? URLDecoder.decode(parts[1], StandardCharsets.UTF_8) : "";
+            }
+        }
+        return null;
     }
 
     private void respond(HttpExchange exchange, int status, Object value) throws IOException {
@@ -268,6 +396,7 @@ public final class LocalPairingServer implements AutoCloseable {
         executor = null;
         expirationThread = null;
         pending = null;
+        snapshotTokens.clear();
     }
 
     private void closeAfterExpiration(long generation) {
@@ -366,6 +495,10 @@ public final class LocalPairingServer implements AutoCloseable {
             this.receivedAt = receivedAt;
         }
     }
+
+    private record SnapshotPagePointer(
+            String deviceId, String snapshotId,
+            DesktopSyncRepository.SnapshotRecord snapshot, int page) {}
 
     private static final class PairRequest {
         @SerializedName("contract_version") int contractVersion;

@@ -3,6 +3,7 @@ package com.pessoal.agenda.mobile.ui
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -35,6 +36,7 @@ class AgendaMobileAppTest {
                     onSaveCapture = { _, _ -> },
                     onStartProtocol = {},
                     onCompleteStep = { _, _ -> },
+                    onSync = {},
                     onFeedbackShown = {},
                 )
             }
@@ -58,6 +60,7 @@ class AgendaMobileAppTest {
                     },
                     onStartProtocol = {},
                     onCompleteStep = { _, _ -> },
+                    onSync = {},
                     onFeedbackShown = {},
                 )
             }
@@ -69,5 +72,28 @@ class AgendaMobileAppTest {
 
         assertEquals("Ideia offline", received)
         compose.onNodeWithText("Ideia offline").assertDoesNotExist()
+    }
+
+    @Test
+    fun pairedStateOffersExplicitSyncAction() {
+        var requested = false
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(canSync = true),
+                    onSaveCapture = { _, _ -> },
+                    onStartProtocol = {},
+                    onCompleteStep = { _, _ -> },
+                    onSync = { requested = true },
+                    onFeedbackShown = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText("Pareado ao desktop").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Sincronizar agora")
+            .assertIsEnabled()
+            .performClick()
+        assertEquals(true, requested)
     }
 }

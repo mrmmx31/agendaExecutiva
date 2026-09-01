@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativo Android do Projeto 2 com núcleo local e offline concluído em `P2-02` e credencial segura iniciada em `P2-03`. Existem captura livre, réplica fictícia de tarefas, execução de protocolo, fila durável e armazenamento no Android Keystore. Ainda não existem cliente de rede, sincronização, alertas, saúde ou IA.
+Aplicativo Android do Projeto 2 com núcleo offline concluído em `P2-02` e transporte local implementado em `P2-03`. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, Keystore, HTTPS fixado, snapshot e conflitos. O pareamento Android visual e a matriz ponta a ponta permanecem para o último item de `P2-03`; alertas, saúde e IA ainda não existem.
 
 ## Requisitos
 
@@ -32,12 +32,14 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 
 - `test`, `lint` e `assembleDebug`: aprovados.
 - Testes Room e do repositório offline com Robolectric: aprovados.
-- Seis testes instrumentados no AVD API 34: migração Room, dois fluxos Compose e três testes do Keystore aprovados.
+- Oito testes instrumentados no AVD API 34: duas migrações Room, três fluxos Compose e três testes do Keystore aprovados.
 - Renderização clara e escura no telefone virtual: inspecionada sem cortes ou resíduos de tema.
 - Fluxo fictício validado: uma captura mais início e quatro passos de protocolo geraram seis operações sequenciais na fila.
 - Parser do convite de pareamento aprovado em cinco testes de validade, expiração, campos fechados e bloqueio de downgrade HTTP.
 - Schemas e fixtures de pareamento/sync carregados da mesma pasta e aprovados nos testes Kotlin e Java.
 - Credencial de pareamento recifrada com AES-GCM e chaves RSA/AES não exportáveis do Android Keystore; nenhum segredo em texto aberto nas preferências.
+- Room v3 com estados completos da fila, cursor confirmado, conflitos revisáveis e migração `2 -> 3` validada.
+- Transporte HTTPS local com certificado fixado, lote limitado, snapshot paginado e ação de sync visível quando pareado.
 - Primeiro boot dos AVDs de telefone e Wear OS: aprovado.
 - Pareamento telefone-relógio: aprovado; o assistente confirmou `Successful pairing` entre os dois AVDs.
 - O Google Pixel Watch do AVD precisou das permissões de notificações e dispositivos próximos; isso não altera as permissões do aplicativo Agenda.
@@ -46,10 +48,10 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 
 - Package: `com.pessoal.agenda.mobile`.
 - Banco: `agenda-mobile.db`, separado do SQLite desktop.
-- Banco atual: Room v2, com schema exportado em `app/schemas/` e migração explícita `1 -> 2`.
+- Banco atual: Room v3, com schema exportado em `app/schemas/` e migrações explícitas `1 -> 2 -> 3`.
 - Contrato atual: v1, catalogado em `contracts/README.md`.
 - Backup e transferência de dados Android estão desativados.
 - Nenhuma permissão sensível é solicitada.
-- A P2-03 ainda não adicionou `INTERNET`; o servidor HTTPS existe apenas no desktop e o cliente Android será implementado no próximo avanço.
+- `INTERNET` serve exclusivamente ao HTTPS local fixado; nenhuma API externa ou telemetria foi adicionada.
 - Os dados demonstrativos são determinísticos e não representam dados pessoais.
 - Não usar telefone físico antes do gate previsto em `PROJECT2_SPEC.md`.

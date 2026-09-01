@@ -511,6 +511,7 @@ public class Database {
         applyAlterIfMissing("ALTER TABLE tasks ADD COLUMN sync_uuid TEXT");
         applyAlterIfMissing("ALTER TABLE protocols ADD COLUMN sync_uuid TEXT");
         applyAlterIfMissing("ALTER TABLE protocol_steps ADD COLUMN sync_uuid TEXT");
+        applyAlterIfMissing("ALTER TABLE inbox_captures ADD COLUMN mobile_source_operation_id TEXT");
         try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
             conn.setAutoCommit(false);
             try {
@@ -580,6 +581,65 @@ public class Database {
                 stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_sync_uuid ON tasks(sync_uuid) WHERE sync_uuid IS NOT NULL");
                 stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_protocols_sync_uuid ON protocols(sync_uuid) WHERE sync_uuid IS NOT NULL");
                 stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_protocol_steps_sync_uuid ON protocol_steps(sync_uuid) WHERE sync_uuid IS NOT NULL");
+                stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_inbox_mobile_source_operation ON inbox_captures(mobile_source_operation_id) WHERE mobile_source_operation_id IS NOT NULL");
+                stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS mobile_protocol_events (
+                            operation_id TEXT PRIMARY KEY,
+                            device_id TEXT NOT NULL,
+                            event_type TEXT NOT NULL CHECK (event_type IN (
+                                'PROTOCOL_RUN_STARTED', 'PROTOCOL_STEP_COMPLETED'
+                            )),
+                            entity_id TEXT NOT NULL,
+                            payload_json TEXT NOT NULL,
+                            occurred_at TEXT NOT NULL,
+                            FOREIGN KEY (device_id) REFERENCES mobile_devices(device_id) ON DELETE RESTRICT
+                        )
+                        """);
+                stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS mobile_conflicts (
+                            conflict_id TEXT PRIMARY KEY,
+                            operation_id TEXT NOT NULL UNIQUE,
+                            device_id TEXT NOT NULL,
+                            entity_type TEXT NOT NULL,
+                            entity_id TEXT NOT NULL,
+                            base_revision INTEGER,
+                            server_revision INTEGER NOT NULL,
+                            reason TEXT NOT NULL CHECK (reason IN (
+                                'TEXT_DIVERGED', 'STRUCTURE_DIVERGED',
+                                'STATE_DIVERGED', 'TOMBSTONE_DIVERGED'
+                            )),
+                            local_value_json TEXT NOT NULL,
+                            server_value_json TEXT NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'RESOLVED')),
+                            created_at TEXT NOT NULL,
+                            resolved_at TEXT,
+                            FOREIGN KEY (device_id) REFERENCES mobile_devices(device_id) ON DELETE RESTRICT
+                        )
+                        """);
+                stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS mobile_server_changes (
+                            cursor INTEGER PRIMARY KEY AUTOINCREMENT,
+                            entity_type TEXT NOT NULL CHECK (entity_type IN ('task', 'protocol')),
+                            entity_id TEXT NOT NULL,
+                            revision INTEGER NOT NULL CHECK (revision >= 1),
+                            content_hash TEXT NOT NULL CHECK (length(content_hash) = 64),
+                            payload_json TEXT NOT NULL,
+                            changed_at TEXT NOT NULL
+                        )
+                        """);
+                stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS mobile_entity_versions (
+                            entity_type TEXT NOT NULL,
+                            entity_id TEXT NOT NULL,
+                            revision INTEGER NOT NULL CHECK (revision >= 1),
+                            content_hash TEXT NOT NULL CHECK (length(content_hash) = 64),
+                            payload_json TEXT NOT NULL,
+                            server_cursor INTEGER NOT NULL,
+                            changed_at TEXT NOT NULL,
+                            PRIMARY KEY (entity_type, entity_id),
+                            FOREIGN KEY (server_cursor) REFERENCES mobile_server_changes(cursor)
+                        )
+                        """);
                 conn.commit();
             } catch (SQLException migrationError) {
                 conn.rollback();

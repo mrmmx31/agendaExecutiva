@@ -15,6 +15,7 @@ class SharedContractFixtureTest {
         assertKeys("pairing-response.valid.json", PAIRING_RESPONSE_KEYS)
         assertKeys("sync-batch.valid.json", SYNC_BATCH_KEYS)
         assertKeys("sync-result.valid.json", SYNC_RESULT_KEYS)
+        assertKeys("sync-batch-response.valid.json", SYNC_BATCH_RESPONSE_KEYS)
         assertKeys("snapshot-page.valid.json", SNAPSHOT_KEYS)
         assertKeys("conflict.valid.json", CONFLICT_KEYS)
 
@@ -47,6 +48,7 @@ class SharedContractFixtureTest {
         val PAIRING_RESPONSE_KEYS = setOf("request_id", "status", "retry_after_seconds", "completion_token", "device_id", "contract_min", "contract_max", "encrypted_credential", "granted_roles")
         val SYNC_BATCH_KEYS = setOf("contract_version", "device_id", "last_server_cursor", "operations")
         val SYNC_RESULT_KEYS = setOf("operation_id", "status", "error_code", "server_revision", "conflict_id")
+        val SYNC_BATCH_RESPONSE_KEYS = setOf("contract_version", "client_contiguous_sequence", "server_cursor", "results", "conflicts")
         val SNAPSHOT_KEYS = setOf("snapshot_id", "server_cursor", "page", "has_more", "next_page_token", "tasks", "protocols")
         val CONFLICT_KEYS = setOf("conflict_id", "operation_id", "entity_type", "entity_id", "base_revision", "server_revision", "reason", "local_value", "server_value", "created_at")
         val RESULT_STATES = setOf("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE")

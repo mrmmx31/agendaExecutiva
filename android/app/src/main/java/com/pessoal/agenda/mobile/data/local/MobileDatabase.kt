@@ -17,8 +17,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ProtocolRunEntity::class,
         ProtocolRunStepEntity::class,
         PendingOperationEntity::class,
+        SyncConflictEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class MobileDatabase : RoomDatabase() {
@@ -34,7 +35,7 @@ abstract class MobileDatabase : RoomDatabase() {
                 context.applicationContext,
                 MobileDatabase::class.java,
                 DATABASE_NAME,
-            ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
         }
 
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -103,6 +104,33 @@ abstract class MobileDatabase : RoomDatabase() {
                 database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_pending_operations_deviceId_sequence ON pending_operations(deviceId, sequence)")
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_pending_operations_status ON pending_operations(status)")
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_pending_operations_entityType_entityId ON pending_operations(entityType, entityId)")
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE pending_operations ADD COLUMN serverRevision INTEGER")
+                database.execSQL("ALTER TABLE pending_operations ADD COLUMN conflictId TEXT")
+                database.execSQL("ALTER TABLE pending_operations ADD COLUMN attemptCount INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE pending_operations ADD COLUMN updatedAt TEXT NOT NULL DEFAULT ''")
+                database.execSQL("UPDATE pending_operations SET updatedAt=occurredAt WHERE updatedAt=''")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS sync_conflicts (
+                        conflictId TEXT NOT NULL PRIMARY KEY,
+                        operationId TEXT NOT NULL,
+                        entityType TEXT NOT NULL,
+                        entityId TEXT NOT NULL,
+                        baseRevision INTEGER,
+                        serverRevision INTEGER NOT NULL,
+                        reason TEXT NOT NULL,
+                        localValueJson TEXT NOT NULL,
+                        serverValueJson TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        createdAt TEXT NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_sync_conflicts_operationId ON sync_conflicts(operationId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_sync_conflicts_status ON sync_conflicts(status)")
             }
         }
     }

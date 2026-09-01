@@ -7,6 +7,7 @@ import android.security.keystore.KeyProperties
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.spec.MGF1ParameterSpec
+import java.net.URI
 import java.util.Base64
 import java.util.UUID
 import javax.crypto.Cipher
@@ -73,6 +74,30 @@ class DeviceCredentialStore(context: Context) {
         }
     }
 
+    fun storeServerConnection(pairingEndpoint: String, fingerprint: String) {
+        val uri = URI.create(pairingEndpoint)
+        require(uri.scheme == "https" && uri.host != null && uri.rawQuery == null && uri.fragment == null)
+        require(uri.path == "/api/v1/pair/requests") { "Endpoint de pareamento inválido." }
+        require(fingerprint.matches(Regex("[a-f0-9]{64}"))) { "Impressão digital inválida." }
+        val syncBase = URI("https", null, uri.host, uri.port, "/api/v1/sync", null, null).toString()
+        check(preferences.edit()
+            .putString(SYNC_BASE, syncBase)
+            .putString(TLS_FINGERPRINT, fingerprint)
+            .commit()) { "Não foi possível persistir a conexão." }
+    }
+
+    fun syncBaseUrl(): String? = if (hasReadableCredential()) {
+        preferences.getString(SYNC_BASE, null)
+    } else {
+        null
+    }
+
+    fun tlsFingerprint(): String? = if (hasReadableCredential()) {
+        preferences.getString(TLS_FINGERPRINT, null)
+    } else {
+        null
+    }
+
     fun pairedDesktopId(): String? = if (hasReadableCredential()) {
         preferences.getString(DESKTOP_ID, null)
     } else {
@@ -105,6 +130,8 @@ class DeviceCredentialStore(context: Context) {
             .remove(CREDENTIAL_IV)
             .remove(DESKTOP_ID)
             .remove(GRANTED_ROLES)
+            .remove(SYNC_BASE)
+            .remove(TLS_FINGERPRINT)
             .commit()
         keyStore.deleteEntry(AES_ALIAS)
         keyStore.deleteEntry(RSA_ALIAS)
@@ -156,6 +183,8 @@ class DeviceCredentialStore(context: Context) {
         const val CREDENTIAL = "credential"
         const val CREDENTIAL_IV = "credential_iv"
         const val GRANTED_ROLES = "granted_roles"
+        const val SYNC_BASE = "sync_base"
+        const val TLS_FINGERPRINT = "tls_fingerprint"
         val ALLOWED_ROLES = setOf("TASKS_READ", "CAPTURES_WRITE", "PROTOCOLS_EXECUTE")
         val OAEP_SPEC = OAEPParameterSpec(
             "SHA-256",

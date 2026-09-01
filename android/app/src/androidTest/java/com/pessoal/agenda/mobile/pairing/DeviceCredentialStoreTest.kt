@@ -41,11 +41,17 @@ class DeviceCredentialStoreTest {
         val desktopId = "10000000-0000-4000-8000-000000000002"
 
         store.storeEncryptedCredential(encrypted, desktopId, setOf("TASKS_READ", "CAPTURES_WRITE"))
+        store.storeServerConnection(
+            "https://192.0.2.10:45182/api/v1/pair/requests",
+            "ab".repeat(32),
+        )
         val restored = store.credential()
 
         assertArrayEquals(credential, restored)
         assertEquals(desktopId, store.pairedDesktopId())
         assertEquals(setOf("TASKS_READ", "CAPTURES_WRITE"), store.grantedRoles())
+        assertEquals("https://192.0.2.10:45182/api/v1/sync", store.syncBaseUrl())
+        assertEquals("ab".repeat(32), store.tlsFingerprint())
         assertNotEquals(Base64.getEncoder().encodeToString(credential), encrypted)
         restored.fill(0)
     }
@@ -63,6 +69,8 @@ class DeviceCredentialStoreTest {
 
         assertNull(store.pairedDesktopId())
         assertEquals(emptySet<String>(), store.grantedRoles())
+        assertNull(store.syncBaseUrl())
+        assertNull(store.tlsFingerprint())
         assertEquals(deviceId, store.deviceId)
     }
 

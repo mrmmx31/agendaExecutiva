@@ -126,4 +126,26 @@ data class PendingOperationEntity(
     val status: String,
     val errorCode: String? = null,
     val errorMessage: String? = null,
+    val serverRevision: Long? = null,
+    val conflictId: String? = null,
+    val attemptCount: Int = 0,
+    val updatedAt: String = occurredAt,
+)
+
+@Entity(
+    tableName = "sync_conflicts",
+    indices = [Index("operationId", unique = true), Index("status")],
+)
+data class SyncConflictEntity(
+    @PrimaryKey val conflictId: String,
+    val operationId: String,
+    val entityType: String,
+    val entityId: String,
+    val baseRevision: Long?,
+    val serverRevision: Long,
+    val reason: String,
+    val localValueJson: String,
+    val serverValueJson: String,
+    val status: String = "OPEN",
+    val createdAt: String,
 )

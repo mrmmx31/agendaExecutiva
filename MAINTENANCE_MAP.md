@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 26,7%, restando 73,3%; `P2-01` e `P2-02` concluídas, `P2-03` em 66,7% (4 de 6 itens).
+- Projeto 2: implementação em 28,3%, restando 71,7%; `P2-01` e `P2-02` concluídas, `P2-03` em 83,3% (5 de 6 itens).
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -87,7 +87,7 @@ Implementado em `P2-02`:
 
 | Área | Local |
 |---|---|
-| Room v2, entidades, DAO e migração | `android/app/src/main/java/com/pessoal/agenda/mobile/data/local/` |
+| Room v3, entidades, DAO e migrações | `android/app/src/main/java/com/pessoal/agenda/mobile/data/local/` |
 | Transações, fixtures e fila | `android/app/src/main/java/com/pessoal/agenda/mobile/data/OfflineRepository.kt` |
 | Estado e ações da UI | `android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileViewModel.kt` |
 | Telas Compose | `android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileApp.kt` |
@@ -97,6 +97,8 @@ Implementado em `P2-02`:
 | Persistência desktop de sync | `Database.applyMobileSyncMigration()` e `DesktopSyncRepository` |
 | Servidor e UI de pareamento desktop | `infra/pairing/` e `MobilePairingWindow` |
 | Credencial Android | `android/app/src/main/java/com/pessoal/agenda/mobile/pairing/DeviceCredentialStore.kt` |
+| Transporte e máquina de estados Android | `android/app/src/main/java/com/pessoal/agenda/mobile/sync/` |
+| Lotes e snapshots desktop | `SyncBatchProcessor` e `DesktopSyncRepository` |
 | Testes | `android/app/src/test/` e `android/app/src/androidTest/` |
 
 | Domínio | Android | Wear | Desktop |
@@ -140,7 +142,7 @@ Nenhuma permissão entra “para uso futuro”. Cada uma exige requisito, tela e
 
 | Permissão/capacidade | Fase | Justificativa | Comportamento negado |
 |---|---|---|---|
-| `INTERNET` | P2-03 | sync HTTPS local | app continua offline |
+| `INTERNET` | P2-03 | sync HTTPS local fixado | sem sessão desktop o app continua local; nenhum host externo é usado |
 | notificações | P2-04 | alertas opt-in | alertas ficam dentro do app |
 | Bluetooth/Wear APIs | P2-05 | comunicação oficial com Wear | telefone continua funcional |
 | Health Connect por tipo | P2-07 | relatório autorizado | categoria fica vazia |

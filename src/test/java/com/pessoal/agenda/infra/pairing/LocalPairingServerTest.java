@@ -44,10 +44,11 @@ class LocalPairingServerTest {
     Path tempDir;
 
     private DesktopSyncRepository repository;
+    private Database database;
 
     @BeforeEach
     void setUp() {
-        Database database = new Database(tempDir.resolve("pairing-test.db"));
+        database = new Database(tempDir.resolve("pairing-test.db"));
         database.runMigrations();
         repository = new DesktopSyncRepository(database);
     }
@@ -126,6 +127,56 @@ class LocalPairingServerTest {
         }
     }
 
+    @Test
+    void approvedCredentialPushesIdempotentlyAndReadsPinnedSnapshot() throws Exception {
+        insertFictitiousTasks(201);
+        try (var server = server()) {
+            PairingSession session = server.start();
+            Map<String, String> invitation = invitation(session.invitation());
+            KeyPair keys = rsaKeys();
+            JsonObject pending = createRequest(session, invitation, keys, session.oneTimeCode());
+            server.approve(pending.get("request_id").getAsString(),
+                    Set.of("TASKS_READ", "CAPTURES_WRITE"));
+            JsonObject approved = complete(
+                    invitation.get("endpoint"), invitation.get("fingerprint"),
+                    pending.get("request_id").getAsString(),
+                    pending.get("completion_token").getAsString(), 200);
+            byte[] credential = decryptCredential(
+                    approved.get("encrypted_credential").getAsString(), keys);
+            String syncBase = invitation.get("endpoint").replace("/pair/requests", "/sync");
+
+            JsonObject first = authenticatedJson(
+                    syncBase + "/batches", invitation.get("fingerprint"), credential,
+                    syncBatch(), "POST", 200);
+            JsonObject replay = authenticatedJson(
+                    syncBase + "/batches", invitation.get("fingerprint"), credential,
+                    syncBatch(), "POST", 200);
+            JsonObject snapshot = authenticatedJson(
+                    syncBase + "/snapshot", invitation.get("fingerprint"), credential,
+                    null, "GET", 200);
+            JsonObject secondPage = authenticatedJson(
+                    syncBase + "/snapshot?page_token="
+                            + snapshot.get("next_page_token").getAsString(),
+                    invitation.get("fingerprint"), credential, null, "GET", 200);
+            JsonObject repeatedSecondPage = authenticatedJson(
+                    syncBase + "/snapshot?page_token="
+                            + snapshot.get("next_page_token").getAsString(),
+                    invitation.get("fingerprint"), credential, null, "GET", 200);
+
+            assertEquals("APPLIED", first.getAsJsonArray("results").get(0)
+                    .getAsJsonObject().get("status").getAsString());
+            assertEquals(first, replay);
+            assertEquals(1, database.queryInt("SELECT COUNT(*) FROM inbox_captures"));
+            assertEquals(200, snapshot.getAsJsonArray("tasks").size());
+            assertTrue(snapshot.get("has_more").getAsBoolean());
+            assertEquals(1, secondPage.getAsJsonArray("tasks").size());
+            assertFalse(secondPage.get("has_more").getAsBoolean());
+            assertEquals(snapshot.get("snapshot_id"), secondPage.get("snapshot_id"));
+            assertEquals(secondPage, repeatedSecondPage);
+            java.util.Arrays.fill(credential, (byte) 0);
+        }
+    }
+
     private LocalPairingServer server() throws Exception {
         return new LocalPairingServer(repository, InetAddress.getByName("127.0.0.1"), 0);
     }
@@ -180,6 +231,73 @@ class LocalPairingServerTest {
         cipher.init(Cipher.DECRYPT_MODE, keys.getPrivate(), new OAEPParameterSpec(
                 "SHA-256", "MGF1", MGF1ParameterSpec.SHA1, PSource.PSpecified.DEFAULT));
         return cipher.doFinal(Base64.getUrlDecoder().decode(encoded));
+    }
+
+    private JsonObject syncBatch() throws Exception {
+        String operationId = "10000000-0000-4000-8000-000000000051";
+        String captureId = "10000000-0000-4000-8000-000000000052";
+        JsonObject payload = new JsonObject();
+        payload.addProperty("capture_id", captureId);
+        payload.addProperty("text", "Captura móvel fictícia");
+        payload.addProperty("created_at", "2026-09-01T12:00:00Z");
+        String payloadJson = new Gson().toJson(payload);
+        String hash = java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(payloadJson.getBytes(StandardCharsets.UTF_8)));
+
+        JsonObject operation = new JsonObject();
+        operation.addProperty("operation_id", operationId);
+        operation.addProperty("device_id", DEVICE_ID);
+        operation.addProperty("sequence", 1);
+        operation.addProperty("contract_version", 1);
+        operation.addProperty("entity_type", "capture");
+        operation.addProperty("entity_id", captureId);
+        operation.addProperty("command_type", "CAPTURE_CREATED");
+        operation.addProperty("occurred_at", "2026-09-01T12:00:00Z");
+        operation.addProperty("time_zone", "America/Manaus");
+        operation.add("payload", payload);
+        operation.addProperty("payload_hash", hash);
+        operation.add("base_revision", com.google.gson.JsonNull.INSTANCE);
+        JsonObject batch = new JsonObject();
+        batch.addProperty("contract_version", 1);
+        batch.addProperty("device_id", DEVICE_ID);
+        batch.addProperty("last_server_cursor", 0);
+        com.google.gson.JsonArray operations = new com.google.gson.JsonArray();
+        operations.add(operation);
+        batch.add("operations", operations);
+        return batch;
+    }
+
+    private void insertFictitiousTasks(int count) throws Exception {
+        try (var connection = database.connect();
+             var statement = connection.prepareStatement(
+                     "INSERT INTO tasks(title, due_date) VALUES(?, '2026-09-01')")) {
+            for (int index = 1; index <= count; index++) {
+                statement.setString(1, "Tarefa desktop fictícia " + index);
+                statement.addBatch();
+            }
+            statement.executeBatch();
+        }
+    }
+
+    private JsonObject authenticatedJson(String endpoint, String fingerprint, byte[] credential,
+                                         JsonObject body, String method, int expectedStatus)
+            throws Exception {
+        HttpsURLConnection connection = connection(endpoint, fingerprint);
+        connection.setRequestMethod(method);
+        connection.setRequestProperty("X-Agenda-Device", DEVICE_ID);
+        connection.setRequestProperty("Authorization", "AgendaCredential "
+                + Base64.getUrlEncoder().withoutPadding().encodeToString(credential));
+        if (body != null) {
+            byte[] bytes = new Gson().toJson(body).getBytes(StandardCharsets.UTF_8);
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            connection.getOutputStream().write(bytes);
+        }
+        int status = connection.getResponseCode();
+        assertEquals(expectedStatus, status);
+        byte[] bytes = (status < 400 ? connection.getInputStream() : connection.getErrorStream())
+                .readAllBytes();
+        return new Gson().fromJson(new String(bytes, StandardCharsets.UTF_8), JsonObject.class);
     }
 
     private static HttpsURLConnection connection(String endpoint, String fingerprint) throws Exception {

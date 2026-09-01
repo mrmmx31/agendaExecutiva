@@ -1,7 +1,12 @@
 package com.pessoal.agenda.repository;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.pessoal.agenda.infra.Database;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -9,7 +14,9 @@ import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -21,6 +28,7 @@ public final class DesktopSyncRepository {
 
     private final Database database;
     private final Clock clock;
+    private final Gson gson = new Gson();
 
     public DesktopSyncRepository(Database database) {
         this(database, Clock.systemUTC());
@@ -178,6 +186,233 @@ public final class DesktopSyncRepository {
         }
     }
 
+    public boolean credentialsMatch(String deviceId, byte[] credential) {
+        requireUuid(deviceId, "device_id");
+        if (credential == null || credential.length != 32) return false;
+        try (Connection connection = database.connect();
+             PreparedStatement statement = connection.prepareStatement("""
+                     SELECT credential_hash FROM mobile_devices
+                     WHERE device_id=? AND status='ACTIVE'
+                     """)) {
+            statement.setString(1, deviceId);
+            try (ResultSet rows = statement.executeQuery()) {
+                if (!rows.next()) return false;
+                byte[] expected = java.util.HexFormat.of().parseHex(rows.getString(1));
+                byte[] actual = MessageDigest.getInstance("SHA-256").digest(credential);
+                return MessageDigest.isEqual(expected, actual);
+            }
+        } catch (SQLException error) {
+            throw failure("autenticação do dispositivo", error);
+        } catch (Exception error) {
+            throw new IllegalStateException("Falha criptográfica ao autenticar dispositivo.", error);
+        }
+    }
+
+    public boolean hasRole(String deviceId, String role) {
+        requireUuid(deviceId, "device_id");
+        try (Connection connection = database.connect();
+             PreparedStatement statement = connection.prepareStatement("""
+                     SELECT 1 FROM mobile_device_roles r
+                     JOIN mobile_devices d ON d.device_id=r.device_id
+                     WHERE r.device_id=? AND r.role=? AND d.status='ACTIVE'
+                     """)) {
+            statement.setString(1, deviceId);
+            statement.setString(2, role);
+            try (ResultSet rows = statement.executeQuery()) { return rows.next(); }
+        } catch (SQLException error) {
+            throw failure("papel do dispositivo", error);
+        }
+    }
+
+    public StoredOperation findStoredOperation(String operationId) {
+        requireUuid(operationId, "operation_id");
+        try (Connection connection = database.connect()) {
+            return operation(connection, operationId);
+        } catch (SQLException error) {
+            throw failure("consulta da operação", error);
+        }
+    }
+
+    public StoredOperation applyCapture(OperationInput input, String text, Instant createdAt) {
+        String normalized = text == null ? "" : text.trim();
+        if (normalized.isEmpty() || normalized.length() > 4000) invalid("capture_text");
+        if (!"CAPTURE_CREATED".equals(input.commandType()) || !"capture".equals(input.entityType())) {
+            invalid("capture_operation");
+        }
+        return applyEffect(input, connection -> {
+            try (PreparedStatement statement = connection.prepareStatement("""
+                    INSERT OR IGNORE INTO inbox_captures(
+                        raw_text, created_at, mobile_source_operation_id
+                    ) VALUES(?,?,?)
+                    """)) {
+                statement.setString(1, normalized);
+                statement.setString(2, createdAt.toString());
+                statement.setString(3, input.operationId());
+                statement.executeUpdate();
+            }
+        });
+    }
+
+    public StoredOperation applyProtocolEvent(OperationInput input, String payloadJson) {
+        if (!Set.of("PROTOCOL_RUN_STARTED", "PROTOCOL_STEP_COMPLETED")
+                .contains(input.commandType())) invalid("protocol_event");
+        return applyEffect(input, connection -> {
+            try (PreparedStatement statement = connection.prepareStatement("""
+                    INSERT OR IGNORE INTO mobile_protocol_events(
+                        operation_id, device_id, event_type, entity_id, payload_json, occurred_at
+                    ) VALUES(?,?,?,?,?,?)
+                    """)) {
+                statement.setString(1, input.operationId());
+                statement.setString(2, input.deviceId());
+                statement.setString(3, input.commandType());
+                statement.setString(4, input.entityId());
+                statement.setString(5, payloadJson);
+                statement.setString(6, input.occurredAt());
+                statement.executeUpdate();
+            }
+        });
+    }
+
+    public StoredOperation storeConflict(OperationInput input, Long baseRevision, String reason,
+                                         String localValueJson, String serverValueJson,
+                                         long serverRevision) {
+        if (!Set.of("TEXT_DIVERGED", "STRUCTURE_DIVERGED", "STATE_DIVERGED",
+                "TOMBSTONE_DIVERGED").contains(reason)) invalid("conflict_reason");
+        String conflictId = UUID.randomUUID().toString();
+        OperationInput terminal = new OperationInput(
+                input.operationId(), input.deviceId(), input.sequence(), input.commandType(),
+                input.entityType(), input.entityId(), input.payloadHash(), "CONFLICT",
+                "STATE_CONFLICT", serverRevision, conflictId,
+                resultJson(input.operationId(), "CONFLICT", "STATE_CONFLICT",
+                        serverRevision, conflictId), input.occurredAt());
+        validate(terminal);
+        try (Connection connection = database.connect()) {
+            connection.setAutoCommit(false);
+            try {
+                StoredOperation replay = replayOrReject(connection, terminal);
+                if (replay != null) { connection.commit(); return replay; }
+                try (PreparedStatement statement = connection.prepareStatement("""
+                        INSERT INTO mobile_conflicts(
+                            conflict_id, operation_id, device_id, entity_type, entity_id,
+                            base_revision, server_revision, reason, local_value_json,
+                            server_value_json, created_at
+                        ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                        """)) {
+                    statement.setString(1, conflictId);
+                    statement.setString(2, terminal.operationId());
+                    statement.setString(3, terminal.deviceId());
+                    statement.setString(4, terminal.entityType());
+                    statement.setString(5, terminal.entityId());
+                    if (baseRevision == null) statement.setNull(6, java.sql.Types.BIGINT);
+                    else statement.setLong(6, baseRevision);
+                    statement.setLong(7, serverRevision);
+                    statement.setString(8, reason);
+                    statement.setString(9, localValueJson);
+                    statement.setString(10, serverValueJson);
+                    statement.setString(11, now());
+                    statement.executeUpdate();
+                }
+                insertOperation(connection, terminal);
+                advanceCursor(connection, terminal.deviceId());
+                StoredOperation stored = operation(connection, terminal.operationId());
+                connection.commit();
+                return stored;
+            } catch (SQLException | RuntimeException error) {
+                connection.rollback();
+                throw error;
+            }
+        } catch (SQLException error) {
+            throw failure("registro do conflito", error);
+        }
+    }
+
+    public synchronized SnapshotRecord refreshSnapshot() {
+        try (Connection connection = database.connect()) {
+            connection.setAutoCommit(false);
+            try {
+                Map<EntityKey, String> current = readCurrentEntities(connection);
+                reconcileEntities(connection, current);
+                List<String> tasks = new java.util.ArrayList<>();
+                List<String> protocols = new java.util.ArrayList<>();
+                try (PreparedStatement statement = connection.prepareStatement("""
+                        SELECT entity_type, payload_json FROM mobile_entity_versions
+                        ORDER BY entity_type, entity_id
+                        """); ResultSet rows = statement.executeQuery()) {
+                    while (rows.next()) {
+                        (rows.getString(1).equals("task") ? tasks : protocols)
+                                .add(rows.getString(2));
+                    }
+                }
+                long cursor = 0;
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "SELECT COALESCE(MAX(cursor),0) FROM mobile_server_changes");
+                     ResultSet rows = statement.executeQuery()) {
+                    if (rows.next()) cursor = rows.getLong(1);
+                }
+                connection.commit();
+                return new SnapshotRecord(cursor, List.copyOf(tasks), List.copyOf(protocols));
+            } catch (SQLException | RuntimeException error) {
+                connection.rollback();
+                throw error;
+            }
+        } catch (SQLException error) {
+            throw failure("snapshot móvel", error);
+        }
+    }
+
+    public long currentRevision(String entityType, String entityId) {
+        try (Connection connection = database.connect();
+             PreparedStatement statement = connection.prepareStatement("""
+                     SELECT revision FROM mobile_entity_versions
+                     WHERE entity_type=? AND entity_id=?
+                     """)) {
+            statement.setString(1, entityType);
+            statement.setString(2, entityId);
+            try (ResultSet rows = statement.executeQuery()) { return rows.next() ? rows.getLong(1) : 0; }
+        } catch (SQLException error) {
+            throw failure("revisão da entidade", error);
+        }
+    }
+
+    public String currentEntityJson(String entityType, String entityId) {
+        try (Connection connection = database.connect();
+             PreparedStatement statement = connection.prepareStatement("""
+                     SELECT payload_json FROM mobile_entity_versions
+                     WHERE entity_type=? AND entity_id=?
+                     """)) {
+            statement.setString(1, entityType);
+            statement.setString(2, entityId);
+            try (ResultSet rows = statement.executeQuery()) { return rows.next() ? rows.getString(1) : "{}"; }
+        } catch (SQLException error) {
+            throw failure("conteúdo da entidade", error);
+        }
+    }
+
+    public ConflictRecord findConflict(String conflictId) {
+        requireUuid(conflictId, "conflict_id");
+        try (Connection connection = database.connect();
+             PreparedStatement statement = connection.prepareStatement("""
+                     SELECT conflict_id, operation_id, entity_type, entity_id, base_revision,
+                            server_revision, reason, local_value_json, server_value_json, created_at
+                     FROM mobile_conflicts WHERE conflict_id=?
+                     """)) {
+            statement.setString(1, conflictId);
+            try (ResultSet rows = statement.executeQuery()) {
+                if (!rows.next()) return null;
+                long base = rows.getLong("base_revision");
+                Long baseRevision = rows.wasNull() ? null : base;
+                return new ConflictRecord(
+                        rows.getString("conflict_id"), rows.getString("operation_id"),
+                        rows.getString("entity_type"), rows.getString("entity_id"),
+                        baseRevision, rows.getLong("server_revision"),
+                        rows.getString("reason"), rows.getString("local_value_json"),
+                        rows.getString("server_value_json"), rows.getString("created_at"));
+            }
+        } catch (SQLException error) {
+            throw failure("consulta do conflito", error);
+        }
+    }
+
     public StoredOperation storeTerminal(OperationInput input) {
         validate(input);
         try (Connection connection = database.connect()) {
@@ -207,6 +442,232 @@ public final class DesktopSyncRepository {
         }
     }
 
+    private StoredOperation applyEffect(OperationInput input, SqlEffect effect) {
+        validate(input);
+        if (!"APPLIED".equals(input.status())) invalid("effect_status");
+        try (Connection connection = database.connect()) {
+            connection.setAutoCommit(false);
+            try {
+                StoredOperation replay = replayOrReject(connection, input);
+                if (replay != null) { connection.commit(); return replay; }
+                effect.apply(connection);
+                insertOperation(connection, input);
+                advanceCursor(connection, input.deviceId());
+                StoredOperation stored = operation(connection, input.operationId());
+                connection.commit();
+                return stored;
+            } catch (SQLException | RuntimeException error) {
+                connection.rollback();
+                throw error;
+            }
+        } catch (SQLException error) {
+            throw failure("efeito da operação", error);
+        }
+    }
+
+    private StoredOperation replayOrReject(Connection connection, OperationInput input)
+            throws SQLException {
+        StoredOperation existing = operation(connection, input.operationId());
+        if (existing != null) {
+            if (!existing.sameContent(input)) throw new SyncPersistenceException("ID_REUSED");
+            return existing.asReplay();
+        }
+        if (!isActive(connection, input.deviceId())) {
+            throw new SyncPersistenceException("DEVICE_REVOKED");
+        }
+        if (sequenceExists(connection, input.deviceId(), input.sequence())) {
+            throw new SyncPersistenceException("SEQUENCE_REUSED");
+        }
+        return null;
+    }
+
+    private Map<EntityKey, String> readCurrentEntities(Connection connection) throws SQLException {
+        ensureSyncUuids(connection, "tasks");
+        ensureSyncUuids(connection, "protocols");
+        ensureSyncUuids(connection, "protocol_steps");
+        Map<EntityKey, String> entities = new LinkedHashMap<>();
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT sync_uuid, title, done, status FROM tasks
+                WHERE sync_uuid IS NOT NULL ORDER BY sync_uuid
+                """); ResultSet rows = statement.executeQuery()) {
+            while (rows.next()) {
+                JsonObject value = new JsonObject();
+                value.addProperty("id", rows.getString("sync_uuid"));
+                value.addProperty("title", rows.getString("title"));
+                value.addProperty("status", rows.getInt("done") == 1
+                        ? "COMPLETED" : normalizeTaskStatus(rows.getString("status")));
+                value.addProperty("tombstone", false);
+                entities.put(new EntityKey("task", rows.getString("sync_uuid")), gson.toJson(value));
+            }
+        }
+        try (PreparedStatement protocols = connection.prepareStatement("""
+                SELECT sync_uuid, name, created_at FROM protocols
+                WHERE sync_uuid IS NOT NULL ORDER BY sync_uuid
+                """); ResultSet rows = protocols.executeQuery();
+             PreparedStatement steps = connection.prepareStatement("""
+                SELECT sync_uuid, step_order, step_text FROM protocol_steps
+                WHERE template_id=(SELECT id FROM protocols WHERE sync_uuid=?)
+                ORDER BY step_order, id
+                """)) {
+            while (rows.next()) {
+                String id = rows.getString("sync_uuid");
+                JsonObject value = new JsonObject();
+                value.addProperty("id", id);
+                value.addProperty("title", rows.getString("name"));
+                value.addProperty("created_at", normalizeSqlTimestamp(rows.getString("created_at")));
+                value.addProperty("tombstone", false);
+                JsonArray items = new JsonArray();
+                steps.setString(1, id);
+                try (ResultSet stepRows = steps.executeQuery()) {
+                    while (stepRows.next()) {
+                        JsonObject step = new JsonObject();
+                        step.addProperty("id", stepRows.getString("sync_uuid"));
+                        step.addProperty("position", stepRows.getInt("step_order"));
+                        step.addProperty("label", stepRows.getString("step_text"));
+                        items.add(step);
+                    }
+                }
+                value.add("steps", items);
+                entities.put(new EntityKey("protocol", id), gson.toJson(value));
+            }
+        }
+        return entities;
+    }
+
+    private static void ensureSyncUuids(Connection connection, String table) throws SQLException {
+        try (PreparedStatement select = connection.prepareStatement(
+                "SELECT id FROM " + table + " WHERE sync_uuid IS NULL");
+             ResultSet rows = select.executeQuery();
+             PreparedStatement update = connection.prepareStatement(
+                     "UPDATE " + table + " SET sync_uuid=? WHERE id=? AND sync_uuid IS NULL")) {
+            while (rows.next()) {
+                update.setString(1, UUID.randomUUID().toString());
+                update.setLong(2, rows.getLong(1));
+                update.addBatch();
+            }
+            update.executeBatch();
+        }
+    }
+
+    private void reconcileEntities(Connection connection, Map<EntityKey, String> current)
+            throws SQLException {
+        Map<EntityKey, EntityVersion> previous = new LinkedHashMap<>();
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT entity_type, entity_id, revision, content_hash, payload_json
+                FROM mobile_entity_versions
+                """); ResultSet rows = statement.executeQuery()) {
+            while (rows.next()) {
+                previous.put(new EntityKey(rows.getString(1), rows.getString(2)),
+                        new EntityVersion(rows.getLong(3), rows.getString(4), rows.getString(5)));
+            }
+        }
+
+        for (Map.Entry<EntityKey, String> entry : current.entrySet()) {
+            String hash = sha256(entry.getValue());
+            EntityVersion old = previous.get(entry.getKey());
+            if (old != null && old.contentHash.equals(hash)) continue;
+            long revision = old == null ? 1 : old.revision + 1;
+            JsonObject payload = gson.fromJson(entry.getValue(), JsonObject.class);
+            payload.addProperty("revision", revision);
+            payload.addProperty("updated_at", now());
+            upsertEntityVersion(connection, entry.getKey(), revision, hash, gson.toJson(payload));
+        }
+        for (Map.Entry<EntityKey, EntityVersion> entry : previous.entrySet()) {
+            if (current.containsKey(entry.getKey())) continue;
+            JsonObject oldPayload = gson.fromJson(entry.getValue().payloadJson, JsonObject.class);
+            if (oldPayload.has("tombstone") && oldPayload.get("tombstone").getAsBoolean()) continue;
+            long revision = entry.getValue().revision + 1;
+            oldPayload.addProperty("revision", revision);
+            oldPayload.addProperty("updated_at", now());
+            oldPayload.addProperty("tombstone", true);
+            oldPayload.remove("steps");
+            String hash = sha256("tombstone:" + entry.getValue().contentHash);
+            upsertEntityVersion(connection, entry.getKey(), revision, hash, gson.toJson(oldPayload));
+        }
+    }
+
+    private void upsertEntityVersion(Connection connection, EntityKey key, long revision,
+                                     String hash, String payload) throws SQLException {
+        long cursor;
+        try (PreparedStatement statement = connection.prepareStatement("""
+                INSERT INTO mobile_server_changes(
+                    entity_type, entity_id, revision, content_hash, payload_json, changed_at
+                ) VALUES(?,?,?,?,?,?)
+                """, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            statement.setString(1, key.type);
+            statement.setString(2, key.id);
+            statement.setLong(3, revision);
+            statement.setString(4, hash);
+            statement.setString(5, payload);
+            statement.setString(6, now());
+            statement.executeUpdate();
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                if (!keys.next()) throw new SQLException("Cursor do servidor não retornado");
+                cursor = keys.getLong(1);
+            }
+        }
+        try (PreparedStatement statement = connection.prepareStatement("""
+                INSERT INTO mobile_entity_versions(
+                    entity_type, entity_id, revision, content_hash,
+                    payload_json, server_cursor, changed_at
+                ) VALUES(?,?,?,?,?,?,?)
+                ON CONFLICT(entity_type, entity_id) DO UPDATE SET
+                    revision=excluded.revision,
+                    content_hash=excluded.content_hash,
+                    payload_json=excluded.payload_json,
+                    server_cursor=excluded.server_cursor,
+                    changed_at=excluded.changed_at
+                """)) {
+            statement.setString(1, key.type);
+            statement.setString(2, key.id);
+            statement.setLong(3, revision);
+            statement.setString(4, hash);
+            statement.setString(5, payload);
+            statement.setLong(6, cursor);
+            statement.setString(7, now());
+            statement.executeUpdate();
+        }
+    }
+
+    private static String normalizeTaskStatus(String value) {
+        return switch (value == null ? "PENDENTE" : value) {
+            case "CONCLUIDA" -> "COMPLETED";
+            case "CANCELADA" -> "CANCELLED";
+            case "EM_ANDAMENTO" -> "IN_PROGRESS";
+            case "BLOQUEADA" -> "BLOCKED";
+            default -> "PENDING";
+        };
+    }
+
+    private static String normalizeSqlTimestamp(String value) {
+        if (value == null || value.isBlank()) return Instant.EPOCH.toString();
+        if (value.contains("T")) return value.endsWith("Z") ? value : value + "Z";
+        return value.replace(' ', 'T') + "Z";
+    }
+
+    private static String sha256(String value) {
+        try {
+            return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception error) {
+            throw new IllegalStateException("SHA-256 indisponível", error);
+        }
+    }
+
+    public static String resultJson(String operationId, String status, String errorCode,
+                                    Long serverRevision, String conflictId) {
+        JsonObject result = new JsonObject();
+        result.addProperty("operation_id", operationId);
+        result.addProperty("status", status);
+        if (errorCode == null) result.add("error_code", com.google.gson.JsonNull.INSTANCE);
+        else result.addProperty("error_code", errorCode);
+        if (serverRevision == null) result.add("server_revision", com.google.gson.JsonNull.INSTANCE);
+        else result.addProperty("server_revision", serverRevision);
+        if (conflictId == null) result.add("conflict_id", com.google.gson.JsonNull.INSTANCE);
+        else result.addProperty("conflict_id", conflictId);
+        return new Gson().toJson(result);
+    }
+
     public CursorRecord cursor(String deviceId) {
         requireUuid(deviceId, "device_id");
         try (Connection connection = database.connect();
@@ -221,6 +682,32 @@ public final class DesktopSyncRepository {
             }
         } catch (SQLException error) {
             throw failure("cursor", error);
+        }
+    }
+
+    public void acknowledgeServerCursor(String deviceId, long serverCursor) {
+        requireUuid(deviceId, "device_id");
+        if (serverCursor < 0) invalid("server_cursor");
+        try (Connection connection = database.connect()) {
+            long maximum;
+            try (PreparedStatement query = connection.prepareStatement(
+                    "SELECT COALESCE(MAX(cursor),0) FROM mobile_server_changes");
+                 ResultSet rows = query.executeQuery()) {
+                maximum = rows.next() ? rows.getLong(1) : 0;
+            }
+            if (serverCursor > maximum) invalid("server_cursor");
+            try (PreparedStatement statement = connection.prepareStatement("""
+                    UPDATE mobile_sync_cursors SET server_cursor=?, updated_at=?
+                    WHERE device_id=? AND server_cursor<=?
+                    """)) {
+                statement.setLong(1, serverCursor);
+                statement.setString(2, now());
+                statement.setString(3, deviceId);
+                statement.setLong(4, serverCursor);
+                statement.executeUpdate();
+            }
+        } catch (SQLException error) {
+            throw failure("confirmação do cursor", error);
         }
     }
 
@@ -374,6 +861,12 @@ public final class DesktopSyncRepository {
                                int contractMax, String status, String approvedAt,
                                String revokedAt, Set<String> roles) {}
     public record CursorRecord(long clientContiguousSequence, long serverCursor, String updatedAt) {}
+    public record SnapshotRecord(long serverCursor, List<String> taskJson,
+                                 List<String> protocolJson) {}
+    public record ConflictRecord(String conflictId, String operationId, String entityType,
+                                 String entityId, Long baseRevision, long serverRevision,
+                                 String reason, String localValueJson, String serverValueJson,
+                                 String createdAt) {}
     public record OperationInput(String operationId, String deviceId, long sequence,
                                  String commandType, String entityType, String entityId,
                                  String payloadHash, String status, String errorCode,
@@ -401,4 +894,9 @@ public final class DesktopSyncRepository {
         public SyncPersistenceException(String code) { super("Operação de sincronização recusada."); this.code = code; }
         public String code() { return code; }
     }
+
+    @FunctionalInterface
+    private interface SqlEffect { void apply(Connection connection) throws SQLException; }
+    private record EntityKey(String type, String id) {}
+    private record EntityVersion(long revision, String contentHash, String payloadJson) {}
 }

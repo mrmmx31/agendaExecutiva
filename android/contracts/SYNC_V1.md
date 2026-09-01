@@ -8,6 +8,8 @@ Somente dispositivo pareado e não revogado pode abrir uma sessão HTTPS tempor�
 
 `POST /api/v1/sync/batches` aceita até 100 operações e 256 KiB antes do parse. O mesmo `operation_id` com mesmo comando, entidade e `payload_hash` devolve o resultado persistido. O mesmo ID com bytes diferentes recebe `REJECTED/ID_REUSED`. `(device_id, sequence)` também é único.
 
+Cada chamada usa `X-Agenda-Device` e `Authorization: AgendaCredential <base64url>`. A credencial trafega somente no canal TLS preso à impressão digital do convite, nunca entra em URL ou log e é comparada ao hash persistido no desktop. A resposta do lote inclui resultados terminais e os detalhes completos dos conflitos citados naquele lote.
+
 Estados retornados: `APPLIED`, `CONFLICT`, `REJECTED` e `RETRYABLE`. Somente `RETRYABLE` pode voltar automaticamente à fila. Conflito é terminal para aquela operação e exige nova decisão com novo UUID.
 
 ## Cursor e snapshot

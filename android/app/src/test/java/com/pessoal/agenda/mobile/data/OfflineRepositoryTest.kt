@@ -86,6 +86,25 @@ class OfflineRepositoryTest {
         assertEquals((1L..5L).toList(), operations.sortedBy { it.sequence }.map { it.sequence })
     }
 
+    @Test
+    fun keystoreDeviceIdentityReplacesPrePairingLocalIdentityWithoutLosingQueue() = runBlocking {
+        repository.createCapture("Criada antes do pareamento")
+        val pairedId = "20000000-0000-4000-8000-000000000001"
+        val pairedRepository = OfflineRepository(
+            database = database,
+            clock = Clock.fixed(Instant.parse("2026-08-31T12:00:00Z"), ZoneOffset.UTC),
+            zoneId = ZoneId.of("America/Manaus"),
+            newId = { ids.removeFirst() },
+            deviceIdProvider = { pairedId },
+        )
+
+        pairedRepository.createCapture("Criada depois do pareamento")
+
+        val operations = pairedRepository.operations.first().sortedBy { it.sequence }
+        assertEquals(listOf(1L, 2L), operations.map { it.sequence })
+        assertTrue(operations.all { it.deviceId == pairedId })
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun blankCaptureIsRejectedBeforePersistence() {
         runBlocking { repository.createCapture("   ") }

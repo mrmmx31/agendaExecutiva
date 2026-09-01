@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +32,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -61,6 +63,7 @@ import com.pessoal.agenda.mobile.data.local.ActiveRunStepRow
 import com.pessoal.agenda.mobile.data.local.PendingOperationEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
+import com.pessoal.agenda.mobile.data.local.SyncConflictEntity
 import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
 import java.time.Instant
 import java.time.ZoneId
@@ -82,6 +85,7 @@ fun AgendaMobileApp(viewModel: AgendaMobileViewModel = viewModel()) {
             onSaveCapture = viewModel::saveCapture,
             onStartProtocol = viewModel::startProtocol,
             onCompleteStep = viewModel::completeStep,
+            onSync = viewModel::syncNow,
             onFeedbackShown = viewModel::clearFeedback,
         )
     }
@@ -94,6 +98,7 @@ internal fun AgendaMobileScreen(
     onSaveCapture: (String, () -> Unit) -> Unit,
     onStartProtocol: (String) -> Unit,
     onCompleteStep: (String, String) -> Unit,
+    onSync: () -> Unit,
     onFeedbackShown: () -> Unit,
 ) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
@@ -135,7 +140,12 @@ internal fun AgendaMobileScreen(
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            OfflineStatusBand(state.operations.count { it.status == "PENDING" })
+            OfflineStatusBand(
+                state.operations.count { it.status in setOf("PENDING", "RETRYABLE", "IN_FLIGHT") },
+                state.canSync,
+                state.busy,
+                onSync,
+            )
             when (MobileSection.entries[selected]) {
                 MobileSection.TODAY -> TodayScreen(state.tasks)
                 MobileSection.CAPTURE -> CaptureScreen(state, onSaveCapture)
@@ -146,14 +156,19 @@ internal fun AgendaMobileScreen(
                     onStartProtocol,
                     onCompleteStep,
                 )
-                MobileSection.QUEUE -> QueueScreen(state.operations)
+                MobileSection.QUEUE -> QueueScreen(state.operations, state.conflicts)
             }
         }
     }
 }
 
 @Composable
-private fun OfflineStatusBand(pendingCount: Int) {
+private fun OfflineStatusBand(
+    pendingCount: Int,
+    canSync: Boolean,
+    busy: Boolean,
+    onSync: () -> Unit,
+) {
     Surface(
         color = MaterialTheme.colorScheme.secondaryContainer,
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -165,9 +180,19 @@ private fun OfflineStatusBand(pendingCount: Int) {
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.CloudOff, contentDescription = null)
-                Text("Somente neste telefone", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    if (canSync) "Pareado ao desktop" else "Somente neste telefone",
+                    style = MaterialTheme.typography.labelLarge,
+                )
             }
-            Text("$pendingCount na fila", style = MaterialTheme.typography.bodySmall)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("$pendingCount na fila", style = MaterialTheme.typography.bodySmall)
+                if (canSync) {
+                    IconButton(onClick = onSync, enabled = !busy) {
+                        Icon(Icons.Outlined.Sync, contentDescription = "Sincronizar agora")
+                    }
+                }
+            }
         }
     }
 }
@@ -186,7 +211,7 @@ private fun TodayScreen(tasks: List<TaskReplicaEntity>) {
                 Column(Modifier.weight(1f)) {
                     Text(task.title, style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "Dados fictícios · ${task.status.userLabel()}",
+                        task.status.userLabel(),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -277,7 +302,7 @@ private fun ProtocolScreen(
                     Column(Modifier.weight(1f)) {
                         Text(protocol.title, style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "Revisão ${protocol.revision} · dados fictícios",
+                            "Revisão ${protocol.revision}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -294,9 +319,37 @@ private fun ProtocolScreen(
 }
 
 @Composable
-private fun QueueScreen(operations: List<PendingOperationEntity>) {
+private fun QueueScreen(
+    operations: List<PendingOperationEntity>,
+    conflicts: List<SyncConflictEntity>,
+) {
     ScreenList(title = "Fila offline") {
-        if (operations.isEmpty()) item { EmptyState("Nenhuma operação pendente") }
+        if (operations.isEmpty() && conflicts.isEmpty()) item { EmptyState("Nenhuma operação registrada") }
+        if (conflicts.isNotEmpty()) {
+            item { Text("Conflitos para revisar", style = MaterialTheme.typography.titleMedium) }
+            items(conflicts, key = { it.conflictId }) { conflict ->
+                Column(
+                    Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(conflict.reason.conflictLabel(), fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Versão local: ${conflict.localValueJson}",
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        "Versão desktop: ${conflict.serverValueJson}",
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
+            item { Text("Histórico da fila", style = MaterialTheme.typography.titleMedium) }
+        }
         items(operations, key = { it.operationId }) { operation ->
             Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(operation.commandType.userCommandLabel(), style = MaterialTheme.typography.bodyLarge)
@@ -343,7 +396,23 @@ private fun EmptyState(text: String) {
 private fun String.userLabel(): String = when (this) {
     "PENDING" -> "Pendente"
     "COMPLETED" -> "Concluída"
+    "IN_PROGRESS" -> "Em andamento"
+    "BLOCKED" -> "Bloqueada"
+    "CANCELLED" -> "Cancelada"
+    "IN_FLIGHT" -> "Enviando"
+    "APPLIED" -> "Aplicada"
+    "CONFLICT" -> "Conflito"
+    "REJECTED" -> "Rejeitada"
+    "RETRYABLE" -> "Aguardando nova tentativa"
     else -> "Estado local"
+}
+
+private fun String.conflictLabel(): String = when (this) {
+    "TEXT_DIVERGED" -> "Texto alterado nos dois dispositivos"
+    "STRUCTURE_DIVERGED" -> "Estrutura alterada nos dois dispositivos"
+    "STATE_DIVERGED" -> "Estado alterado nos dois dispositivos"
+    "TOMBSTONE_DIVERGED" -> "Exclusão divergente"
+    else -> "Conflito de sincronização"
 }
 
 private fun String.userCommandLabel(): String = when (this) {
@@ -363,6 +432,6 @@ private fun String.userDateTime(): String = runCatching {
 @Composable
 private fun MobileHomePreview() {
     AgendaMobileTheme {
-        AgendaMobileScreen(MobileUiState(), { _, _ -> }, {}, { _, _ -> }, {})
+        AgendaMobileScreen(MobileUiState(), { _, _ -> }, {}, { _, _ -> }, {}, {})
     }
 }

@@ -16,6 +16,7 @@ mesma versão.
 | `pairing-response.schema.json` | estado pendente ou conclusão do pareamento |
 | `sync-batch.schema.json` | lote limitado de operações e cursor conhecido |
 | `sync-result.schema.json` | resultado terminal ou repetível por operação |
+| `sync-batch-response.schema.json` | cursores, resultados e conflitos retornados pelo lote |
 | `snapshot-page.schema.json` | página consistente da réplica inicial |
 | `conflict.schema.json` | divergência explícita para revisão |
 

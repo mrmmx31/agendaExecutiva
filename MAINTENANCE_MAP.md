@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 33,3%, restando 66,7%; `P2-01`, `P2-02` e `P2-03` concluídas, `P2-04` em 33,3% (2 de 6 itens).
+- Projeto 2: implementação em 35%, restando 65%; `P2-01`, `P2-02` e `P2-03` concluídas, `P2-04` em 50% (3 de 6 itens).
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -87,7 +87,7 @@ Implementado em `P2-02`:
 
 | Área | Local |
 |---|---|
-| Room v3, entidades, DAO e migrações | `android/app/src/main/java/com/pessoal/agenda/mobile/data/local/` |
+| Room v4, entidades, DAO e migrações | `android/app/src/main/java/com/pessoal/agenda/mobile/data/local/` |
 | Transações, fixtures e fila | `android/app/src/main/java/com/pessoal/agenda/mobile/data/OfflineRepository.kt` |
 | Estado e ações da UI | `android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileViewModel.kt` |
 | Telas Compose | `android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileApp.kt` |
@@ -104,6 +104,7 @@ Implementado em `P2-02`:
 | Gate desktop + AVD | `LocalPairingAndroidGate` em `src/test`; executar somente com SQLite temporário e `adb reverse` |
 | Contratos e política de alertas | `android/.../alert/`, `contracts/v1/alert-*.schema.json`, `sensory-profile.schema.json` e `ALERTS_V1.md` |
 | Persistência de alertas | `AlertStore.kt`, `AlertEntities.kt`, `OfflineDao.kt` e `MobileDatabase.MIGRATION_3_4` |
+| Agendamento de alertas | `alert/scheduling/AlertWorkScheduler.kt`; nome único `agenda-alert-<uuid>` e tag `agenda-alert-evaluation` |
 
 | Domínio | Android | Wear | Desktop |
 |---|---|---|---|
@@ -124,7 +125,7 @@ Atualizar esta tabela quando uma dependência for adicionada ou removida.
 |---|---|---|---|---|
 | Android SDK / Compose | app móvel | UI local | sim | nenhuma no Android nativo |
 | Room | banco offline | dados locais do app | sim | SQLite direto, não recomendado |
-| WorkManager | sync e tarefas duráveis | IDs/estado de fila | sim | agendamento manual limitado |
+| WorkManager 2.9.1 | alertas duráveis e reconciliação | UUID e instante elegível | P2-04 | fixado no SDK 34; 2.11.x exige compileSdk 35 |
 | Android Keystore | chaves do aparelho | chaves não exportáveis | sim | nenhuma aceitável |
 | Wear notification bridge | alertas iniciais | texto/ações do alerta | MVP | app Wear dedicado |
 | Wear Data Layer | telefone ↔ relógio | payload mínimo do app | P2-05 | notificação espelhada |
@@ -147,7 +148,9 @@ Nenhuma permissão entra “para uso futuro”. Cada uma exige requisito, tela e
 | Permissão/capacidade | Fase | Justificativa | Comportamento negado |
 |---|---|---|---|
 | `INTERNET` | P2-03 | sync HTTPS local fixado | sem sessão desktop o app continua local; nenhum host externo é usado |
-| notificações | P2-04 | alertas opt-in | alertas ficam dentro do app |
+| `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` | P2-04 | permissões normais transitivas do WorkManager para persistência | sem trabalho após suspensão/reboot |
+| `ACCESS_NETWORK_STATE`, `FOREGROUND_SERVICE` | P2-04 | capacidades normais declaradas pelo runtime WorkManager; o worker atual não usa rede nem foreground | revisar ao atualizar/remover WorkManager |
+| `POST_NOTIFICATIONS` | P2-04 | alertas visuais opt-in; ainda não adicionada | alertas ficam dentro do app |
 | Bluetooth/Wear APIs | P2-05 | comunicação oficial com Wear | telefone continua funcional |
 | Health Connect por tipo | P2-07 | relatório autorizado | categoria fica vazia |
 | histórico/background health | posterior | somente hipótese aprovada | leitura limitada ao permitido |

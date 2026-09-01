@@ -1455,7 +1455,7 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 ## 32. Projeto 2 — Extensão móvel e sensorial
 
-**Status:** Especificado em 31/08/2026; implementação 33,3%, com 66,7% restantes. `P2-01`, `P2-02` e `P2-03` estão concluídas; `P2-04` está em 33,3% (2 de 6 itens).
+**Status:** Especificado em 31/08/2026; implementação 35%, com 65% restantes. `P2-01`, `P2-02` e `P2-03` estão concluídas; `P2-04` está em 50% (3 de 6 itens).
 
 **Visão:** estender a Agenda para Android e Wear OS, mantendo o desktop como superfície de organização, o smartphone como nó móvel offline e o smartwatch como superfície curta de percepção e resposta. Alertas devem oferecer `Concluir` e `Adiar`; capturas e protocolos devem funcionar fora do notebook e convergir depois.
 
@@ -1465,4 +1465,4 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 **Documentos:** requisitos, arquitetura, fases e gates estão em `PROJECT2_SPEC.md`. O ponto de entrada para manutenção, catálogos, contratos e retomada de contexto está em `MAINTENANCE_MAP.md`.
 
-**Próxima ação:** implementar agendamento e reavaliação de alertas com WorkManager e saída simulada, cobrindo expiração, cancelamento, reboot/Doze e barreiras sensoriais. Notificações e áudio continuam desligados; o telefone físico permanece fora do fluxo.
+**Próxima ação:** publicar notificação Android inicialmente silenciosa e opt-in, com pedido contextual de permissão e ações idempotentes `Concluir`/`Adiar`. Áudio, vibração e telefone físico permanecem fora do fluxo.

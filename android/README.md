@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativo Android do Projeto 2 com núcleo offline e `P2-03` concluídos. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot e conflitos. `P2-04` possui contratos, guardrails e persistência Room v4 de alertas; notificações, áudio, saúde e IA ainda não estão ativos.
+Aplicativo Android do Projeto 2 com núcleo offline e `P2-03` concluídos. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot e conflitos. `P2-04` possui contratos, Room v4 e agendamento WorkManager de alertas; notificações, áudio, saúde e IA ainda não estão ativos.
 
 ## Requisitos
 
@@ -32,7 +32,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 
 - `test`, `lint` e `assembleDebug`: aprovados.
 - Testes Room e do repositório offline com Robolectric: aprovados.
-- Doze testes instrumentados no AVD API 34: migrações Room, cinco fluxos Compose, Keystore e matriz HTTPS aprovados.
+- Quinze testes instrumentados no AVD API 34: migrações Room, WorkManager, cinco fluxos Compose, Keystore e matriz HTTPS aprovados.
 - Renderização clara e escura no telefone virtual: inspecionada sem cortes ou resíduos de tema.
 - Fluxo fictício validado: uma captura mais início e quatro passos de protocolo geraram seis operações sequenciais na fila.
 - Parser do convite de pareamento aprovado em cinco testes de validade, expiração, campos fechados e bloqueio de downgrade HTTP.
@@ -44,6 +44,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - Gate real desktop + AVD aprovado com captura móvel entregue em banco temporário (`PAIRING_GATE_SYNCED`).
 - Contratos de alertas, perfil sensorial e ações validados em Kotlin/Java; 26 testes locais Android passam sem produzir estímulo.
 - Room v4 persiste definições, materializações, entregas, ações e perfil; 31 testes locais e 13 instrumentados passam, incluindo migrações desde v1.
+- WorkManager 2.9.1 mantém trabalho único por alerta, reconcilia no startup e cancela em Room/sistema; 36 testes locais e 15 instrumentados passam sem entrega sensorial.
 - Primeiro boot dos AVDs de telefone e Wear OS: aprovado.
 - Pareamento telefone-relógio: aprovado; o assistente confirmou `Successful pairing` entre os dois AVDs.
 - O Google Pixel Watch do AVD precisou das permissões de notificações e dispositivos próximos; isso não altera as permissões do aplicativo Agenda.
@@ -52,10 +53,11 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 
 - Package: `com.pessoal.agenda.mobile`.
 - Banco: `agenda-mobile.db`, separado do SQLite desktop.
-- Banco atual: Room v3, com schema exportado em `app/schemas/` e migrações explícitas `1 -> 2 -> 3`.
+- Banco atual: Room v4, com schema exportado em `app/schemas/` e migrações explícitas `1 -> 2 -> 3 -> 4`.
 - Contrato atual: v1, catalogado em `contracts/README.md`.
 - Backup e transferência de dados Android estão desativados.
 - Nenhuma permissão sensível é solicitada.
+- WorkManager declara permissões normais de boot, wake lock, rede e serviço interno; `POST_NOTIFICATIONS` permanece ausente.
 - `INTERNET` serve exclusivamente ao HTTPS local fixado; nenhuma API externa ou telemetria foi adicionada.
 - Os dados demonstrativos são determinísticos e não representam dados pessoais.
 - Não usar telefone físico antes do gate previsto em `PROJECT2_SPEC.md`.

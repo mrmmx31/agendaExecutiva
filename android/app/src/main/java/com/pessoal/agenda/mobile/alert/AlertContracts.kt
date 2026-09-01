@@ -2,6 +2,7 @@ package com.pessoal.agenda.mobile.alert
 
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
 import java.time.LocalTime
 import java.util.UUID
 import kotlinx.serialization.SerialName
@@ -107,6 +108,18 @@ data class QuietHours(
         val start = start()
         val end = end()
         return if (start < end) time >= start && time < end else time >= start || time < end
+    }
+
+    fun nextEnd(after: Instant, zoneId: ZoneId): Instant {
+        val zoned = after.atZone(zoneId)
+        require(contains(zoned.toLocalTime())) { "Instante fora do horário silencioso." }
+        val end = end()
+        val endDate = if (start() > end && zoned.toLocalTime() >= start()) {
+            zoned.toLocalDate().plusDays(1)
+        } else {
+            zoned.toLocalDate()
+        }
+        return endDate.atTime(end).atZone(zoneId).toInstant()
     }
 
     private fun start(): LocalTime = parseMinute(startsAt)

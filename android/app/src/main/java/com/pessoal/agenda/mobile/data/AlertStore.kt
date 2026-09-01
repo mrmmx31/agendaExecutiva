@@ -4,7 +4,12 @@ import androidx.room.withTransaction
 import com.pessoal.agenda.mobile.alert.AlertActionCommand
 import com.pessoal.agenda.mobile.alert.AlertActionType
 import com.pessoal.agenda.mobile.alert.AlertDefinition
+import com.pessoal.agenda.mobile.alert.AlertOrigin
+import com.pessoal.agenda.mobile.alert.AlertPolicy
+import com.pessoal.agenda.mobile.alert.AlertRepeatPolicy
+import com.pessoal.agenda.mobile.alert.AlertSuppression
 import com.pessoal.agenda.mobile.alert.AudioRoutePolicy
+import com.pessoal.agenda.mobile.alert.FunctionalCriticality
 import com.pessoal.agenda.mobile.alert.QuietHours
 import com.pessoal.agenda.mobile.alert.SensoryChannel
 import com.pessoal.agenda.mobile.alert.SensoryProfile
@@ -17,6 +22,7 @@ import com.pessoal.agenda.mobile.data.local.MobileDatabase
 import com.pessoal.agenda.mobile.data.local.SensoryProfileEntity
 import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -43,6 +49,92 @@ class AlertStore(
         profile.validate()
         snooze.validate()
         dao.upsertSensoryProfile(profile.entity(snooze, instant()))
+    }
+
+    suspend fun scheduleEvaluation(alertId: String, nextAt: Instant): AlertSchedule? = database.withTransaction {
+        UUID.fromString(alertId)
+        val definition = requireNotNull(dao.alertDefinition(alertId)) { "Alerta inexistente." }
+        val expiration = Instant.parse(definition.validUntil)
+        val now = Instant.now(clock)
+        if (!nextAt.isBefore(expiration) || !now.isBefore(expiration)) {
+            dao.updateAlertEvaluationState(alertId, "EXPIRED", now.toString())
+            return@withTransaction null
+        }
+        check(dao.scheduleAlertEvaluation(alertId, nextAt.toString(), now.toString()) == 1) {
+            "Alerta não aceita agendamento."
+        }
+        AlertSchedule(alertId, nextAt)
+    }
+
+    suspend fun schedulesForReconciliation(now: Instant = Instant.now(clock)): List<AlertSchedule> =
+        database.withTransaction {
+            dao.alertSchedules().mapNotNull { row ->
+                val expiration = Instant.parse(row.validUntil)
+                if (!now.isBefore(expiration)) {
+                    dao.updateAlertEvaluationState(row.alertId, "EXPIRED", now.toString())
+                    null
+                } else {
+                    AlertSchedule(row.alertId, Instant.parse(row.nextEligibleAt))
+                }
+            }
+        }
+
+    suspend fun cancelScheduling(alertId: String): Boolean {
+        UUID.fromString(alertId)
+        return dao.cancelAlert(alertId, instant()) == 1
+    }
+
+    suspend fun evaluateForWork(
+        alertId: String,
+        now: Instant = Instant.now(clock),
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): AlertWorkEvaluation = database.withTransaction {
+        UUID.fromString(alertId)
+        val definitionEntity = dao.alertDefinition(alertId) ?: return@withTransaction AlertWorkEvaluation.Stop
+        val materialization = dao.alertMaterialization(alertId) ?: return@withTransaction AlertWorkEvaluation.Stop
+        if (materialization.state in TERMINAL_WORK_STATES) return@withTransaction AlertWorkEvaluation.Stop
+        val storedProfile = requireNotNull(dao.sensoryProfile(PROFILE_ID)) { "Perfil sensorial ausente." }.stored()
+        val definition = definitionEntity.definition()
+        val decision = AlertPolicy(zoneId).evaluate(
+            alert = definition,
+            profile = storedProfile.profile,
+            now = now,
+            deliveryCount = materialization.deliveryCount,
+            lastAlertDeliveryAt = materialization.lastDeliveryAt?.let(Instant::parse),
+            lastSensoryDeliveryAt = dao.lastSensoryDeliveryAt()?.let(Instant::parse),
+        )
+        if (decision.shouldDeliver) {
+            check(dao.updateAlertEvaluationState(alertId, "AWAITING_DELIVERY", now.toString()) == 1)
+            return@withTransaction AlertWorkEvaluation.Ready(decision.channels)
+        }
+        val reason = requireNotNull(decision.suppression)
+        val nextAt = when (reason) {
+            AlertSuppression.NOT_DUE -> Instant.parse(definition.scheduledAt)
+            AlertSuppression.PAUSED -> Instant.parse(requireNotNull(storedProfile.profile.pausedUntil))
+            AlertSuppression.QUIET_HOURS -> requireNotNull(storedProfile.profile.quietHours)
+                .nextEnd(now, zoneId)
+            AlertSuppression.REPEAT_INTERVAL -> requireNotNull(materialization.lastDeliveryAt)
+                .let(Instant::parse)
+                .plusSeconds(definition.repeatPolicy.minimumIntervalMinutes * 60L)
+            AlertSuppression.COOLDOWN -> requireNotNull(dao.lastSensoryDeliveryAt())
+                .let(Instant::parse)
+                .plusSeconds(storedProfile.profile.cooldownMinutes * 60L)
+            AlertSuppression.SENSORY_OVERLAP -> now.plusSeconds(storedProfile.profile.cooldownMinutes * 60L)
+            AlertSuppression.EXPIRED, AlertSuppression.DELIVERY_LIMIT -> null
+            AlertSuppression.GLOBAL_DISABLED, AlertSuppression.NO_ALLOWED_CHANNEL -> null
+        }
+        if (nextAt != null && nextAt.isBefore(Instant.parse(definition.validUntil))) {
+            check(dao.scheduleAlertEvaluation(alertId, nextAt.toString(), now.toString()) == 1)
+            AlertWorkEvaluation.Reschedule(nextAt, reason)
+        } else {
+            val state = when (reason) {
+                AlertSuppression.EXPIRED -> "EXPIRED"
+                AlertSuppression.DELIVERY_LIMIT -> "DELIVERY_LIMIT_REACHED"
+                else -> "SUPPRESSED"
+            }
+            dao.updateAlertEvaluationState(alertId, state, now.toString())
+            AlertWorkEvaluation.Stop
+        }
     }
 
     suspend fun materialize(definition: AlertDefinition): Boolean = database.withTransaction {
@@ -144,6 +236,24 @@ class AlertStore(
         createdAt = createdAt,
     )
 
+    private fun AlertDefinitionEntity.definition() = AlertDefinition(
+        contractVersion = contractVersion,
+        alertId = id,
+        origin = AlertOrigin.valueOf(origin),
+        referenceId = referenceId,
+        text = text,
+        reason = reason,
+        sourceDeviceId = sourceDeviceId,
+        scheduledAt = scheduledAt,
+        validUntil = validUntil,
+        criticality = FunctionalCriticality.valueOf(criticality),
+        allowedChannels = json.decodeFromString<List<String>>(allowedChannelsJson)
+            .mapTo(mutableSetOf(), SensoryChannel::valueOf),
+        repeatPolicy = AlertRepeatPolicy(maxDeliveries, minimumIntervalMinutes),
+        actions = json.decodeFromString<List<String>>(actionsJson)
+            .mapTo(mutableSetOf(), AlertActionType::valueOf),
+    ).also(AlertDefinition::validate)
+
     private fun SensoryProfile.entity(snooze: SnoozePolicy, now: String) = SensoryProfileEntity(
         id = PROFILE_ID,
         contractVersion = contractVersion,
@@ -217,10 +327,22 @@ class AlertStore(
 
     private fun instant(): String = Instant.now(clock).toString()
 
-    private companion object { const val PROFILE_ID = "default" }
+    private companion object {
+        const val PROFILE_ID = "default"
+        val TERMINAL_WORK_STATES = setOf(
+            "COMPLETED", "CANCELLED", "EXPIRED", "DELIVERY_LIMIT_REACHED", "AWAITING_DELIVERY",
+        )
+    }
 }
 
 data class StoredSensoryProfile(val profile: SensoryProfile, val snoozePolicy: SnoozePolicy)
+data class AlertSchedule(val alertId: String, val nextAt: Instant)
+
+sealed interface AlertWorkEvaluation {
+    data class Ready(val channels: Set<SensoryChannel>) : AlertWorkEvaluation
+    data class Reschedule(val nextAt: Instant, val reason: AlertSuppression) : AlertWorkEvaluation
+    data object Stop : AlertWorkEvaluation
+}
 
 data class AlertDeliveryRecord(
     val deliveryId: String,

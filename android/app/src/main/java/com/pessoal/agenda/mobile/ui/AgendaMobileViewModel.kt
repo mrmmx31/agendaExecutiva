@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pessoal.agenda.mobile.data.AlertStore
 import com.pessoal.agenda.mobile.data.OfflineRepository
+import com.pessoal.agenda.mobile.alert.scheduling.AlertSchedulingCoordinator
 import com.pessoal.agenda.mobile.data.local.ActiveRunStepRow
 import com.pessoal.agenda.mobile.data.local.CaptureEntity
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
@@ -49,6 +50,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         deviceIdProvider = { credentialStore.deviceId },
     )
     private val alertStore = AlertStore(MobileDatabase.get(application))
+    private val alertScheduling = AlertSchedulingCoordinator(application, alertStore)
     private val busy = MutableStateFlow(false)
     private val feedback = MutableStateFlow<String?>(null)
     private val canSync = MutableStateFlow(false)
@@ -101,7 +103,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
                 }
                 repository.alignDeviceIdentity()
                 repository.initializeFictitiousData()
-                alertStore.ensureInstallationProfile()
+                alertScheduling.reconcile()
             }
                 .onFailure { feedback.value = it.safeMessage("Não foi possível preparar os dados locais.") }
         }

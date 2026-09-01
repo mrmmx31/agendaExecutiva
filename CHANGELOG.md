@@ -10,6 +10,7 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Agendamento WorkManager único e cancelável para reavaliar alertas após processo/reboot, com entrega ainda simulada
 - Room v4 e store transacional para materializações, entregas, ações e perfil sensorial, com migrações desde v1
 - Contratos móveis de alertas e perfil sensorial com opt-in, silêncio, cooldown, limites de adiamento e política pura sem efeitos colaterais
 - Cliente Android de pareamento por QR/deep link ou colagem, espera cancelável, reconexão e gate real desktop + AVD

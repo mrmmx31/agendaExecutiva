@@ -16,9 +16,9 @@ class AlertPolicy(private val zoneId: ZoneId = ZoneId.systemDefault()) {
     ): AlertDecision {
         alert.validate()
         profile.validate()
+        if (!now.isBefore(Instant.parse(alert.validUntil))) return AlertDecision.suppressed(AlertSuppression.EXPIRED)
         if (!profile.globalEnabled) return AlertDecision.suppressed(AlertSuppression.GLOBAL_DISABLED)
         if (now.isBefore(Instant.parse(alert.scheduledAt))) return AlertDecision.suppressed(AlertSuppression.NOT_DUE)
-        if (!now.isBefore(Instant.parse(alert.validUntil))) return AlertDecision.suppressed(AlertSuppression.EXPIRED)
         if (deliveryCount >= alert.repeatPolicy.maxDeliveries) {
             return AlertDecision.suppressed(AlertSuppression.DELIVERY_LIMIT)
         }

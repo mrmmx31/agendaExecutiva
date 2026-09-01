@@ -63,6 +63,29 @@ interface OfflineDao {
     @Query("SELECT COUNT(*) FROM alert_actions")
     suspend fun alertActionCount(): Int
 
+    @Query("SELECT MAX(lastDeliveryAt) FROM alert_materializations WHERE lastDeliveryAt IS NOT NULL")
+    suspend fun lastSensoryDeliveryAt(): String?
+
+    @Query("""
+        SELECT alert_materializations.alertId AS alertId,
+               alert_materializations.state AS state,
+               alert_materializations.nextEligibleAt AS nextEligibleAt,
+               alert_definitions.validUntil AS validUntil
+        FROM alert_materializations
+        JOIN alert_definitions ON alert_definitions.id=alert_materializations.alertId
+        WHERE alert_materializations.state IN ('READY','SCHEDULED','SNOOZED')
+    """)
+    suspend fun alertSchedules(): List<AlertScheduleRow>
+
+    @Query("UPDATE alert_materializations SET state='SCHEDULED', nextEligibleAt=:nextAt, updatedAt=:now WHERE alertId=:alertId AND state NOT IN ('COMPLETED','CANCELLED','EXPIRED','DELIVERY_LIMIT_REACHED')")
+    suspend fun scheduleAlertEvaluation(alertId: String, nextAt: String, now: String): Int
+
+    @Query("UPDATE alert_materializations SET state=:state, updatedAt=:now WHERE alertId=:alertId AND state NOT IN ('COMPLETED','CANCELLED')")
+    suspend fun updateAlertEvaluationState(alertId: String, state: String, now: String): Int
+
+    @Query("UPDATE alert_materializations SET state='CANCELLED', updatedAt=:now WHERE alertId=:alertId AND state NOT IN ('COMPLETED','CANCELLED')")
+    suspend fun cancelAlert(alertId: String, now: String): Int
+
     @Query("SELECT * FROM mobile_metadata WHERE `key` = :key")
     suspend fun metadata(key: String): MobileMetadataEntity?
 
@@ -210,4 +233,11 @@ data class ActiveRunStepRow(
     val position: Int,
     val label: String,
     val completedAt: String?,
+)
+
+data class AlertScheduleRow(
+    val alertId: String,
+    val state: String,
+    val nextEligibleAt: String,
+    val validUntil: String,
 )

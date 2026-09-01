@@ -48,6 +48,10 @@ class AlertContractsTest {
         )
 
         assertEquals(AlertSuppression.QUIET_HOURS, result.suppression)
+        assertEquals(
+            Instant.parse("2026-09-02T11:00:00Z"),
+            QuietHours("22:30", "07:00").nextEnd(late, ZoneId.of("America/Manaus")),
+        )
     }
 
     @Test

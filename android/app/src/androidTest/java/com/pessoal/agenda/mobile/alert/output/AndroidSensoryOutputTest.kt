@@ -24,10 +24,13 @@ class AndroidSensoryOutputTest {
 
     @Test
     fun unavailableHeadphonesExposeVisibleFallback() {
-        val status = output.routeStatus(AudioRoutePolicy.PREFER_HEADPHONES)
+        val preferred = output.routeStatus(AudioRoutePolicy.PREFER_HEADPHONES)
+        val automatic = output.routeStatus(AudioRoutePolicy.SYSTEM_DEFAULT)
 
-        assertEquals(AudioRoutePolicy.PREFER_HEADPHONES, status.policy)
-        if (!status.headphonesAvailable) assertNotNull(status.fallbackReason)
+        assertEquals(AudioRoutePolicy.PREFER_HEADPHONES, preferred.policy)
+        if (!preferred.headphonesAvailable) assertNotNull(preferred.fallbackReason)
+        assertEquals(AudioRoutePolicy.SYSTEM_DEFAULT, automatic.policy)
+        assertEquals(null, automatic.fallbackReason)
     }
 
     @Test

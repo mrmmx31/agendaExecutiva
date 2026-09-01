@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativo Android do Projeto 2 com núcleo offline e `P2-03` concluídos. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot e conflitos. `P2-04` possui contratos, Room v4, WorkManager, notificações visuais opt-in e saída sensorial configurável; saúde e IA ainda não estão ativas.
+Aplicativo Android do Projeto 2 com núcleo offline, `P2-03` e `P2-04` concluídos. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos e alertas sensoriais configuráveis; saúde e IA ainda não estão ativas.
 
 ## Requisitos
 
@@ -32,7 +32,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 
 - `test`, `lint` e `assembleDebug`: aprovados.
 - Testes Room e do repositório offline com Robolectric: aprovados.
-- Dezenove testes instrumentados no AVD API 34: migrações Room, WorkManager, seis fluxos Compose, notificações, Keystore e matriz HTTPS aprovados.
+- Vinte e oito testes instrumentados no AVD API 34: migrações Room, WorkManager, Compose, notificações, saída sensorial, Keystore e matriz HTTPS aprovados.
 - Renderização clara e escura no telefone virtual: inspecionada sem cortes ou resíduos de tema.
 - Fluxo fictício validado: uma captura mais início e quatro passos de protocolo geraram seis operações sequenciais na fila.
 - Parser do convite de pareamento aprovado em cinco testes de validade, expiração, campos fechados e bloqueio de downgrade HTTP.
@@ -47,6 +47,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - WorkManager 2.9.1 mantém trabalho único por alerta, reconcilia no startup e cancela em Room/sistema; 36 testes locais e 15 instrumentados passam sem entrega sensorial.
 - Notificação visual exige switch e permissão contextual; canal privado/silencioso e ações offline idempotentes foram aprovados com 42 testes locais e 19 instrumentados.
 - Perfis `Visual`, `Discreto` e `Fone`, pausa, silêncio, cooldown, áudio por faixa, vibração e teste cancelável foram aprovados com 44 testes locais e 23 instrumentados; nenhuma suíte toca áudio automaticamente.
+- Matriz final de `P2-04` aprovada com 28 testes instrumentados e gates externos de permissão/reinício; detalhes e limites em [`P2_04_MATRIX.md`](P2_04_MATRIX.md).
 - Primeiro boot dos AVDs de telefone e Wear OS: aprovado.
 - Pareamento telefone-relógio: aprovado; o assistente confirmou `Successful pairing` entre os dois AVDs.
 - O Google Pixel Watch do AVD precisou das permissões de notificações e dispositivos próximos; isso não altera as permissões do aplicativo Agenda.
@@ -59,7 +60,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - Contrato atual: v1, catalogado em `contracts/README.md`.
 - Backup e transferência de dados Android estão desativados.
 - Nenhuma permissão é solicitada durante instalação ou startup.
-- WorkManager declara permissões normais de boot, wake lock, rede e serviço interno; `POST_NOTIFICATIONS` só é solicitado após o switch de alertas visuais.
+- WorkManager declara permissões normais de boot, wake lock, rede e serviço interno; `POST_NOTIFICATIONS` só é solicitado ao ativar um perfil que inclua o canal visual.
 - `INTERNET` serve exclusivamente ao HTTPS local fixado; nenhuma API externa ou telemetria foi adicionada.
 - Os dados demonstrativos são determinísticos e não representam dados pessoais.
 - Não usar telefone físico antes do gate previsto em `PROJECT2_SPEC.md`.

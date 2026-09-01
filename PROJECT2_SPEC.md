@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação iniciada; 38,3% do Projeto 2 |
+| Status | Implementação iniciada; 40% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01`, `P2-02` e `P2-03` estão concluídas; `P2-04` tem 5 de 6 itens. O avanço geral é 38,3% e restam 61,7%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01`, `P2-02`, `P2-03` e `P2-04` estão concluídas. O avanço geral é 40% e restam 60%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -617,7 +617,7 @@ Servidor desktop, QR, TLS fixado, Keystore, cursores, snapshots, idempotência, 
 
 Notificações, concluir/adiar, horário silencioso, cooldown, WorkManager, perfis sensoriais, teste de rota e fallback.
 
-**Status:** Em andamento, 83,3% (5 de 6 itens concluídos).
+**Status:** Concluído em 2026-09-01, 100% (6 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
@@ -626,7 +626,7 @@ Notificações, concluir/adiar, horário silencioso, cooldown, WorkManager, perf
 - [x] agendar e reavaliar alertas com WorkManager, incluindo reboot, Doze, expiração e cancelamento imediato;
 - [x] publicar notificação Android opt-in com ações idempotentes `Concluir` e `Adiar`, sem estímulo na instalação;
 - [x] criar configurações de perfil, presets, pausa, canais e política de áudio com teste curto cancelável e fallback visível;
-- [ ] aprovar matriz no AVD para permissão negada/concedida, silêncio, cooldown, sobreposição, ações offline, reinício e mudança de rota.
+- [x] aprovar matriz no AVD para permissão negada/concedida, silêncio, cooldown, sobreposição, ações offline, reinício e mudança de rota.
 
 **Evidência do primeiro item:** `alert/AlertContracts.kt` fixa formas versionadas e limites; `AlertPolicy` decide sem efeitos colaterais e registra razão técnica de toda supressão. A instalação começa com o controle geral desligado e somente o canal visual pré-selecionado. Três schemas e fixtures compartilhados cobrem definição, perfil e ação; os leitores Kotlin e Java aceitam as mesmas formas fechadas. Seis testes novos cobrem opt-in, interseção de canais, silêncio atravessando meia-noite, pausa, cooldown, sobreposição, limite de entregas e validação temporal de concluir/adiar. `./gradlew testDebugUnitTest` passou com 26 testes e o teste Java de fixtures passou sem emitir notificação, vibração ou som.
 
@@ -637,6 +637,8 @@ Notificações, concluir/adiar, horário silencioso, cooldown, WorkManager, perf
 **Evidência do quarto item:** a tela inicial exibe um switch desligado e solicita `POST_NOTIFICATIONS` somente após toque explícito, conforme o [fluxo contextual oficial](https://developer.android.com/develop/ui/compose/notifications/notification-permission). Negar ou fechar o diálogo mantém o perfil desligado; ligar reativa materializações suprimidas e desligar cancela trabalhos e notificações visíveis. O canal `agenda_visual_alerts_v1` é privado, sem som, vibração, luz ou badge. Cada alerta substitui a própria notificação por tag UUID; o worker usa a execução como ID de entrega e os `PendingIntent` imutáveis carregam comandos estáveis. O receiver não exportado implementa as [ações recomendadas para notificações](https://developer.android.com/develop/ui/compose/notifications/create-notification): persiste `Concluir` ou o primeiro preset cauteloso de `Adiar`, cancela a notificação e converge de modo idempotente offline. Na conclusão desse marco, áudio e vibração ainda não estavam implementados. Quarenta e dois testes locais e 19 instrumentados passaram; o AVD comprovou canal real silencioso, notificação privada, ação pelo receiver, gate negado e prompt contextual, sem usar telefone físico.
 
 **Evidência do quinto item:** `Configurações sensoriais` reúne controle geral, pausas de 30/60 minutos, presets `Visual`, `Discreto` e `Fone`, seleção independente de canais, horário silencioso, cooldown e presets de adiamento. Nenhum preset é aplicado sem `Salvar perfil`; áudio e vibração permanecem desligados na instalação. O teste de 700 ms pode ser interrompido, respeita controle geral, pausa, horário silencioso e Não perturbe. `AndroidSensoryOutput` usa foco transitório e [`AudioTrack.setPreferredDevice`](https://developer.android.com/reference/android/media/AudioTrack#setPreferredDevice(android.media.AudioDeviceInfo)) somente no próprio tom, sem alterar a rota global; fone indisponível produz fallback visível para telefone/sistema. A vibração curta segue as [APIs hápticas do Android](https://developer.android.com/develop/ui/views/haptics/haptics-apis) com `VIBRATE`, e um bloqueio único impede sobreposição entre tom, teste e vibração. Entregas parciais e fallback ficam registrados por código técnico. Quarenta e quatro testes locais e 23 instrumentados passaram sem tocar áudio automaticamente; a UI foi inspecionada no `emulator-5556` em 360 dp, temas claro e escuro. O telefone físico e o emulador Wear não foram usados.
+
+**Evidência do sexto item:** a matriz rastreável está em [`android/P2_04_MATRIX.md`](android/P2_04_MATRIX.md). Permissão negada e concedida foram percorridas no diálogo Android real; ambos os caminhos começaram somente após toque e não publicaram notificação espontânea. Testes no AVD cobrem silêncio, cooldown entre alertas, bloqueio de sobreposição antes do `AudioTrack`, `Concluir`, `Adiar`, restauração do trabalho durável após recriação e transição entre fone preferido e rota automática com fallback visível. O gate externo reiniciou a Activity e confirmou retorno sem crash, prompt ou notificação imediata. A suíte passou com 44 testes locais e 28 instrumentados. Bluetooth físico, remoção de fone durante playback, chamada e mídia concorrente permanecem explicitamente em `P2-10`; não foram inferidos a partir do AVD.
 
 ### P2-05 — Wear OS
 
@@ -705,4 +707,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Concluir `P2-04` pela matriz no AVD: permissão negada/concedida, silêncio, cooldown, sobreposição, ações offline, reinício e mudança de rota. Nenhum áudio ou vibração deve ser habilitado implicitamente.
+Iniciar `P2-05` pelo módulo Wear OS e contrato mínimo do Data Layer, preservando o espelhamento já validado e limitando a superfície do relógio a `Concluir` e `Adiar`.

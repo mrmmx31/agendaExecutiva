@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 38,3%, restando 61,7%; `P2-01`, `P2-02` e `P2-03` concluídas, `P2-04` em 83,3% (5 de 6 itens).
+- Projeto 2: implementação em 40%, restando 60%; `P2-01`, `P2-02`, `P2-03` e `P2-04` concluídas.
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -108,6 +108,7 @@ Implementado em `P2-02`:
 | Notificação e ações Android | `alert/notification/`; canal visual v1, publisher, processor e receiver interno |
 | Saída sensorial Android | `alert/output/AndroidSensoryOutput.kt`; tom curto, vibração, foco transitório, rota por faixa e bloqueio de sobreposição |
 | Configuração sensorial | `ui/SensorySettingsScreen.kt` + `AgendaMobileViewModel.kt`; presets explícitos, pausa, silêncio, cooldown, teste e fallback |
+| Matriz P2-04 | `android/P2_04_MATRIX.md`; cenários, gates, resultados e limites do AVD |
 
 | Domínio | Android | Wear | Desktop |
 |---|---|---|---|

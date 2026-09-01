@@ -40,7 +40,17 @@ interface AlertSensoryOutput {
     suspend fun deliver(candidate: AlertDeliveryCandidate): SensoryOutputResult
 }
 
-class AndroidSensoryOutput(private val context: Context) : AlertSensoryOutput {
+internal class SensoryOutputGate {
+    private val active = AtomicBoolean(false)
+
+    fun tryAcquire(): Boolean = active.compareAndSet(false, true)
+    fun release() = active.set(false)
+}
+
+class AndroidSensoryOutput internal constructor(
+    private val context: Context,
+    private val outputGate: SensoryOutputGate = PROCESS_OUTPUT_GATE,
+) : AlertSensoryOutput {
     private val audioManager = context.getSystemService(AudioManager::class.java)
     private val notificationManager = context.getSystemService(NotificationManager::class.java)
     private val vibrator = context.getSystemService(Vibrator::class.java)
@@ -48,7 +58,7 @@ class AndroidSensoryOutput(private val context: Context) : AlertSensoryOutput {
     override suspend fun deliver(candidate: AlertDeliveryCandidate): SensoryOutputResult {
         val requested = candidate.channels - SensoryChannel.VISUAL - SensoryChannel.WEAR_VIBRATION
         if (requested.isEmpty()) return SensoryOutputResult(emptySet())
-        if (!OUTPUT_ACTIVE.compareAndSet(false, true)) {
+        if (!outputGate.tryAcquire()) {
             return SensoryOutputResult(emptySet(), AlertDeliveryReason.SENSORY_OVERLAP)
         }
         val delivered = mutableSetOf<SensoryChannel>()
@@ -75,7 +85,7 @@ class AndroidSensoryOutput(private val context: Context) : AlertSensoryOutput {
             }
             return SensoryOutputResult(delivered, reason, routeStatus)
         } finally {
-            OUTPUT_ACTIVE.set(false)
+            outputGate.release()
         }
     }
 
@@ -99,7 +109,7 @@ class AndroidSensoryOutput(private val context: Context) : AlertSensoryOutput {
         if (route.deviceRequiredButUnavailable) {
             return SensoryOutputResult(emptySet(), AlertDeliveryReason.ROUTE_UNAVAILABLE, route.status)
         }
-        if (!OUTPUT_ACTIVE.compareAndSet(false, true)) {
+        if (!outputGate.tryAcquire()) {
             return SensoryOutputResult(emptySet(), AlertDeliveryReason.SENSORY_OVERLAP, route.status)
         }
         try {
@@ -110,7 +120,7 @@ class AndroidSensoryOutput(private val context: Context) : AlertSensoryOutput {
                 routeStatus = result.routeStatus,
             )
         } finally {
-            OUTPUT_ACTIVE.set(false)
+            outputGate.release()
         }
     }
 
@@ -243,7 +253,7 @@ class AndroidSensoryOutput(private val context: Context) : AlertSensoryOutput {
         const val VIBRATION_MILLIS = 120L
         const val TONE_FREQUENCY = 660.0
         const val TONE_VOLUME = 0.35f
-        val OUTPUT_ACTIVE = AtomicBoolean(false)
+        val PROCESS_OUTPUT_GATE = SensoryOutputGate()
         val AUDIO_ATTRIBUTES = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)

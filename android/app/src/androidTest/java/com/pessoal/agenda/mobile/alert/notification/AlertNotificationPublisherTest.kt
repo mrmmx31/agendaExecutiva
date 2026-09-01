@@ -90,6 +90,25 @@ class AlertNotificationPublisherTest {
         waitForNotificationRemoval(alertId)
     }
 
+    @Test
+    fun snoozePendingIntentPersistsOfflineActionAndClosesNotification() {
+        val alertId = UUID.randomUUID().toString()
+        val store = AlertStore(MobileDatabase.get(context))
+        kotlinx.coroutines.runBlocking { store.materialize(definition(alertId)) }
+        val command = command()
+        assertEquals(NotificationPublishResult.PUBLISHED, publisher.publish(candidate(alertId), command))
+        val posted = waitForNotification(alertId)
+
+        posted.notification.actions[1].actionIntent.send()
+
+        val materialization = waitForMaterialization(alertId, "SCHEDULED")
+        assertEquals(command.snoozeUntil.toString(), materialization.nextEligibleAt)
+        assertNotNull(kotlinx.coroutines.runBlocking {
+            MobileDatabase.get(context).offline().alertAction(command.snoozeOperationId)
+        })
+        waitForNotificationRemoval(alertId)
+    }
+
     private fun waitForNotification(alertId: String): android.service.notification.StatusBarNotification {
         repeat(50) {
             manager.activeNotifications.firstOrNull { it.tag == alertId }?.let { return it }

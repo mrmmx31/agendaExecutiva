@@ -64,6 +64,30 @@ class WorkManagerAlertEnqueuerTest {
         assertEquals("CANCELLED", MobileDatabase.get(context).offline().alertMaterialization(alertId)?.state)
     }
 
+    @Test
+    fun reconciliationRestoresDurableWorkAfterCoordinatorRecreation() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val alertId = UUID.randomUUID().toString()
+        val store = AlertStore(MobileDatabase.get(context))
+        val initial = store.ensureInstallationProfile()
+        store.saveProfile(initial.profile.copy(globalEnabled = true, quietHours = null), initial.snoozePolicy)
+        store.materialize(alert(alertId))
+        val firstCoordinator = AlertSchedulingCoordinator(context, store)
+        val workManager = WorkManager.getInstance(context)
+
+        assertTrue(firstCoordinator.schedule(alertId, Instant.now().plusSeconds(7_200)))
+        waitForWork(workManager, alertId) { infos -> infos.any { !it.state.isFinished } }
+        workManager.cancelUniqueWork(WorkManagerAlertEnqueuer.uniqueName(alertId)).result.get(5, TimeUnit.SECONDS)
+        waitForWork(workManager, alertId) { infos -> infos.all { it.state.isFinished } }
+
+        val recreatedCoordinator = AlertSchedulingCoordinator(context, AlertStore(MobileDatabase.get(context)))
+        assertTrue(recreatedCoordinator.reconcile() >= 1)
+        val restored = waitForWork(workManager, alertId) { infos -> infos.any { !it.state.isFinished } }
+
+        assertTrue(restored.any { !it.state.isFinished })
+        assertTrue(recreatedCoordinator.cancel(alertId))
+    }
+
     private fun waitForWork(
         workManager: WorkManager,
         alertId: String,

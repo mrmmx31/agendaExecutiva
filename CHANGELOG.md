@@ -10,6 +10,7 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Matriz automatizada P2-04 para permissão, silêncio, cooldown, sobreposição, ações offline, reinício e mudança de rota no AVD
 - Configurações sensoriais Android com presets explícitos, pausa, silêncio, cooldown, vibração opt-in, teste de áudio cancelável e fallback de rota visível
 - Notificação Android visual opt-in, privada e silenciosa, com permissão contextual e ações offline idempotentes `Concluir` e `Adiar`
 - Agendamento WorkManager único e cancelável para reavaliar alertas após processo/reboot e encaminhar a entrega visual

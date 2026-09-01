@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 23,3%, restando 76,7%; `P2-01` e `P2-02` concluídas, `P2-03` em 33,3% (2 de 6 itens).
+- Projeto 2: implementação em 25%, restando 75%; `P2-01` e `P2-02` concluídas, `P2-03` em 50% (3 de 6 itens).
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -94,6 +94,7 @@ Implementado em `P2-02`:
 | Contrato v1 | `android/contracts/README.md` e `android/contracts/v1/` |
 | Pareamento v1 e ameaça | `android/contracts/PAIRING_V1.md` e `android/contracts/THREAT_MODEL_P2_03.md` |
 | Parser de convite | `android/app/src/main/java/com/pessoal/agenda/mobile/pairing/PairingInvitation.kt` |
+| Persistência desktop de sync | `Database.applyMobileSyncMigration()` e `DesktopSyncRepository` |
 | Testes | `android/app/src/test/` e `android/app/src/androidTest/` |
 
 | Domínio | Android | Wear | Desktop |

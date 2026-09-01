@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.*;
+import java.util.UUID;
 
 /**
  * Infraestrutura de banco de dados SQLite.
@@ -380,6 +381,7 @@ public class Database {
         applyFocusContextMigration();
         applyTimerRecoveryMigration();
         applyLocalMetricsMigration();
+        applyMobileSyncMigration();
     }
 
     private void applyDailyPlanMigration() {
@@ -503,6 +505,104 @@ public class Database {
                 CREATE INDEX IF NOT EXISTS idx_local_metric_type_time
                 ON local_metric_events(metric_type, occurred_at DESC, id DESC)
                 """);
+    }
+
+    private void applyMobileSyncMigration() {
+        applyAlterIfMissing("ALTER TABLE tasks ADD COLUMN sync_uuid TEXT");
+        applyAlterIfMissing("ALTER TABLE protocols ADD COLUMN sync_uuid TEXT");
+        applyAlterIfMissing("ALTER TABLE protocol_steps ADD COLUMN sync_uuid TEXT");
+        try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
+            conn.setAutoCommit(false);
+            try {
+                stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS mobile_desktop_identity (
+                            singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+                            desktop_id TEXT NOT NULL UNIQUE CHECK (length(desktop_id) = 36),
+                            created_at TEXT NOT NULL
+                        )
+                        """);
+                stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS mobile_devices (
+                            device_id TEXT PRIMARY KEY CHECK (length(device_id) = 36),
+                            device_name TEXT NOT NULL CHECK (length(trim(device_name)) BETWEEN 1 AND 100),
+                            credential_hash TEXT NOT NULL CHECK (length(credential_hash) = 64),
+                            contract_min INTEGER NOT NULL CHECK (contract_min >= 1),
+                            contract_max INTEGER NOT NULL CHECK (contract_max >= contract_min),
+                            status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'REVOKED')),
+                            created_at TEXT NOT NULL,
+                            approved_at TEXT NOT NULL,
+                            last_seen_at TEXT,
+                            revoked_at TEXT,
+                            CHECK ((status = 'ACTIVE' AND revoked_at IS NULL)
+                                OR (status = 'REVOKED' AND revoked_at IS NOT NULL))
+                        )
+                        """);
+                stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS mobile_device_roles (
+                            device_id TEXT NOT NULL,
+                            role TEXT NOT NULL CHECK (role IN ('TASKS_READ', 'CAPTURES_WRITE', 'PROTOCOLS_EXECUTE')),
+                            PRIMARY KEY (device_id, role),
+                            FOREIGN KEY (device_id) REFERENCES mobile_devices(device_id) ON DELETE CASCADE
+                        )
+                        """);
+                stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS mobile_applied_operations (
+                            operation_id TEXT PRIMARY KEY CHECK (length(operation_id) = 36),
+                            device_id TEXT NOT NULL,
+                            sequence INTEGER NOT NULL CHECK (sequence >= 1),
+                            command_type TEXT NOT NULL,
+                            entity_type TEXT NOT NULL,
+                            entity_id TEXT NOT NULL,
+                            payload_hash TEXT NOT NULL CHECK (length(payload_hash) = 64),
+                            status TEXT NOT NULL CHECK (status IN ('APPLIED', 'CONFLICT', 'REJECTED')),
+                            error_code TEXT,
+                            server_revision INTEGER,
+                            conflict_id TEXT,
+                            result_json TEXT NOT NULL,
+                            occurred_at TEXT NOT NULL,
+                            processed_at TEXT NOT NULL,
+                            UNIQUE (device_id, sequence),
+                            FOREIGN KEY (device_id) REFERENCES mobile_devices(device_id) ON DELETE RESTRICT
+                        )
+                        """);
+                stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS mobile_sync_cursors (
+                            device_id TEXT PRIMARY KEY,
+                            client_contiguous_sequence INTEGER NOT NULL DEFAULT 0 CHECK (client_contiguous_sequence >= 0),
+                            server_cursor INTEGER NOT NULL DEFAULT 0 CHECK (server_cursor >= 0),
+                            updated_at TEXT NOT NULL,
+                            FOREIGN KEY (device_id) REFERENCES mobile_devices(device_id) ON DELETE CASCADE
+                        )
+                        """);
+                populateSyncUuids(conn, "tasks");
+                populateSyncUuids(conn, "protocols");
+                populateSyncUuids(conn, "protocol_steps");
+                stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_sync_uuid ON tasks(sync_uuid) WHERE sync_uuid IS NOT NULL");
+                stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_protocols_sync_uuid ON protocols(sync_uuid) WHERE sync_uuid IS NOT NULL");
+                stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_protocol_steps_sync_uuid ON protocol_steps(sync_uuid) WHERE sync_uuid IS NOT NULL");
+                conn.commit();
+            } catch (SQLException migrationError) {
+                conn.rollback();
+                throw migrationError;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erro ao migrar persistencia de sincronizacao movel", e);
+        }
+    }
+
+    private static void populateSyncUuids(Connection connection, String table) throws SQLException {
+        try (PreparedStatement select = connection.prepareStatement(
+                "SELECT id FROM " + table + " WHERE sync_uuid IS NULL");
+             ResultSet rows = select.executeQuery();
+             PreparedStatement update = connection.prepareStatement(
+                     "UPDATE " + table + " SET sync_uuid=? WHERE id=? AND sync_uuid IS NULL")) {
+            while (rows.next()) {
+                update.setString(1, UUID.randomUUID().toString());
+                update.setLong(2, rows.getLong(1));
+                update.addBatch();
+            }
+            update.executeBatch();
+        }
     }
 
     /** Executa CREATE TABLE IF NOT EXISTS — usa o mesmo mecanismo idempotente. */

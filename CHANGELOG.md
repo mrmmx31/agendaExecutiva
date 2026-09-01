@@ -10,6 +10,7 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Persistência desktop P2-03 para identidade, UUIDs globais, dispositivos, papéis, revogação, operações idempotentes e cursores contíguos
 - Contratos P2-03 para solicitação de pareamento, lote, resultado, snapshot e conflito, com fixtures compartilhadas entre Java e Kotlin
 - Fundação P2-03 com modelo de ameaça, pareamento em duas etapas e parser Android estrito para convite HTTPS fixado
 - Núcleo Android offline P2-02 com Room v2, captura local, réplica fictícia, protocolos e fila transacional de operações

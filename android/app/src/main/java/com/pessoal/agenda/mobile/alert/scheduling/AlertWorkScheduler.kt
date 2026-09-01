@@ -8,10 +8,12 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.pessoal.agenda.mobile.alert.notification.AlertDeliveryProcessor
+import com.pessoal.agenda.mobile.alert.notification.AndroidAlertNotificationPublisher
 import com.pessoal.agenda.mobile.data.AlertSchedule
 import com.pessoal.agenda.mobile.data.AlertStore
-import com.pessoal.agenda.mobile.data.AlertWorkEvaluation
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
+import com.pessoal.agenda.mobile.pairing.DeviceCredentialStore
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -29,16 +31,28 @@ class AlertSchedulingCoordinator(
 
     suspend fun schedule(alertId: String, at: Instant): Boolean {
         val schedule = store.scheduleEvaluation(alertId, at) ?: return false
-        enqueuer.replace(schedule)
+        if (store.ensureInstallationProfile().profile.globalEnabled) enqueuer.replace(schedule)
         return true
     }
 
     suspend fun reconcile(): Int {
-        store.ensureInstallationProfile()
+        if (!store.ensureInstallationProfile().profile.globalEnabled) {
+            enqueuer.cancelAll()
+            return 0
+        }
         val schedules = store.schedulesForReconciliation()
         schedules.forEach(enqueuer::replace)
         return schedules.size
     }
+
+    suspend fun reactivate(): Int {
+        check(store.ensureInstallationProfile().profile.globalEnabled) { "Alertas desativados." }
+        val schedules = store.schedulesForActivation()
+        schedules.forEach(enqueuer::replace)
+        return schedules.size
+    }
+
+    fun pause() = enqueuer.cancelAll()
 
     suspend fun cancel(alertId: String): Boolean {
         val changed = store.cancelScheduling(alertId)
@@ -51,6 +65,7 @@ interface AlertWorkEnqueuer {
     fun replace(schedule: AlertSchedule)
     fun append(schedule: AlertSchedule)
     fun cancel(alertId: String)
+    fun cancelAll()
 }
 
 class WorkManagerAlertEnqueuer(
@@ -65,6 +80,10 @@ class WorkManagerAlertEnqueuer(
     override fun cancel(alertId: String) {
         UUID.fromString(alertId)
         workManager.cancelUniqueWork(uniqueName(alertId))
+    }
+
+    override fun cancelAll() {
+        workManager.cancelAllWorkByTag(ALERT_WORK_TAG)
     }
 
     private fun enqueue(schedule: AlertSchedule, policy: ExistingWorkPolicy) {
@@ -96,15 +115,13 @@ class AlertEvaluationWorker(
         return try {
             val store = AlertStore(MobileDatabase.get(applicationContext))
             store.ensureInstallationProfile()
-            when (val evaluation = store.evaluateForWork(alertId)) {
-                is AlertWorkEvaluation.Reschedule -> {
-                    WorkManagerAlertEnqueuer(applicationContext).append(
-                        AlertSchedule(alertId, evaluation.nextAt),
-                    )
-                    Result.success()
-                }
-                is AlertWorkEvaluation.Ready, AlertWorkEvaluation.Stop -> Result.success()
-            }
+            AlertDeliveryProcessor(
+                store = store,
+                enqueuer = WorkManagerAlertEnqueuer(applicationContext),
+                publisher = AndroidAlertNotificationPublisher(applicationContext),
+                deviceIdProvider = { DeviceCredentialStore(applicationContext).deviceId },
+            ).process(alertId, id.toString())
+            Result.success()
         } catch (_: IllegalArgumentException) {
             Result.failure(errorData("INVALID_ALERT_STATE"))
         } catch (_: Exception) {

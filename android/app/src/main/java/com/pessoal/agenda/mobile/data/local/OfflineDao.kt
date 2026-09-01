@@ -77,6 +77,17 @@ interface OfflineDao {
     """)
     suspend fun alertSchedules(): List<AlertScheduleRow>
 
+    @Query("""
+        SELECT alert_materializations.alertId AS alertId,
+               alert_materializations.state AS state,
+               alert_materializations.nextEligibleAt AS nextEligibleAt,
+               alert_definitions.validUntil AS validUntil
+        FROM alert_materializations
+        JOIN alert_definitions ON alert_definitions.id=alert_materializations.alertId
+        WHERE alert_materializations.state IN ('SUPPRESSED','DELIVERY_FAILED')
+    """)
+    suspend fun reactivatableAlertSchedules(): List<AlertScheduleRow>
+
     @Query("UPDATE alert_materializations SET state='SCHEDULED', nextEligibleAt=:nextAt, updatedAt=:now WHERE alertId=:alertId AND state NOT IN ('COMPLETED','CANCELLED','EXPIRED','DELIVERY_LIMIT_REACHED')")
     suspend fun scheduleAlertEvaluation(alertId: String, nextAt: String, now: String): Int
 

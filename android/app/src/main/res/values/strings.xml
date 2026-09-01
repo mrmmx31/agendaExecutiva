@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Agenda Sensorial</string>
+    <string name="alert_channel_visual_name">Lembretes visuais</string>
+    <string name="alert_channel_visual_description">Lembretes silenciosos da Agenda</string>
+    <string name="alert_public_title">Lembrete da Agenda</string>
+    <string name="alert_public_text">Abra o telefone para ver os detalhes</string>
+    <string name="alert_action_complete">Concluir</string>
+    <string name="alert_action_snooze">Adiar</string>
 </resources>

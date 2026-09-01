@@ -18,6 +18,7 @@ import com.pessoal.agenda.mobile.data.local.AlertActionEntity
 import com.pessoal.agenda.mobile.data.local.AlertDefinitionEntity
 import com.pessoal.agenda.mobile.data.local.AlertDeliveryEntity
 import com.pessoal.agenda.mobile.data.local.AlertMaterializationEntity
+import com.pessoal.agenda.mobile.data.local.AlertScheduleRow
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
 import com.pessoal.agenda.mobile.data.local.SensoryProfileEntity
 import java.time.Clock
@@ -68,16 +69,31 @@ class AlertStore(
 
     suspend fun schedulesForReconciliation(now: Instant = Instant.now(clock)): List<AlertSchedule> =
         database.withTransaction {
-            dao.alertSchedules().mapNotNull { row ->
-                val expiration = Instant.parse(row.validUntil)
-                if (!now.isBefore(expiration)) {
-                    dao.updateAlertEvaluationState(row.alertId, "EXPIRED", now.toString())
-                    null
-                } else {
-                    AlertSchedule(row.alertId, Instant.parse(row.nextEligibleAt))
-                }
-            }
+            validSchedules(dao.alertSchedules(), now, reactivate = false)
         }
+
+    suspend fun schedulesForActivation(now: Instant = Instant.now(clock)): List<AlertSchedule> =
+        database.withTransaction {
+            validSchedules(dao.alertSchedules() + dao.reactivatableAlertSchedules(), now, reactivate = true)
+        }
+
+    private suspend fun validSchedules(
+        rows: List<AlertScheduleRow>,
+        now: Instant,
+        reactivate: Boolean,
+    ): List<AlertSchedule> = rows.mapNotNull { row ->
+        val expiration = Instant.parse(row.validUntil)
+        if (!now.isBefore(expiration)) {
+            dao.updateAlertEvaluationState(row.alertId, "EXPIRED", now.toString())
+            null
+        } else {
+            val target = maxOf(now, Instant.parse(row.nextEligibleAt))
+            if (reactivate) {
+                check(dao.scheduleAlertEvaluation(row.alertId, target.toString(), now.toString()) == 1)
+            }
+            AlertSchedule(row.alertId, target)
+        }
+    }
 
     suspend fun cancelScheduling(alertId: String): Boolean {
         UUID.fromString(alertId)
@@ -105,7 +121,23 @@ class AlertStore(
         )
         if (decision.shouldDeliver) {
             check(dao.updateAlertEvaluationState(alertId, "AWAITING_DELIVERY", now.toString()) == 1)
-            return@withTransaction AlertWorkEvaluation.Ready(decision.channels)
+            val nextEvaluationAt = now
+                .plusSeconds(definition.repeatPolicy.minimumIntervalMinutes * 60L)
+                .takeIf {
+                    materialization.deliveryCount + 1 < definition.repeatPolicy.maxDeliveries
+                        && it.isBefore(Instant.parse(definition.validUntil))
+                }
+            return@withTransaction AlertWorkEvaluation.Ready(
+                candidate = AlertDeliveryCandidate(
+                    alertId = definition.alertId,
+                    text = definition.text,
+                    reason = definition.reason,
+                    channels = decision.channels,
+                    actions = definition.actions,
+                    snoozeMinutes = storedProfile.snoozePolicy.presetMinutes.first(),
+                ),
+                nextEvaluationAt = nextEvaluationAt,
+            )
         }
         val reason = requireNotNull(decision.suppression)
         val nextAt = when (reason) {
@@ -330,7 +362,7 @@ class AlertStore(
     private companion object {
         const val PROFILE_ID = "default"
         val TERMINAL_WORK_STATES = setOf(
-            "COMPLETED", "CANCELLED", "EXPIRED", "DELIVERY_LIMIT_REACHED", "AWAITING_DELIVERY",
+            "COMPLETED", "CANCELLED", "EXPIRED", "DELIVERY_LIMIT_REACHED",
         )
     }
 }
@@ -339,10 +371,22 @@ data class StoredSensoryProfile(val profile: SensoryProfile, val snoozePolicy: S
 data class AlertSchedule(val alertId: String, val nextAt: Instant)
 
 sealed interface AlertWorkEvaluation {
-    data class Ready(val channels: Set<SensoryChannel>) : AlertWorkEvaluation
+    data class Ready(
+        val candidate: AlertDeliveryCandidate,
+        val nextEvaluationAt: Instant?,
+    ) : AlertWorkEvaluation
     data class Reschedule(val nextAt: Instant, val reason: AlertSuppression) : AlertWorkEvaluation
     data object Stop : AlertWorkEvaluation
 }
+
+data class AlertDeliveryCandidate(
+    val alertId: String,
+    val text: String,
+    val reason: String,
+    val channels: Set<SensoryChannel>,
+    val actions: Set<AlertActionType>,
+    val snoozeMinutes: Int,
+)
 
 data class AlertDeliveryRecord(
     val deliveryId: String,

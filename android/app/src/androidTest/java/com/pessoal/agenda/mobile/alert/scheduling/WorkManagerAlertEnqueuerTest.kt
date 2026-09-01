@@ -44,7 +44,8 @@ class WorkManagerAlertEnqueuerTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val alertId = UUID.randomUUID().toString()
         val store = AlertStore(MobileDatabase.get(context))
-        store.ensureInstallationProfile()
+        val initial = store.ensureInstallationProfile()
+        store.saveProfile(initial.profile.copy(globalEnabled = true, quietHours = null), initial.snoozePolicy)
         store.materialize(alert(alertId))
         val coordinator = AlertSchedulingCoordinator(context, store)
         val workManager = WorkManager.getInstance(context)

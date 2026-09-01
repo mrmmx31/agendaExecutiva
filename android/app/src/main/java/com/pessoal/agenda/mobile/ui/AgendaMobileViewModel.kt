@@ -1,11 +1,17 @@
 package com.pessoal.agenda.mobile.ui
 
+import android.Manifest
 import android.app.Application
+import android.app.NotificationManager
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pessoal.agenda.mobile.data.AlertStore
 import com.pessoal.agenda.mobile.data.OfflineRepository
 import com.pessoal.agenda.mobile.alert.scheduling.AlertSchedulingCoordinator
+import com.pessoal.agenda.mobile.alert.SensoryChannel
+import com.pessoal.agenda.mobile.alert.notification.AndroidAlertNotificationPublisher
 import com.pessoal.agenda.mobile.data.local.ActiveRunStepRow
 import com.pessoal.agenda.mobile.data.local.CaptureEntity
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
@@ -41,6 +47,7 @@ data class MobileUiState(
     val canSync: Boolean = false,
     val pairingInProgress: Boolean = false,
     val pairingCompletion: Long = 0,
+    val visualAlertsEnabled: Boolean = false,
 )
 
 class AgendaMobileViewModel(application: Application) : AndroidViewModel(application) {
@@ -56,6 +63,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     private val canSync = MutableStateFlow(false)
     private val pairingInProgress = MutableStateFlow(false)
     private val pairingCompletion = MutableStateFlow(0L)
+    private val visualAlertsEnabled = MutableStateFlow(false)
     private var pairingJob: Job? = null
     private var pairingClient: PairingClient? = null
 
@@ -73,8 +81,12 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         OfflineContent(tasks, captures, protocols, activeRunSteps, queue.first, queue.second)
     }
 
-    private val pairingState = combine(pairingInProgress, pairingCompletion) { inProgress, completion ->
-        PairingUiState(inProgress, completion)
+    private val pairingState = combine(
+        pairingInProgress,
+        pairingCompletion,
+        visualAlertsEnabled,
+    ) { inProgress, completion, alertsEnabled ->
+        PairingUiState(inProgress, completion, alertsEnabled)
     }
 
     val state: StateFlow<MobileUiState> = combine(
@@ -92,6 +104,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             canSync = canSync,
             pairingInProgress = pairingState.inProgress,
             pairingCompletion = pairingState.completion,
+            visualAlertsEnabled = pairingState.visualAlertsEnabled,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MobileUiState())
 
@@ -103,6 +116,8 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
                 }
                 repository.alignDeviceIdentity()
                 repository.initializeFictitiousData()
+                visualAlertsEnabled.value = alertStore.ensureInstallationProfile().profile.globalEnabled
+                    && notificationsAllowed()
                 alertScheduling.reconcile()
             }
                 .onFailure { feedback.value = it.safeMessage("Não foi possível preparar os dados locais.") }
@@ -176,6 +191,40 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         pairingCompletion.value = 0
     }
 
+    fun setVisualAlertsEnabled(enabled: Boolean) = execute(
+        successMessage = if (enabled) "Alertas visuais ativados." else "Alertas visuais desativados.",
+    ) {
+        val stored = alertStore.ensureInstallationProfile()
+        alertStore.saveProfile(
+            stored.profile.copy(
+                globalEnabled = enabled,
+                enabledChannels = setOf(SensoryChannel.VISUAL),
+            ),
+            stored.snoozePolicy,
+        )
+        visualAlertsEnabled.value = enabled
+        if (enabled) {
+            alertScheduling.reactivate()
+        } else {
+            alertScheduling.pause()
+            AndroidAlertNotificationPublisher(getApplication()).cancelAllVisualAlerts()
+        }
+    }
+
+    fun notificationPermissionDenied() {
+        visualAlertsEnabled.value = false
+        feedback.value = "Permissão não concedida; alertas continuam desligados."
+    }
+
+    private fun notificationsAllowed(): Boolean {
+        val application = getApplication<Application>()
+        val manager = application.getSystemService(NotificationManager::class.java)
+        return manager.areNotificationsEnabled()
+            && (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                || application.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED)
+    }
+
     private fun execute(
         successMessage: String,
         onSuccess: () -> Unit = {},
@@ -208,4 +257,8 @@ private data class OfflineContent(
     val conflicts: List<SyncConflictEntity>,
 )
 
-private data class PairingUiState(val inProgress: Boolean, val completion: Long)
+private data class PairingUiState(
+    val inProgress: Boolean,
+    val completion: Long,
+    val visualAlertsEnabled: Boolean,
+)

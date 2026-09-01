@@ -1,5 +1,10 @@
 package com.pessoal.agenda.mobile.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +25,7 @@ import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Sync
@@ -39,6 +45,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TopAppBar
@@ -53,6 +60,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -87,6 +96,13 @@ fun AgendaMobileApp(
     viewModel: AgendaMobileViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) viewModel.setVisualAlertsEnabled(true)
+        else viewModel.notificationPermissionDenied()
+    }
     AgendaMobileTheme {
         AgendaMobileScreen(
             state = state,
@@ -98,6 +114,19 @@ fun AgendaMobileApp(
             onCancelPairing = viewModel::cancelPairing,
             onPairingCompletionShown = viewModel::acknowledgePairingCompletion,
             onFeedbackShown = viewModel::clearFeedback,
+            onVisualAlertsChanged = { enabled ->
+                if (!enabled) {
+                    viewModel.setVisualAlertsEnabled(false)
+                } else if (
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED
+                ) {
+                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    viewModel.setVisualAlertsEnabled(true)
+                }
+            },
             initialPairingInvitation = initialPairingInvitation,
         )
     }
@@ -116,6 +145,7 @@ internal fun AgendaMobileScreen(
     onPairingCompletionShown: () -> Unit,
     onFeedbackShown: () -> Unit,
     initialPairingInvitation: String? = null,
+    onVisualAlertsChanged: (Boolean) -> Unit = {},
 ) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var showPairing by rememberSaveable { mutableStateOf(false) }
@@ -184,6 +214,11 @@ internal fun AgendaMobileScreen(
                 onSync,
                 onPair = { showPairing = true },
             )
+            VisualAlertsOptInBand(
+                enabled = state.visualAlertsEnabled,
+                busy = state.busy,
+                onChanged = onVisualAlertsChanged,
+            )
             when (MobileSection.entries[selected]) {
                 MobileSection.TODAY -> TodayScreen(state.tasks)
                 MobileSection.CAPTURE -> CaptureScreen(state, onSaveCapture)
@@ -196,6 +231,48 @@ internal fun AgendaMobileScreen(
                 )
                 MobileSection.QUEUE -> QueueScreen(state.operations, state.conflicts)
             }
+        }
+    }
+}
+
+@Composable
+private fun VisualAlertsOptInBand(
+    enabled: Boolean,
+    busy: Boolean,
+    onChanged: (Boolean) -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.NotificationsNone, contentDescription = null)
+                Column {
+                    Text("Alertas visuais", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        if (enabled) "Ativados e silenciosos" else "Desativados",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Switch(
+                checked = enabled,
+                onCheckedChange = onChanged,
+                enabled = !busy,
+                modifier = Modifier.semantics {
+                    contentDescription = if (enabled) "Desativar alertas visuais" else "Ativar alertas visuais"
+                },
+            )
         }
     }
 }

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação iniciada; 35% do Projeto 2 |
+| Status | Implementação iniciada; 36,7% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01`, `P2-02` e `P2-03` estão concluídas; `P2-04` tem 3 de 6 itens. O avanço geral é 35% e restam 65%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01`, `P2-02` e `P2-03` estão concluídas; `P2-04` tem 4 de 6 itens. O avanço geral é 36,7% e restam 63,3%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -617,14 +617,14 @@ Servidor desktop, QR, TLS fixado, Keystore, cursores, snapshots, idempotência, 
 
 Notificações, concluir/adiar, horário silencioso, cooldown, WorkManager, perfis sensoriais, teste de rota e fallback.
 
-**Status:** Em andamento, 50% (3 de 6 itens concluídos).
+**Status:** Em andamento, 66,7% (4 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
 - [x] definir contratos fechados e guardrails puros para opt-in, janela válida, silêncio, pausa, cooldown, sobreposição, canais, repetição, `Concluir` e `Adiar`;
 - [x] persistir definições, materializações, entregas, ações e perfil sensorial em Room com migração testada;
 - [x] agendar e reavaliar alertas com WorkManager, incluindo reboot, Doze, expiração e cancelamento imediato;
-- [ ] publicar notificação Android opt-in com ações idempotentes `Concluir` e `Adiar`, sem estímulo na instalação;
+- [x] publicar notificação Android opt-in com ações idempotentes `Concluir` e `Adiar`, sem estímulo na instalação;
 - [ ] criar configurações de perfil, presets, pausa, canais e política de áudio com teste curto cancelável e fallback visível;
 - [ ] aprovar matriz no AVD para permissão negada/concedida, silêncio, cooldown, sobreposição, ações offline, reinício e mudança de rota.
 
@@ -632,7 +632,9 @@ Notificações, concluir/adiar, horário silencioso, cooldown, WorkManager, perf
 
 **Evidência do segundo item:** Room v4 separa `alert_definitions`, `alert_materializations`, `alert_deliveries`, `alert_actions` e `sensory_profiles`, com chaves estrangeiras, índices de estado/tempo e schema exportado. `AlertStore` materializa definição e estado atomicamente, rejeita reutilização divergente de IDs, preserva repetição idempotente, limita entregas/adiamentos e mantém somente códigos técnicos nas falhas. O perfil cauteloso desligado é criado no startup, sem solicitar permissão nem emitir estímulo. Cinco testes do store passaram dentro da suíte local de 31 testes; 13 testes instrumentados no `emulator-5556` validaram inclusive migrações `1 -> 4`, `2 -> 4` e `3 -> 4`. O telefone físico não foi usado.
 
-**Evidência do terceiro item:** WorkManager mantém um trabalho único `agenda-alert-<uuid>` por alerta, substitui agendamentos externos, encadeia reavaliação interna e cancela pelo mesmo nome. O Room conserva o instante absoluto e reconcilia trabalhos no startup, cobrindo perda de processo; persistência após reboot e respeito a Doze são garantias delegadas ao WorkManager. Expiração prevalece sobre preferências, estados terminais não retornam à fila e barreiras temporárias calculam o próximo instante. Quando elegível, o worker para em `AWAITING_DELIVERY`: nenhuma entrega é consumida e nenhuma notificação, vibração ou saída de áudio ocorre. A versão `2.9.1` foi fixada por compatibilidade com `compileSdk 34`; atualizar para `2.11.x` exige SDK 35. A suíte local passou com 36 testes e 15 testes instrumentados provaram trabalho único, cancelamento e rejeição de entrada inválida no `emulator-5556`. `POST_NOTIFICATIONS` continua ausente.
+**Evidência do terceiro item:** WorkManager mantém um trabalho único `agenda-alert-<uuid>` por alerta, substitui agendamentos externos, encadeia reavaliação interna e cancela pelo mesmo nome. O Room conserva o instante absoluto e reconcilia trabalhos no startup, cobrindo perda de processo; persistência após reboot e respeito a Doze são garantias delegadas ao WorkManager. Expiração prevalece sobre preferências, estados terminais não retornam à fila e barreiras temporárias calculam o próximo instante. O gate foi aprovado inicialmente com entrega simulada em `AWAITING_DELIVERY`; a publicação passou a pertencer ao quarto item. A versão `2.9.1` foi fixada por compatibilidade com `compileSdk 34`; atualizar para `2.11.x` exige SDK 35. A suíte local passou com 36 testes e 15 testes instrumentados provaram trabalho único, cancelamento e rejeição de entrada inválida no `emulator-5556`.
+
+**Evidência do quarto item:** a tela inicial exibe um switch desligado e solicita `POST_NOTIFICATIONS` somente após toque explícito, conforme o [fluxo contextual oficial](https://developer.android.com/develop/ui/compose/notifications/notification-permission). Negar ou fechar o diálogo mantém o perfil desligado; ligar reativa materializações suprimidas e desligar cancela trabalhos e notificações visíveis. O canal `agenda_visual_alerts_v1` é privado, sem som, vibração, luz ou badge. Cada alerta substitui a própria notificação por tag UUID; o worker usa a execução como ID de entrega e os `PendingIntent` imutáveis carregam comandos estáveis. O receiver não exportado implementa as [ações recomendadas para notificações](https://developer.android.com/develop/ui/compose/notifications/create-notification): persiste `Concluir` ou o primeiro preset cauteloso de `Adiar`, cancela a notificação e converge de modo idempotente offline. Áudio e vibração continuam sem implementação. Quarenta e dois testes locais e 19 instrumentados passaram; o AVD comprovou canal real silencioso, notificação privada, ação pelo receiver, gate negado e prompt contextual, sem usar telefone físico.
 
 ### P2-05 — Wear OS
 
@@ -701,4 +703,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Prosseguir em `P2-04` pela notificação Android opt-in: canal silencioso inicial, pedido contextual de `POST_NOTIFICATIONS`, ações idempotentes `Concluir`/`Adiar` e cancelamento imediato. Áudio e vibração continuam desativados até a configuração sensorial.
+Prosseguir em `P2-04` pelas configurações de perfil: presets cautelosos, pausa, canais e política de áudio, com teste curto cancelável, indicação da rota efetiva e fallback visível. Nenhum áudio ou vibração deve ser habilitado implicitamente.

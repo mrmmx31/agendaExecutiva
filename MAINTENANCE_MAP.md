@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 35%, restando 65%; `P2-01`, `P2-02` e `P2-03` concluídas, `P2-04` em 50% (3 de 6 itens).
+- Projeto 2: implementação em 36,7%, restando 63,3%; `P2-01`, `P2-02` e `P2-03` concluídas, `P2-04` em 66,7% (4 de 6 itens).
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -105,6 +105,7 @@ Implementado em `P2-02`:
 | Contratos e política de alertas | `android/.../alert/`, `contracts/v1/alert-*.schema.json`, `sensory-profile.schema.json` e `ALERTS_V1.md` |
 | Persistência de alertas | `AlertStore.kt`, `AlertEntities.kt`, `OfflineDao.kt` e `MobileDatabase.MIGRATION_3_4` |
 | Agendamento de alertas | `alert/scheduling/AlertWorkScheduler.kt`; nome único `agenda-alert-<uuid>` e tag `agenda-alert-evaluation` |
+| Notificação e ações Android | `alert/notification/`; canal visual v1, publisher, processor e receiver interno |
 
 | Domínio | Android | Wear | Desktop |
 |---|---|---|---|
@@ -150,7 +151,7 @@ Nenhuma permissão entra “para uso futuro”. Cada uma exige requisito, tela e
 | `INTERNET` | P2-03 | sync HTTPS local fixado | sem sessão desktop o app continua local; nenhum host externo é usado |
 | `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` | P2-04 | permissões normais transitivas do WorkManager para persistência | sem trabalho após suspensão/reboot |
 | `ACCESS_NETWORK_STATE`, `FOREGROUND_SERVICE` | P2-04 | capacidades normais declaradas pelo runtime WorkManager; o worker atual não usa rede nem foreground | revisar ao atualizar/remover WorkManager |
-| `POST_NOTIFICATIONS` | P2-04 | alertas visuais opt-in; ainda não adicionada | alertas ficam dentro do app |
+| `POST_NOTIFICATIONS` | P2-04 | alertas visuais opt-in após switch contextual | perfil permanece desligado e entregas são suprimidas sem consumir repetição |
 | Bluetooth/Wear APIs | P2-05 | comunicação oficial com Wear | telefone continua funcional |
 | Health Connect por tipo | P2-07 | relatório autorizado | categoria fica vazia |
 | histórico/background health | posterior | somente hipótese aprovada | leitura limitada ao permitido |

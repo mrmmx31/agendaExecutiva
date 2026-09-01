@@ -50,7 +50,7 @@ class AlertSchedulingTest {
 
     @Test
     fun scheduleAndReconciliationKeepOneAbsoluteTarget() = runBlocking {
-        store.ensureInstallationProfile()
+        enableAlerts()
         store.materialize(alert())
         val target = Instant.parse("2026-09-01T15:00:00Z")
 
@@ -62,7 +62,7 @@ class AlertSchedulingTest {
 
     @Test
     fun cancellationChangesDurableStateAndCancelsUniqueWork() = runBlocking {
-        store.ensureInstallationProfile()
+        enableAlerts()
         store.materialize(alert())
         coordinator.schedule(ALERT_ID, now.plusSeconds(60))
 
@@ -101,7 +101,11 @@ class AlertSchedulingTest {
 
         val result = store.evaluateForWork(ALERT_ID, now, ZoneOffset.UTC)
 
-        assertEquals(AlertWorkEvaluation.Ready(setOf(SensoryChannel.VISUAL)), result)
+        assertTrue(result is AlertWorkEvaluation.Ready)
+        result as AlertWorkEvaluation.Ready
+        assertEquals(setOf(SensoryChannel.VISUAL), result.candidate.channels)
+        assertEquals("Revisar a tarefa atual", result.candidate.text)
+        assertEquals(Instant.parse("2026-09-01T14:15:00Z"), result.nextEvaluationAt)
         val state = requireNotNull(database.offline().alertMaterialization(ALERT_ID))
         assertEquals("AWAITING_DELIVERY", state.state)
         assertEquals(0, state.deliveryCount)
@@ -120,6 +124,36 @@ class AlertSchedulingTest {
         store.materialize(alert(id = expiredId, validUntil = "2026-09-01T13:59:00Z"))
         assertEquals(AlertWorkEvaluation.Stop, store.evaluateForWork(expiredId, now, ZoneOffset.UTC))
         assertEquals("EXPIRED", database.offline().alertMaterialization(expiredId)?.state)
+    }
+
+    @Test
+    fun disabledProfileKeepsScheduleDurableWithoutEnqueueingWork() = runBlocking {
+        store.ensureInstallationProfile()
+        store.materialize(alert())
+
+        assertTrue(coordinator.schedule(ALERT_ID, now.plusSeconds(60)))
+        assertTrue(enqueuer.replaced.isEmpty())
+        assertEquals(0, coordinator.reconcile())
+        assertEquals(1, enqueuer.cancelAllCount)
+        assertEquals("SCHEDULED", database.offline().alertMaterialization(ALERT_ID)?.state)
+    }
+
+    @Test
+    fun activationRestoresAlertSuppressedBeforePermission() = runBlocking {
+        store.ensureInstallationProfile()
+        store.materialize(alert())
+        assertEquals(AlertWorkEvaluation.Stop, store.evaluateForWork(ALERT_ID, now, ZoneOffset.UTC))
+        enableAlerts()
+
+        assertEquals(1, coordinator.reactivate())
+
+        assertEquals(AlertSchedule(ALERT_ID, now), enqueuer.replaced.single())
+        assertEquals("SCHEDULED", database.offline().alertMaterialization(ALERT_ID)?.state)
+    }
+
+    private suspend fun enableAlerts() {
+        val initial = store.ensureInstallationProfile()
+        store.saveProfile(initial.profile.copy(globalEnabled = true, quietHours = null), initial.snoozePolicy)
     }
 
     private fun alert(
@@ -146,10 +180,12 @@ class AlertSchedulingTest {
         val replaced = mutableListOf<AlertSchedule>()
         val appended = mutableListOf<AlertSchedule>()
         val cancelled = mutableListOf<String>()
+        var cancelAllCount = 0
 
         override fun replace(schedule: AlertSchedule) { replaced += schedule }
         override fun append(schedule: AlertSchedule) { appended += schedule }
         override fun cancel(alertId: String) { cancelled += alertId }
+        override fun cancelAll() { cancelAllCount += 1 }
     }
 
     private companion object {

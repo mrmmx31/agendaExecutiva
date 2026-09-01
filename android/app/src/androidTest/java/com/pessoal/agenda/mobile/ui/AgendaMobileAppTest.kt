@@ -108,6 +108,32 @@ class AgendaMobileAppTest {
     }
 
     @Test
+    fun visualAlertsRequireExplicitToggleInteraction() {
+        var requested: Boolean? = null
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(visualAlertsEnabled = false),
+                    onSaveCapture = { _, _ -> },
+                    onStartProtocol = {},
+                    onCompleteStep = { _, _ -> },
+                    onSync = {},
+                    onPair = { _, _ -> },
+                    onCancelPairing = {},
+                    onPairingCompletionShown = {},
+                    onFeedbackShown = {},
+                    onVisualAlertsChanged = { requested = it },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Desativados").assertIsDisplayed()
+        assertEquals(null, requested)
+        compose.onNodeWithContentDescription("Ativar alertas visuais").performClick()
+        assertEquals(true, requested)
+    }
+
+    @Test
     fun offlineStateOffersPairingFormAndCancelableWaitingState() {
         var invitation = ""
         var code = ""

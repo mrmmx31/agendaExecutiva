@@ -22,7 +22,7 @@ Aplicação desktop JavaFX para planejamento pessoal com persistência local em 
 
 ## Direção do produto
 
-A visão, os requisitos, os critérios de aceite e o plano de entrega do desktop estão em [SPEC.md](SPEC.md). As Fases 0 a 5, estabilização, auditorias, Google Tasks ao vivo e piloto foram encerrados. O piloto terminou com cinco decisões `SEM EVIDÊNCIA`, sem alegar validação comportamental. O Projeto 2 móvel/sensorial está em 58,3%; o estado detalhado fica em [PROJECT2_SPEC.md](PROJECT2_SPEC.md).
+A visão, os requisitos, os critérios de aceite e o plano de entrega do desktop estão em [SPEC.md](SPEC.md). As Fases 0 a 5, estabilização, auditorias, Google Tasks ao vivo e piloto foram encerrados. O piloto terminou com cinco decisões `SEM EVIDÊNCIA`, sem alegar validação comportamental. O Projeto 2 móvel/sensorial está em 60%, com `P2-01` a `P2-06` concluídas; o estado detalhado fica em [PROJECT2_SPEC.md](PROJECT2_SPEC.md).
 
 Documentação complementar:
 

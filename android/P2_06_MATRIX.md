@@ -15,14 +15,14 @@ Data do gate local: 2026-09-02.
 |---|---|---|
 | Entrada direta | `Vou sair` abre a unica opcao ou oferece no maximo tres candidatas ordenadas | APROVADO |
 | Execucao offline | inicio e conclusao persistem execucao e operacoes na mesma transacao Room | APROVADO |
-| Passo atual Wear | estado v1 contem somente titulo curto, passo, posicao, contagem, revisao e ack | APROVADO LOCAL |
-| Confirmacao offline Wear | outbox e feedback sao persistidos antes do envio; novo toque fica bloqueado enquanto pendente | APROVADO LOCAL |
-| Convergencia | ack exato remove a operacao Wear e a revisao seguinte avanca o passo | APROVADO LOCAL |
+| Passo atual Wear | estado v1 contem somente titulo curto, passo, posicao, contagem, revisao e ack | APROVADO |
+| Confirmacao offline Wear | outbox e feedback sao persistidos antes do envio; novo toque fica bloqueado enquanto pendente | APROVADO |
+| Convergencia | ack exato remove a operacao Wear e a revisao seguinte avanca o passo | APROVADO |
 | Prioridade visual | alerta sensorial oculta temporariamente o protocolo; protocolo nao oferece `Adiar` | APROVADO |
 | Mudanca estrutural | `Sugerir item` cria operacao de revisao sem alterar nenhum template | APROVADO |
 | Protecao desktop | servidor grava `STRUCTURE_DIVERGED` e preserva integralmente o template desktop | APROVADO |
 | Tema e dimensoes | testes Compose do telefone e sete testes Wear em 384 x 384, sem texto sobreposto | APROVADO |
-| Pareamento ponta a ponta | publicar passo, concluir no relogio e receber passo seguinte | PENDENTE DE REFAZER PAREAMENTO |
+| Pareamento ponta a ponta | descoberta bilateral; publicar passo, concluir no relogio, receber ack e validar passo seguinte nos dois lados | APROVADO |
 
 ## Suites
 
@@ -32,10 +32,16 @@ Data do gate local: 2026-09-02.
 - Relogio instrumentado: 7 testes de migracao e Compose aprovados.
 - Lint e montagem dos dois APKs: aprovados.
 
-## Incidente de ambiente
+## Gate pareado final
 
-O primeiro boot simultaneo fez o telefone permanecer em `RUNNING_LOCKED`, pois o emulador tentou comandos internos com `adb -e` enquanto havia dois AVDs. As falhas resultantes ocorreram antes da aplicacao: diretorio Room e Activity indisponiveis. O telefone virtual foi apagado e iniciado sozinho, chegou a `RUNNING_UNLOCKED` e os 11 testes passaram sem mudanca funcional. Isso apagou somente dados ficticios e tambem removeu o pareamento externo dos AVDs.
+Com os dois AVDs em `RUNNING_UNLOCKED`, `pairedNodeIsReachable` passou primeiro no telefone e depois no relogio. O percurso funcional passou nesta ordem:
 
-## Gate restante
+1. `publishProtocolStepFixture`: telefone iniciou fixture e publicou o primeiro passo;
+2. `completeProtocolStepAndAwaitAcknowledgement`: relogio recebeu, persistiu a conclusao, enviou a operacao e observou o segundo passo depois do ack;
+3. `assertProtocolAdvancedAfterWearConfirmation`: telefone confirmou a posicao 2 e o `operation_id` reconhecido.
 
-Refazer `Pair Wearable` entre os AVDs no Device Manager. Depois executar, nesta ordem, os gates `publishProtocolStepFixture`, `completeProtocolStepAndAwaitAcknowledgement` e `assertProtocolAdvancedAfterWearConfirmation`. Somente esse resultado permite concluir a P2-06.
+Cada gate terminou com `OK (1 test)`. Os comandos usaram explicitamente `emulator-5554` ou `emulator-5556`; o Samsung fisico nao recebeu comandos.
+
+## Incidente de ambiente resolvido
+
+O primeiro boot simultaneo fez o telefone permanecer em `RUNNING_LOCKED`, pois o emulador tentou comandos internos com `adb -e` enquanto havia dois AVDs. As falhas resultantes ocorreram antes da aplicacao: diretorio Room e Activity indisponiveis. O telefone virtual foi apagado e iniciado sozinho, chegou a `RUNNING_UNLOCKED` e os 11 testes passaram sem mudanca funcional. Isso apagou somente dados ficticios e removeu temporariamente o pareamento externo dos AVDs. O pareamento foi refeito e o gate final acima encerrou o incidente.

@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativos Android e Wear OS do Projeto 2 com `P2-01` a `P2-05` concluídas e `P2-06` em 5 de 6 itens. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline; saúde e IA ainda não estão ativas.
+Aplicativos Android e Wear OS do Projeto 2 com `P2-01` a `P2-06` concluídas. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline; saúde e IA ainda não estão ativas.
 
 ## Requisitos
 
@@ -55,7 +55,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - O Google Pixel Watch do AVD precisou das permissões de notificações e dispositivos próximos; isso não altera as permissões do aplicativo Agenda.
 - Data Layer pareado aprovado para estado, `Concluir`, `Adiar` e reconciliação depois de o app do telefone ser reaberto; matriz em [`P2_05_MATRIX.md`](P2_05_MATRIX.md).
 - Room Android v5 mantém revisão Wear; Room próprio do relógio persiste alerta e outbox antes do feedback.
-- P2-06 implementa `Vou sair`, escolha determinística, passo atual e confirmação offline no Wear e sugestões estruturais que exigem revisão; falta o gate pareado descrito em [`P2_06_MATRIX.md`](P2_06_MATRIX.md).
+- P2-06 entrega `Vou sair`, escolha determinística, passo atual e confirmação offline no Wear e sugestões estruturais que exigem revisão; o percurso pareado está aprovado em [`P2_06_MATRIX.md`](P2_06_MATRIX.md).
 
 ## Limites
 

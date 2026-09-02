@@ -21,12 +21,14 @@ class SharedContractFixtureTest {
         assertKeys("alert-definition.valid.json", ALERT_DEFINITION_KEYS)
         assertKeys("sensory-profile.valid.json", SENSORY_PROFILE_KEYS)
         assertKeys("alert-action.valid.json", ALERT_ACTION_KEYS)
+        assertKeys("wear-alert-state.valid.json", WEAR_ALERT_STATE_KEYS)
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").requiredText("status"))
         assertEquals("APPLIED", fixture("sync-result.valid.json").requiredText("status"))
         assertEquals("TEXT_DIVERGED", fixture("conflict.valid.json").requiredText("reason"))
         assertFalse(fixture("sensory-profile.valid.json").requiredText("global_enabled").toBoolean())
         assertEquals("SNOOZE", fixture("alert-action.valid.json").requiredText("action"))
+        assertEquals("PENDING", fixture("wear-alert-state.valid.json").requiredText("status"))
     }
 
     @Test
@@ -37,6 +39,10 @@ class SharedContractFixtureTest {
 
         val result = fixture("sync-result.invalid-status.json")
         assertFalse(result.requiredText("status") in RESULT_STATES)
+
+        val wearExtra = fixture("wear-alert-state.invalid-extra-field.json")
+        assertFalse(wearExtra.keys == WEAR_ALERT_STATE_KEYS)
+        assertTrue("health_data" in wearExtra)
     }
 
     private fun assertKeys(name: String, expected: Set<String>) = assertEquals(expected, fixture(name).keys)
@@ -60,6 +66,7 @@ class SharedContractFixtureTest {
         val ALERT_DEFINITION_KEYS = setOf("contract_version", "alert_id", "origin", "reference_id", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "criticality", "allowed_channels", "repeat_policy", "actions")
         val SENSORY_PROFILE_KEYS = setOf("contract_version", "global_enabled", "enabled_channels", "quiet_hours", "paused_until", "cooldown_minutes", "audio_route")
         val ALERT_ACTION_KEYS = setOf("contract_version", "operation_id", "alert_id", "source_device_id", "action", "occurred_at", "snooze_until")
+        val WEAR_ALERT_STATE_KEYS = setOf("contract_version", "alert_id", "revision", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "updated_at", "criticality", "actions", "snooze_options_minutes", "status")
         val RESULT_STATES = setOf("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE")
     }
 }

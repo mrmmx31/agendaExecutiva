@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "AgendaMobile"
-include(":app")
+include(":app", ":wear", ":wear-contract")

@@ -1,12 +1,12 @@
 # Agenda Mobile
 
-Aplicativo Android do Projeto 2 com núcleo offline, `P2-03` e `P2-04` concluídos. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos e alertas sensoriais configuráveis; saúde e IA ainda não estão ativas.
+Aplicativos Android e Wear OS do Projeto 2 com núcleo offline, `P2-03` e `P2-04` concluídos e `P2-05` em andamento. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis, contrato Wear e scaffold neutro do relógio; saúde e IA ainda não estão ativas.
 
 ## Requisitos
 
 - Java 17 ou superior.
 - Android SDK em `ANDROID_SDK_ROOT`.
-- Platform e Build Tools 34.
+- Platform 34 para o telefone e 35 para compilar Compose Wear 1.5.6; os dois AVDs continuam API 34.
 
 ## Verificar
 
@@ -48,6 +48,8 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - Notificação visual exige switch e permissão contextual; canal privado/silencioso e ações offline idempotentes foram aprovados com 42 testes locais e 19 instrumentados.
 - Perfis `Visual`, `Discreto` e `Fone`, pausa, silêncio, cooldown, áudio por faixa, vibração e teste cancelável foram aprovados com 44 testes locais e 23 instrumentados; nenhuma suíte toca áudio automaticamente.
 - Matriz final de `P2-04` aprovada com 28 testes instrumentados e gates externos de permissão/reinício; detalhes e limites em [`P2_04_MATRIX.md`](P2_04_MATRIX.md).
+- Contrato Wear v1 aprovado em cinco testes: payload fechado, duas ações, até três adiamentos, caminhos canônicos e recusa de campo sensível inesperado.
+- Módulo Wear com o mesmo package/assinatura do telefone, Compose Wear Material 3 e Data Layer oficial; APK aberto no AVD Wear sem prompt, notificação ou estímulo.
 - Primeiro boot dos AVDs de telefone e Wear OS: aprovado.
 - Pareamento telefone-relógio: aprovado; o assistente confirmou `Successful pairing` entre os dois AVDs.
 - O Google Pixel Watch do AVD precisou das permissões de notificações e dispositivos próximos; isso não altera as permissões do aplicativo Agenda.
@@ -58,6 +60,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - Banco: `agenda-mobile.db`, separado do SQLite desktop.
 - Banco atual: Room v4, com schema exportado em `app/schemas/` e migrações explícitas `1 -> 2 -> 3 -> 4`.
 - Contrato atual: v1, catalogado em `contracts/README.md`.
+- O Data Layer ainda não transporta estado: publisher, listener, persistência e ações entram nos próximos itens de `P2-05`.
 - Backup e transferência de dados Android estão desativados.
 - Nenhuma permissão é solicitada durante instalação ou startup.
 - WorkManager declara permissões normais de boot, wake lock, rede e serviço interno; `POST_NOTIFICATIONS` só é solicitado ao ativar um perfil que inclua o canal visual.

@@ -1,0 +1,15 @@
+{
+  "contract_version": 1,
+  "alert_id": "30000000-0000-4000-8000-000000000001",
+  "revision": 2,
+  "text": "Separar documentos",
+  "reason": "Protocolo de saída",
+  "source_device_id": "30000000-0000-4000-8000-000000000003",
+  "scheduled_at": "2026-09-01T14:00:00Z",
+  "valid_until": "2026-09-01T18:00:00Z",
+  "updated_at": "2026-09-01T13:55:00Z",
+  "criticality": "ROUTINE",
+  "actions": ["COMPLETE", "SNOOZE"],
+  "snooze_options_minutes": [10, 30, 60],
+  "status": "PENDING"
+}

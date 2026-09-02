@@ -68,7 +68,8 @@ agenda/
 │   ├── settings.gradle.kts
 │   ├── app/                  # smartphone: Compose, Room, repositório e fila offline
 │   ├── contracts/            # schemas móveis versionados; compartilhados a partir da P2-03
-│   ├── wear/                 # criado apenas em P2-05 ou antes se necessário ao teste
+│   ├── wear/                 # APK Wear OS: UI curta e recepção Data Layer
+│   ├── wear-contract/        # contrato Kotlin puro compartilhado entre os APKs
 │   └── README.md
 ├── docs/
 │   ├── adr/                  # decisões arquiteturais numeradas
@@ -109,6 +110,8 @@ Implementado em `P2-02`:
 | Saída sensorial Android | `alert/output/AndroidSensoryOutput.kt`; tom curto, vibração, foco transitório, rota por faixa e bloqueio de sobreposição |
 | Configuração sensorial | `ui/SensorySettingsScreen.kt` + `AgendaMobileViewModel.kt`; presets explícitos, pausa, silêncio, cooldown, teste e fallback |
 | Matriz P2-04 | `android/P2_04_MATRIX.md`; cenários, gates, resultados e limites do AVD |
+| Contrato Wear v1 | `android/wear-contract/`, `contracts/WEAR_V1.md` e `wear-alert-state.schema.json` |
+| Aplicativo Wear | `android/wear/`; mesmo `applicationId` e assinatura do telefone, sem segredo mestre |
 
 | Domínio | Android | Wear | Desktop |
 |---|---|---|---|
@@ -132,7 +135,8 @@ Atualizar esta tabela quando uma dependência for adicionada ou removida.
 | WorkManager 2.9.1 | alertas duráveis e reconciliação | UUID e instante elegível | P2-04 | fixado no SDK 34; 2.11.x exige compileSdk 35 |
 | Android Keystore | chaves do aparelho | chaves não exportáveis | sim | nenhuma aceitável |
 | Wear notification bridge | alertas iniciais | texto/ações do alerta | MVP | app Wear dedicado |
-| Wear Data Layer | telefone ↔ relógio | payload mínimo do app | P2-05 | notificação espelhada |
+| Wear Data Layer 20.0.1 | telefone ↔ relógio | payload mínimo do app | P2-05 | notificação espelhada |
+| Compose Wear Material 3 1.5.6 | UI curta do relógio | estado local do alerta | P2-05 | 1.6.2 exige atualização isolada de AGP/lint; fallback espelhado |
 | Health Connect | saúde autorizada | tipos escolhidos | opcional | entrada manual/nenhuma coleta |
 | Health Services | sensor Wear próprio | sinal autorizado | não inicial | Health Connect |
 | LiteRT | inferência local | features minimizadas | futuro | regras ou ONNX Runtime |

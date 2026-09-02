@@ -26,12 +26,14 @@ class SharedContractFixtureTest {
         assertKeys("alert-definition.valid.json", ALERT_DEFINITION_KEYS);
         assertKeys("sensory-profile.valid.json", SENSORY_PROFILE_KEYS);
         assertKeys("alert-action.valid.json", ALERT_ACTION_KEYS);
+        assertKeys("wear-alert-state.valid.json", WEAR_ALERT_STATE_KEYS);
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").get("status").getAsString());
         assertEquals("APPLIED", fixture("sync-result.valid.json").get("status").getAsString());
         assertEquals("TEXT_DIVERGED", fixture("conflict.valid.json").get("reason").getAsString());
         assertFalse(fixture("sensory-profile.valid.json").get("global_enabled").getAsBoolean());
         assertEquals("SNOOZE", fixture("alert-action.valid.json").get("action").getAsString());
+        assertEquals("PENDING", fixture("wear-alert-state.valid.json").get("status").getAsString());
     }
 
     @Test
@@ -42,6 +44,10 @@ class SharedContractFixtureTest {
 
         String status = fixture("sync-result.invalid-status.json").get("status").getAsString();
         assertFalse(RESULT_STATES.contains(status));
+
+        JsonObject wearExtra = fixture("wear-alert-state.invalid-extra-field.json");
+        assertFalse(wearExtra.keySet().equals(WEAR_ALERT_STATE_KEYS));
+        assertTrue(wearExtra.has("health_data"));
     }
 
     private void assertKeys(String name, Set<String> expected) {
@@ -64,5 +70,6 @@ class SharedContractFixtureTest {
     private static final Set<String> ALERT_DEFINITION_KEYS = Set.of("contract_version", "alert_id", "origin", "reference_id", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "criticality", "allowed_channels", "repeat_policy", "actions");
     private static final Set<String> SENSORY_PROFILE_KEYS = Set.of("contract_version", "global_enabled", "enabled_channels", "quiet_hours", "paused_until", "cooldown_minutes", "audio_route");
     private static final Set<String> ALERT_ACTION_KEYS = Set.of("contract_version", "operation_id", "alert_id", "source_device_id", "action", "occurred_at", "snooze_until");
+    private static final Set<String> WEAR_ALERT_STATE_KEYS = Set.of("contract_version", "alert_id", "revision", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "updated_at", "criticality", "actions", "snooze_options_minutes", "status");
     private static final Set<String> RESULT_STATES = Set.of("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE");
 }

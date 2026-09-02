@@ -22,11 +22,13 @@ mesma versão.
 | `alert-definition.schema.json` | alerta materializado com janela, canais e ações |
 | `sensory-profile.schema.json` | opt-in, silêncio, pausa, cooldown e rota desejada |
 | `alert-action.schema.json` | comando idempotente de concluir ou adiar |
+| `wear-alert-state.schema.json` | cópia mínima e revisionada de um alerta no relógio |
 
 O pareamento e o modelo de ameaça da fase seguinte estão em
 `PAIRING_V1.md` e `THREAT_MODEL_P2_03.md`.
 
 Os limites sensoriais e as formas das ações estão em `ALERTS_V1.md`.
+O transporte e os limites do relógio estão em `WEAR_V1.md`.
 
 O envelope inclui UUID da operação, dispositivo, sequência monotônica,
 instante, fuso, versão do contrato, comando, entidade, payload e SHA-256 do

@@ -85,6 +85,7 @@ import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.text.Normalizer
 
 private enum class MobileSection(val label: String, val icon: ImageVector) {
     TODAY("Hoje", Icons.Outlined.Home),
@@ -174,6 +175,7 @@ internal fun AgendaMobileScreen(
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var showPairing by rememberSaveable { mutableStateOf(false) }
     var showSensorySettings by rememberSaveable { mutableStateOf(false) }
+    var showLeavingChoices by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.feedback) {
         state.feedback?.let {
@@ -198,6 +200,32 @@ internal fun AgendaMobileScreen(
             onCancel = {
                 if (state.pairingInProgress) onCancelPairing()
                 showPairing = false
+            },
+        )
+    }
+    val leavingCandidates = remember(state.protocols) { leavingHomeCandidates(state.protocols) }
+    if (showLeavingChoices) {
+        AlertDialog(
+            onDismissRequest = { showLeavingChoices = false },
+            title = { Text("Vou sair") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    leavingCandidates.forEach { protocol ->
+                        OutlinedButton(
+                            onClick = {
+                                showLeavingChoices = false
+                                onStartProtocol(protocol.id)
+                                selected = MobileSection.PROTOCOLS.ordinal
+                            },
+                            enabled = !state.busy,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(protocol.title, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                OutlinedButton(onClick = { showLeavingChoices = false }) { Text("Cancelar") }
             },
         )
     }
@@ -276,7 +304,21 @@ internal fun AgendaMobileScreen(
                     onChanged = onVisualAlertsChanged,
                 )
                 when (MobileSection.entries[selected]) {
-                    MobileSection.TODAY -> TodayScreen(state.tasks)
+                    MobileSection.TODAY -> TodayScreen(
+                        tasks = state.tasks,
+                        busy = state.busy,
+                        onLeavingHome = {
+                            when {
+                                state.activeRunSteps.isNotEmpty() -> selected = MobileSection.PROTOCOLS.ordinal
+                                leavingCandidates.size == 1 -> {
+                                    onStartProtocol(leavingCandidates.single().id)
+                                    selected = MobileSection.PROTOCOLS.ordinal
+                                }
+                                leavingCandidates.isNotEmpty() -> showLeavingChoices = true
+                                else -> selected = MobileSection.PROTOCOLS.ordinal
+                            }
+                        },
+                    )
                     MobileSection.CAPTURE -> CaptureScreen(state, onSaveCapture)
                     MobileSection.PROTOCOLS -> ProtocolScreen(
                         state.protocols,
@@ -430,8 +472,22 @@ private fun PairingDialog(
 }
 
 @Composable
-private fun TodayScreen(tasks: List<TaskReplicaEntity>) {
+private fun TodayScreen(
+    tasks: List<TaskReplicaEntity>,
+    busy: Boolean,
+    onLeavingHome: () -> Unit,
+) {
     ScreenList(title = "Hoje") {
+        item {
+            Button(
+                onClick = onLeavingHome,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Outlined.Home, contentDescription = null)
+                Text("Vou sair")
+            }
+        }
         if (tasks.isEmpty()) item { EmptyState("Nenhuma tarefa local") }
         items(tasks, key = { it.id }) { task ->
             Row(
@@ -453,6 +509,20 @@ private fun TodayScreen(tasks: List<TaskReplicaEntity>) {
         }
     }
 }
+
+internal fun leavingHomeCandidates(protocols: List<ProtocolTemplateEntity>): List<ProtocolTemplateEntity> =
+    protocols.asSequence()
+        .filterNot(ProtocolTemplateEntity::tombstone)
+        .sortedWith(
+            compareByDescending<ProtocolTemplateEntity> { protocol ->
+                val normalized = Normalizer.normalize(protocol.title, Normalizer.Form.NFD)
+                    .replace("\\p{M}+".toRegex(), "")
+                    .lowercase()
+                normalized.contains("saida") || normalized.contains("sair")
+            }.thenBy(ProtocolTemplateEntity::title).thenBy(ProtocolTemplateEntity::id),
+        )
+        .take(3)
+        .toList()
 
 @Composable
 private fun CaptureScreen(state: MobileUiState, onSave: (String, () -> Unit) -> Unit) {

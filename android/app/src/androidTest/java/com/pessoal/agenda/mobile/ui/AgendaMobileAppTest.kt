@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import com.pessoal.agenda.mobile.alert.SensoryChannel
 import com.pessoal.agenda.mobile.alert.SensoryProfile
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
+import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -54,6 +55,38 @@ class AgendaMobileAppTest {
         compose.onNodeWithText("Agenda").assertIsDisplayed()
         compose.onNodeWithText("Somente neste telefone").assertIsDisplayed()
         compose.onNodeWithText("Tarefa fictícia").assertIsDisplayed()
+    }
+
+    @Test
+    fun leavingHomeStartsSingleExitProtocolDirectly() {
+        var started: String? = null
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(
+                        protocols = listOf(ProtocolTemplateEntity(
+                            id = "protocol-id",
+                            title = "Saída de casa",
+                            revision = 1,
+                            createdAt = "2026-09-02T12:00:00Z",
+                            updatedAt = "2026-09-02T12:00:00Z",
+                        )),
+                    ),
+                    onSaveCapture = { _, _ -> },
+                    onStartProtocol = { started = it },
+                    onCompleteStep = { _, _ -> },
+                    onSync = {},
+                    onPair = { _, _ -> },
+                    onCancelPairing = {},
+                    onPairingCompletionShown = {},
+                    onFeedbackShown = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText("Vou sair").assertIsDisplayed().performClick()
+
+        assertEquals("protocol-id", started)
     }
 
     @Test

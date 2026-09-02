@@ -10,6 +10,7 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Início da P2-06 com ação direta `Vou sair` no Android e Dashboard, seleção curta determinística e contrato mínimo do passo atual no Wear
 - P2-05 concluída com Data Layer durável, Room no relógio, revisão monotônica, `Concluir`/`Adiar` offline, confirmação após reconexão e matriz pareada
 - Matriz automatizada P2-04 para permissão, silêncio, cooldown, sobreposição, ações offline, reinício e mudança de rota no AVD
 - Configurações sensoriais Android com presets explícitos, pausa, silêncio, cooldown, vibração opt-in, teste de áudio cancelável e fallback de rota visível

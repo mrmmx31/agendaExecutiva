@@ -103,6 +103,8 @@ enum class WearAlertStatus { PENDING, COMPLETED, SNOOZED, CANCELLED, EXPIRED }
 object WearDataPaths {
     const val ALERT_STATE_PREFIX = "/agenda/v1/alerts/"
     const val ACTION_PREFIX = "/agenda/v1/actions/"
+    const val PROTOCOL_STATE_PREFIX = "/agenda/v1/protocol-runs/"
+    const val PROTOCOL_ACTION_PREFIX = "/agenda/v1/protocol-actions/"
     const val PHONE_CAPABILITY = "agenda_phone_v1"
     const val WEAR_CAPABILITY = "agenda_wear_v1"
 
@@ -126,6 +128,21 @@ object WearDataPaths {
     fun operationId(path: String): String? {
         if (!path.startsWith(ACTION_PREFIX)) return null
         val value = path.removePrefix(ACTION_PREFIX)
+        if (value.contains('/')) return null
+        return runCatching { UUID.fromString(value).toString() }.getOrNull()
+    }
+
+    fun protocolState(runId: String): String = PROTOCOL_STATE_PREFIX + UUID.fromString(runId)
+
+    fun protocolRunId(path: String): String? = path.uuidAfter(PROTOCOL_STATE_PREFIX)
+
+    fun protocolAction(operationId: String): String = PROTOCOL_ACTION_PREFIX + UUID.fromString(operationId)
+
+    fun protocolOperationId(path: String): String? = path.uuidAfter(PROTOCOL_ACTION_PREFIX)
+
+    private fun String.uuidAfter(prefix: String): String? {
+        if (!startsWith(prefix)) return null
+        val value = removePrefix(prefix)
         if (value.contains('/')) return null
         return runCatching { UUID.fromString(value).toString() }.getOrNull()
     }

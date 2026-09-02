@@ -262,8 +262,14 @@ public class DashboardController {
         focusAutomaticBtn.getStyleClass().add("secondary-button");
         focusAutomaticBtn.setOnAction(e -> clearManualFocus());
 
+        Button leavingHomeBtn = new Button("Vou sair");
+        leavingHomeBtn.setId("dashboard-leaving-home");
+        leavingHomeBtn.getStyleClass().add("primary-button");
+        leavingHomeBtn.setTooltip(new Tooltip("Abre diretamente o protocolo de saída de casa."));
+        leavingHomeBtn.setOnAction(e -> openLeavingHomeProtocol());
+
         FlowPane focusActions = new FlowPane(8, 8,
-                focusStartBtn, focusOpenBtn, focusChooseBtn, focusAutomaticBtn);
+                focusStartBtn, leavingHomeBtn, focusOpenBtn, focusChooseBtn, focusAutomaticBtn);
         focusActions.getStyleClass().add("focus-now-actions");
 
         VBox focusNowContent = new VBox(6, focusNowModeLabel, focusNowTitleLabel,
@@ -700,6 +706,17 @@ public class DashboardController {
 
         tab.setContent(scroll);
         return tab;
+    }
+
+    private void openLeavingHomeProtocol() {
+        long protocolId = AppContextHolder.get().protocolRepository().createLeavingHomeProtocolTemplate();
+        AppContextHolder.get().protocolRepository().findProtocolById(protocolId)
+                .ifPresentOrElse(
+                        protocol -> new ProtocolExecutionWindow(
+                                protocol,
+                                AppContextHolder.get().protocolRepository(),
+                                ctx::triggerDashboardRefresh).show(),
+                        () -> ctx.setStatus("Protocolo de saída de casa não encontrado."));
     }
 
     // ── Atualização de KPIs ────────────────────────────────────────────────

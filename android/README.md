@@ -55,6 +55,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - O Google Pixel Watch do AVD precisou das permissões de notificações e dispositivos próximos; isso não altera as permissões do aplicativo Agenda.
 - Data Layer pareado aprovado para estado, `Concluir`, `Adiar` e reconciliação depois de o app do telefone ser reaberto; matriz em [`P2_05_MATRIX.md`](P2_05_MATRIX.md).
 - Room Android v5 mantém revisão Wear; Room próprio do relógio persiste alerta e outbox antes do feedback.
+- P2-06 iniciada com `Vou sair` na tela Hoje, escolha de até três protocolos e contrato fechado para o passo atual no Wear.
 
 ## Limites
 

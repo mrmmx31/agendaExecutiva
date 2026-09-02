@@ -23,6 +23,8 @@ mesma versão.
 | `sensory-profile.schema.json` | opt-in, silêncio, pausa, cooldown e rota desejada |
 | `alert-action.schema.json` | comando idempotente de concluir ou adiar |
 | `wear-alert-state.schema.json` | cópia mínima e revisionada de um alerta no relógio |
+| `wear-protocol-step-state.schema.json` | passo atual mínimo e revisionado no relógio |
+| `wear-protocol-step-action.schema.json` | confirmação idempotente do passo pelo relógio |
 
 O pareamento e o modelo de ameaça da fase seguinte estão em
 `PAIRING_V1.md` e `THREAT_MODEL_P2_03.md`.

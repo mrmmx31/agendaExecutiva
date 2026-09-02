@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/wear-protocol-step-action.schema.json",
+  "title": "Wear protocol step action",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "operation_id", "run_id", "step_id", "source_device_id", "occurred_at"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "operation_id": { "type": "string", "format": "uuid" },
+    "run_id": { "type": "string", "format": "uuid" },
+    "step_id": { "type": "string", "format": "uuid" },
+    "source_device_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" }
+  }
+}

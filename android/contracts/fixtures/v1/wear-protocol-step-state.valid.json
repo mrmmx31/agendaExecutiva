@@ -1,0 +1,14 @@
+{
+  "contract_version": 1,
+  "run_id": "92000000-0000-4000-8000-000000000001",
+  "protocol_id": "92000000-0000-4000-8000-000000000002",
+  "revision": 2,
+  "protocol_title": "Saída rápida",
+  "step_id": "92000000-0000-4000-8000-000000000003",
+  "step_label": "Levar as chaves",
+  "step_position": 1,
+  "step_count": 4,
+  "updated_at": "2026-09-02T12:00:00Z",
+  "status": "ACTIVE",
+  "acknowledged_operation_id": null
+}

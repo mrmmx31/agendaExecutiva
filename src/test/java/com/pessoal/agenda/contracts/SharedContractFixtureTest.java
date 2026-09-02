@@ -27,6 +27,8 @@ class SharedContractFixtureTest {
         assertKeys("sensory-profile.valid.json", SENSORY_PROFILE_KEYS);
         assertKeys("alert-action.valid.json", ALERT_ACTION_KEYS);
         assertKeys("wear-alert-state.valid.json", WEAR_ALERT_STATE_KEYS);
+        assertKeys("wear-protocol-step-state.valid.json", WEAR_PROTOCOL_STATE_KEYS);
+        assertKeys("wear-protocol-step-action.valid.json", WEAR_PROTOCOL_ACTION_KEYS);
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").get("status").getAsString());
         assertEquals("APPLIED", fixture("sync-result.valid.json").get("status").getAsString());
@@ -71,5 +73,7 @@ class SharedContractFixtureTest {
     private static final Set<String> SENSORY_PROFILE_KEYS = Set.of("contract_version", "global_enabled", "enabled_channels", "quiet_hours", "paused_until", "cooldown_minutes", "audio_route");
     private static final Set<String> ALERT_ACTION_KEYS = Set.of("contract_version", "operation_id", "alert_id", "source_device_id", "action", "occurred_at", "snooze_until");
     private static final Set<String> WEAR_ALERT_STATE_KEYS = Set.of("contract_version", "alert_id", "revision", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "updated_at", "criticality", "actions", "snooze_options_minutes", "status", "acknowledged_operation_id");
+    private static final Set<String> WEAR_PROTOCOL_STATE_KEYS = Set.of("contract_version", "run_id", "protocol_id", "revision", "protocol_title", "step_id", "step_label", "step_position", "step_count", "updated_at", "status", "acknowledged_operation_id");
+    private static final Set<String> WEAR_PROTOCOL_ACTION_KEYS = Set.of("contract_version", "operation_id", "run_id", "step_id", "source_device_id", "occurred_at");
     private static final Set<String> RESULT_STATES = Set.of("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE");
 }

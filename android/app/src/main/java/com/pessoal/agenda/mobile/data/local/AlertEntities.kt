@@ -46,6 +46,7 @@ data class AlertMaterializationEntity(
     val lastDeliveryAt: String?,
     val completedAt: String?,
     val updatedAt: String,
+    val wearRevision: Long,
 )
 
 @Entity(

@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import com.pessoal.agenda.mobile.wear.AndroidWearStatePublisher
 
 class AlertNotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -29,6 +30,7 @@ class AlertNotificationActionReceiver : BroadcastReceiver() {
                     scheduling = AlertSchedulingCoordinator(application, store),
                     publisher = AndroidAlertNotificationPublisher(application),
                     deviceIdProvider = { DeviceCredentialStore(application).deviceId },
+                    wearPublisher = AndroidWearStatePublisher(application, store),
                 ).process(payload)
             } catch (error: Exception) {
                 Log.e(TAG, "Falha ao processar ação de alerta.", error)

@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativos Android e Wear OS do Projeto 2 com núcleo offline, `P2-03` e `P2-04` concluídos e `P2-05` em andamento. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis, contrato Wear e scaffold neutro do relógio; saúde e IA ainda não estão ativas.
+Aplicativos Android e Wear OS do Projeto 2 com núcleo offline e `P2-03`, `P2-04` e `P2-05` concluídos. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline; saúde e IA ainda não estão ativas.
 
 ## Requisitos
 
@@ -53,14 +53,16 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - Primeiro boot dos AVDs de telefone e Wear OS: aprovado.
 - Pareamento telefone-relógio: aprovado; o assistente confirmou `Successful pairing` entre os dois AVDs.
 - O Google Pixel Watch do AVD precisou das permissões de notificações e dispositivos próximos; isso não altera as permissões do aplicativo Agenda.
+- Data Layer pareado aprovado para estado, `Concluir`, `Adiar` e reconciliação depois de o app do telefone ser reaberto; matriz em [`P2_05_MATRIX.md`](P2_05_MATRIX.md).
+- Room Android v5 mantém revisão Wear; Room próprio do relógio persiste alerta e outbox antes do feedback.
 
 ## Limites
 
 - Package: `com.pessoal.agenda.mobile`.
 - Banco: `agenda-mobile.db`, separado do SQLite desktop.
-- Banco atual: Room v4, com schema exportado em `app/schemas/` e migrações explícitas `1 -> 2 -> 3 -> 4`.
+- Banco atual: Room v5, com schema exportado em `app/schemas/` e migrações explícitas `1 -> 2 -> 3 -> 4 -> 5`.
 - Contrato atual: v1, catalogado em `contracts/README.md`.
-- O Data Layer ainda não transporta estado: publisher, listener, persistência e ações entram nos próximos itens de `P2-05`.
+- O Data Layer transporta somente o estado mínimo de alerta e as ações Wear v1; protocolos entram em `P2-06` e dados sensíveis não fazem parte do payload.
 - Backup e transferência de dados Android estão desativados.
 - Nenhuma permissão é solicitada durante instalação ou startup.
 - WorkManager declara permissões normais de boot, wake lock, rede e serviço interno; `POST_NOTIFICATIONS` só é solicitado ao ativar um perfil que inclua o canal visual.

@@ -18,6 +18,8 @@ import com.pessoal.agenda.mobile.data.AlertDeliveryReason
 import com.pessoal.agenda.mobile.data.AlertSchedule
 import com.pessoal.agenda.mobile.data.AlertStore
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
+import com.pessoal.agenda.mobile.wear.AlertWearPublisher
+import com.pessoal.agenda.mobile.wear.WearStatePublishResult
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -37,6 +39,7 @@ class AlertNotificationDeliveryTest {
     private lateinit var store: AlertStore
     private lateinit var enqueuer: RecordingEnqueuer
     private lateinit var publisher: RecordingPublisher
+    private lateinit var wearPublisher: RecordingWearPublisher
     private val now = Instant.parse("2026-09-01T14:00:00Z")
     private val clock = Clock.fixed(now, ZoneOffset.UTC)
 
@@ -54,6 +57,7 @@ class AlertNotificationDeliveryTest {
         )
         enqueuer = RecordingEnqueuer()
         publisher = RecordingPublisher()
+        wearPublisher = RecordingWearPublisher()
     }
 
     @After
@@ -73,6 +77,7 @@ class AlertNotificationDeliveryTest {
         assertEquals("SCHEDULED", materialization.state)
         assertEquals("2026-09-01T14:15:00Z", materialization.nextEligibleAt)
         assertEquals(Instant.parse("2026-09-01T14:15:00Z"), enqueuer.appended.single().nextAt)
+        assertEquals(listOf(ALERT_ID), wearPublisher.alertIds)
     }
 
     @Test
@@ -145,6 +150,7 @@ class AlertNotificationDeliveryTest {
         assertEquals("COMPLETED", database.offline().alertMaterialization(ALERT_ID)?.state)
         assertEquals(listOf(ALERT_ID, ALERT_ID), enqueuer.cancelled)
         assertEquals(listOf(ALERT_ID, ALERT_ID), publisher.cancelled)
+        assertEquals(listOf(ALERT_ID, ALERT_ID), wearPublisher.alertIds)
     }
 
     @Test
@@ -170,6 +176,7 @@ class AlertNotificationDeliveryTest {
         assertEquals(target.toString(), materialization.nextEligibleAt)
         assertEquals(listOf(target, target), enqueuer.replaced.map(AlertSchedule::nextAt))
         assertEquals(listOf(ALERT_ID, ALERT_ID), publisher.cancelled)
+        assertEquals(listOf(ALERT_ID, ALERT_ID), wearPublisher.alertIds)
     }
 
     private fun processor(sensoryOutput: AlertSensoryOutput = NoSensoryOutput) = AlertDeliveryProcessor(
@@ -178,6 +185,7 @@ class AlertNotificationDeliveryTest {
         publisher = publisher,
         sensoryOutput = sensoryOutput,
         deviceIdProvider = { DEVICE_ID },
+        wearPublisher = wearPublisher,
         clock = clock,
     )
 
@@ -186,6 +194,7 @@ class AlertNotificationDeliveryTest {
         scheduling = AlertSchedulingCoordinator(store, enqueuer),
         publisher = publisher,
         deviceIdProvider = { DEVICE_ID },
+        wearPublisher = wearPublisher,
     )
 
     private suspend fun enableChannels(channels: Set<SensoryChannel>) {
@@ -234,6 +243,14 @@ class AlertNotificationDeliveryTest {
             return result
         }
         override fun cancel(alertId: String) { cancelled += alertId }
+    }
+
+    private class RecordingWearPublisher : AlertWearPublisher {
+        val alertIds = mutableListOf<String>()
+        override suspend fun publish(alertId: String): WearStatePublishResult {
+            alertIds += alertId
+            return WearStatePublishResult.STORED
+        }
     }
 
     private data object NoSensoryOutput : AlertSensoryOutput {

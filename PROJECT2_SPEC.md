@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação iniciada; 43,3% do Projeto 2 |
+| Status | Implementação em andamento; 50% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01`, `P2-02`, `P2-03` e `P2-04` estão concluídas; dois dos seis itens de `P2-05` também estão concluídos. O avanço geral é 43,3% e restam 56,7%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-05` estão concluídas. O avanço geral é 50% e restam 50%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -644,18 +644,20 @@ Notificações, concluir/adiar, horário silencioso, cooldown, WorkManager, perf
 
 Espelhamento validado, módulo Wear, Data Layer, dois botões, estado offline mínimo e matriz emulador pareado.
 
-**Status:** Em andamento, 33,3% (2 de 6 itens concluídos).
+**Status:** Concluído em 2026-09-02, 100% (6 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
 - [x] fechar contrato v1, caminhos, capacidades, limites e fixtures compartilhadas sem dados sensíveis;
 - [x] criar o módulo Wear em Compose com identidade compatível e inicialização neutra no AVD;
-- [ ] publicar estado mínimo no telefone e recebê-lo por Data Layer restrito no relógio;
-- [ ] persistir alertas/operações mínimas e oferecer somente `Concluir` e `Adiar` offline;
-- [ ] confirmar ações, convergir revisões e preservar o fallback por notificação espelhada;
-- [ ] aprovar matriz pareada de conexão, desconexão, reconexão, temas, ações e ausência de estímulo espontâneo.
+- [x] publicar estado mínimo no telefone e recebê-lo por Data Layer restrito no relógio;
+- [x] persistir alertas/operações mínimas e oferecer somente `Concluir` e `Adiar` offline;
+- [x] confirmar ações, convergir revisões e preservar o fallback por notificação espelhada;
+- [x] aprovar matriz pareada de conexão, desconexão, reconexão, temas, ações e ausência de estímulo espontâneo.
 
 **Evidência dos dois primeiros itens:** `wear-contract` concentra codec estrito, caminhos e validações puras; `wear-alert-state.schema.json` limita a cópia a texto/motivo curtos, janela válida, revisão, estado, duas ações e até três sugestões de 5 a 240 minutos. Fixtures Kotlin e Java recusam campo sensível inesperado. O módulo `wear` usa o mesmo `applicationId` do telefone, assinatura de debug comum, Compose Wear Material 3 `1.5.6` e Data Layer `20.0.1`; `targetSdk` e AVD permanecem em API 34, enquanto somente a compilação Wear usa SDK 35 exigido pela biblioteca. A linha Wear Compose 1.5 recebeu a última correção estável compatível com AGP lint 8.7.3; a versão 1.6.2 monta o APK, mas seus plugins lint são binariamente incompatíveis com a cadeia atual e sua adoção exige atualização isolada do build. Cinco testes do contrato, 44 testes locais do telefone, 155 testes Maven e o APK Wear passaram. A instalação em `emulator-5558` abriu a tela vazia sem prompt, notificação ou estímulo; o telefone físico e `emulator-5556` não foram acessados por ADB nesta validação.
+
+**Evidência dos quatro itens finais:** Room v5 acrescenta revisão Wear monotônica ao estado Android; o Room próprio do relógio persiste alertas e outbox antes de qualquer feedback. Estado e ações usam `DataItem` urgente em caminhos v1 restritos, com leitura de inicialização nos dois lados, limite de payload, operação UUID idempotente e exclusão somente depois do ack armazenado. A tela Wear mostra texto/motivo, `Concluir`, `Adiar` e no máximo três presets fornecidos pelo telefone; não calcula adiamento nem ativa estímulo. Pausa, desligamento e silêncio ativo removem estados remotos, mas nunca descartam ação local não confirmada. O gate pareado comprovou descoberta bilateral, `Adiar`, `Concluir`, telefone parado e convergência após reabertura. A matriz completa, comandos, contagens e limites estão em [`android/P2_05_MATRIX.md`](android/P2_05_MATRIX.md). Passaram 47 testes locais Android, 6 Wear, 5 do contrato, 35 instrumentados Android, 8 instrumentados Wear, 155 Maven, lint sem erros e montagem dos dois APKs. O fallback por notificação Android não foi removido. O telefone físico e os dados pessoais permaneceram fora do gate.
 
 ### P2-06 — “Vou sair” e protocolos móveis
 
@@ -720,4 +722,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Implementar o transporte mínimo do terceiro item de `P2-05`: publisher Android, `WearableListenerService` Wear restrito ao prefixo v1 e testes de disponibilidade, payload inválido, revisão antiga e ausência de nó, sem produzir estímulo.
+Iniciar `P2-06` pelo contrato mínimo de execução de protocolos móveis e pelo fluxo explícito `Vou sair`, mantendo operação offline e sem localização.

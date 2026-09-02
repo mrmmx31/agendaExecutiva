@@ -15,6 +15,7 @@ import com.pessoal.agenda.mobile.data.AlertSchedule
 import com.pessoal.agenda.mobile.data.AlertStore
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
 import com.pessoal.agenda.mobile.pairing.DeviceCredentialStore
+import com.pessoal.agenda.mobile.wear.AndroidWearStatePublisher
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -122,6 +123,7 @@ class AlertEvaluationWorker(
                 publisher = AndroidAlertNotificationPublisher(applicationContext),
                 sensoryOutput = AndroidSensoryOutput(applicationContext),
                 deviceIdProvider = { DeviceCredentialStore(applicationContext).deviceId },
+                wearPublisher = AndroidWearStatePublisher(applicationContext, store),
             ).process(alertId, id.toString())
             Result.success()
         } catch (_: IllegalArgumentException) {

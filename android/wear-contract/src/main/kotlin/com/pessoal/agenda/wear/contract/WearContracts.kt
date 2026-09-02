@@ -24,6 +24,7 @@ data class WearAlertState(
     val actions: List<WearActionType>,
     @SerialName("snooze_options_minutes") val snoozeOptionsMinutes: List<Int>,
     val status: WearAlertStatus,
+    @SerialName("acknowledged_operation_id") val acknowledgedOperationId: String?,
 ) {
     fun validate() {
         require(contractVersion == CONTRACT_VERSION) { "Versão Wear incompatível." }
@@ -41,6 +42,7 @@ data class WearAlertState(
             "Janela Wear excede o limite."
         }
         require(actions == REQUIRED_ACTIONS) { "Wear aceita somente Concluir e Adiar." }
+        acknowledgedOperationId?.let(UUID::fromString)
         require(
             snoozeOptionsMinutes.size in 1..MAX_SNOOZE_OPTIONS &&
                 snoozeOptionsMinutes == snoozeOptionsMinutes.distinct().sorted() &&
@@ -100,7 +102,7 @@ enum class WearAlertStatus { PENDING, COMPLETED, SNOOZED, CANCELLED, EXPIRED }
 
 object WearDataPaths {
     const val ALERT_STATE_PREFIX = "/agenda/v1/alerts/"
-    const val ACTION_MESSAGE = "/agenda/v1/actions"
+    const val ACTION_PREFIX = "/agenda/v1/actions/"
     const val PHONE_CAPABILITY = "agenda_phone_v1"
     const val WEAR_CAPABILITY = "agenda_wear_v1"
 
@@ -112,6 +114,18 @@ object WearDataPaths {
     fun alertId(path: String): String? {
         if (!path.startsWith(ALERT_STATE_PREFIX)) return null
         val value = path.removePrefix(ALERT_STATE_PREFIX)
+        if (value.contains('/')) return null
+        return runCatching { UUID.fromString(value).toString() }.getOrNull()
+    }
+
+    fun action(operationId: String): String {
+        UUID.fromString(operationId)
+        return ACTION_PREFIX + operationId
+    }
+
+    fun operationId(path: String): String? {
+        if (!path.startsWith(ACTION_PREFIX)) return null
+        val value = path.removePrefix(ACTION_PREFIX)
         if (value.contains('/')) return null
         return runCatching { UUID.fromString(value).toString() }.getOrNull()
     }

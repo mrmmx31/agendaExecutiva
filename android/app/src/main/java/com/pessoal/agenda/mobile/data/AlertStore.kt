@@ -28,6 +28,10 @@ import java.util.UUID
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import com.pessoal.agenda.wear.contract.WearActionType
+import com.pessoal.agenda.wear.contract.WearAlertState
+import com.pessoal.agenda.wear.contract.WearAlertStatus
+import com.pessoal.agenda.wear.contract.WearCriticality
 
 class AlertStore(
     private val database: MobileDatabase,
@@ -191,6 +195,7 @@ class AlertStore(
                 lastDeliveryAt = null,
                 completedAt = null,
                 updatedAt = createdAt,
+                wearRevision = 1,
             ),
         )
         true
@@ -249,6 +254,44 @@ class AlertStore(
             }
         }
         true
+    }
+
+    suspend fun wearState(alertId: String): WearAlertState? = database.withTransaction {
+        UUID.fromString(alertId)
+        val definition = dao.alertDefinition(alertId) ?: return@withTransaction null
+        val materialization = dao.alertMaterialization(alertId) ?: return@withTransaction null
+        val availableActions = json.decodeFromString<List<String>>(definition.actionsJson).toSet()
+        if (availableActions != setOf(AlertActionType.COMPLETE.name, AlertActionType.SNOOZE.name)) {
+            return@withTransaction null
+        }
+        val profile = dao.sensoryProfile(PROFILE_ID)?.stored() ?: return@withTransaction null
+        val latestAction = dao.latestAlertAction(alertId)
+        val lastDelivery = materialization.lastDeliveryAt?.let(Instant::parse)
+        val latestOccurred = latestAction?.occurredAt?.let(Instant::parse)
+        val status = when {
+            materialization.state == "COMPLETED" -> WearAlertStatus.COMPLETED
+            materialization.state == "CANCELLED" -> WearAlertStatus.CANCELLED
+            materialization.state in setOf("EXPIRED", "DELIVERY_LIMIT_REACHED") -> WearAlertStatus.EXPIRED
+            latestAction?.action == AlertActionType.SNOOZE.name &&
+                (lastDelivery == null || requireNotNull(latestOccurred).isAfter(lastDelivery)) -> WearAlertStatus.SNOOZED
+            else -> WearAlertStatus.PENDING
+        }
+        WearAlertState(
+            contractVersion = WearAlertState.CONTRACT_VERSION,
+            alertId = definition.id,
+            revision = materialization.wearRevision,
+            text = definition.text,
+            reason = definition.reason,
+            sourceDeviceId = definition.sourceDeviceId,
+            scheduledAt = definition.scheduledAt,
+            validUntil = definition.validUntil,
+            updatedAt = materialization.updatedAt,
+            criticality = WearCriticality.valueOf(definition.criticality),
+            actions = WearAlertState.REQUIRED_ACTIONS,
+            snoozeOptionsMinutes = profile.snoozePolicy.presetMinutes.take(WearAlertState.MAX_SNOOZE_OPTIONS),
+            status = status,
+            acknowledgedOperationId = latestAction?.operationId,
+        ).also(WearAlertState::validate)
     }
 
     private fun AlertDefinition.entity(createdAt: String) = AlertDefinitionEntity(

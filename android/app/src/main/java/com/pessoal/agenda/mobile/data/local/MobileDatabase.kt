@@ -24,7 +24,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AlertActionEntity::class,
         SensoryProfileEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class MobileDatabase : RoomDatabase() {
@@ -40,7 +40,7 @@ abstract class MobileDatabase : RoomDatabase() {
                 context.applicationContext,
                 MobileDatabase::class.java,
                 DATABASE_NAME,
-            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build().also { instance = it }
         }
 
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -200,6 +200,14 @@ abstract class MobileDatabase : RoomDatabase() {
                         snoozeMaximumCount INTEGER NOT NULL, updatedAt TEXT NOT NULL
                     )
                 """.trimIndent())
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE alert_materializations ADD COLUMN wearRevision INTEGER NOT NULL DEFAULT 1",
+                )
             }
         }
     }

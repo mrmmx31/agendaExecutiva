@@ -30,6 +30,8 @@ import java.nio.charset.StandardCharsets
 import java.time.Clock
 import java.time.Instant
 import java.util.UUID
+import com.pessoal.agenda.mobile.wear.AlertWearPublisher
+import com.pessoal.agenda.mobile.wear.NoOpAlertWearPublisher
 
 class AlertDeliveryProcessor(
     private val store: AlertStore,
@@ -37,6 +39,7 @@ class AlertDeliveryProcessor(
     private val publisher: AlertNotificationPublisher,
     private val sensoryOutput: AlertSensoryOutput,
     private val deviceIdProvider: () -> String,
+    private val wearPublisher: AlertWearPublisher = NoOpAlertWearPublisher,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     suspend fun process(alertId: String, deliveryId: String) {
@@ -82,6 +85,7 @@ class AlertDeliveryProcessor(
                 ?.let { store.scheduleEvaluation(evaluation.candidate.alertId, it) }
                 ?.let(enqueuer::append)
         }
+        wearPublisher.publish(evaluation.candidate.alertId)
     }
 
     private fun outcome(
@@ -130,6 +134,7 @@ class AlertActionProcessor(
     private val scheduling: AlertSchedulingCoordinator,
     private val publisher: AlertNotificationPublisher,
     private val deviceIdProvider: () -> String,
+    private val wearPublisher: AlertWearPublisher = NoOpAlertWearPublisher,
 ) {
     suspend fun process(payload: AlertNotificationAction): Boolean {
         val profile = store.ensureInstallationProfile()
@@ -137,7 +142,7 @@ class AlertActionProcessor(
             contractVersion = AlertDefinition.CONTRACT_VERSION,
             operationId = payload.operationId,
             alertId = payload.alertId,
-            sourceDeviceId = deviceIdProvider(),
+            sourceDeviceId = payload.sourceDeviceId ?: deviceIdProvider(),
             action = payload.action,
             occurredAt = payload.occurredAt.toString(),
             snoozeUntil = payload.snoozeUntil?.toString(),
@@ -148,6 +153,7 @@ class AlertActionProcessor(
             AlertActionType.SNOOZE -> scheduling.schedule(payload.alertId, requireNotNull(payload.snoozeUntil))
         }
         publisher.cancel(payload.alertId)
+        wearPublisher.publish(payload.alertId)
         return inserted
     }
 }
@@ -170,6 +176,7 @@ data class AlertNotificationAction(
     val action: AlertActionType,
     val occurredAt: Instant,
     val snoozeUntil: Instant?,
+    val sourceDeviceId: String? = null,
 )
 
 enum class NotificationPublishResult { PUBLISHED, PERMISSION_DENIED, ROUTE_UNAVAILABLE, SYSTEM_FAILURE }

@@ -5,8 +5,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.lifecycleScope
 import com.pessoal.agenda.mobile.ui.AgendaMobileApp
+import com.pessoal.agenda.mobile.wear.PhoneWearActionReconciler
 import android.content.Intent
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val pairingInvitation = mutableStateOf<String?>(null)
@@ -16,6 +20,9 @@ class MainActivity : ComponentActivity() {
         pairingInvitation.value = intent.pairingInvitation()
         enableEdgeToEdge()
         setContent { AgendaMobileApp(pairingInvitation.value) }
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching { PhoneWearActionReconciler(applicationContext).reconcile() }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

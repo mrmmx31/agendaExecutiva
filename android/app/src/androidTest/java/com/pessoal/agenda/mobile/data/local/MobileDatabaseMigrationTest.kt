@@ -27,11 +27,12 @@ class MobileDatabaseMigrationTest {
 
         helper.runMigrationsAndValidate(
             TEST_DATABASE,
-            4,
+            5,
             true,
             MobileDatabase.MIGRATION_1_2,
             MobileDatabase.MIGRATION_2_3,
             MobileDatabase.MIGRATION_3_4,
+            MobileDatabase.MIGRATION_4_5,
         ).use { database ->
             database.query("SELECT value FROM mobile_metadata WHERE `key`='contract_version'").use { cursor ->
                 cursor.moveToFirst()
@@ -67,7 +68,8 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            QUEUE_DATABASE, 4, true, MobileDatabase.MIGRATION_2_3, MobileDatabase.MIGRATION_3_4,
+            QUEUE_DATABASE, 5, true, MobileDatabase.MIGRATION_2_3,
+            MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
         ).use { database ->
             database.query("SELECT status, attemptCount, updatedAt FROM pending_operations").use { cursor ->
                 cursor.moveToFirst()
@@ -83,7 +85,7 @@ class MobileDatabaseMigrationTest {
         helper.createDatabase(ALERT_DATABASE, 3).close()
 
         helper.runMigrationsAndValidate(
-            ALERT_DATABASE, 4, true, MobileDatabase.MIGRATION_3_4,
+            ALERT_DATABASE, 5, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
         ).use { database ->
             database.query("SELECT COUNT(*) FROM alert_definitions").use { cursor ->
                 cursor.moveToFirst()
@@ -92,6 +94,12 @@ class MobileDatabaseMigrationTest {
             database.query("SELECT COUNT(*) FROM sensory_profiles").use { cursor ->
                 cursor.moveToFirst()
                 assertEquals(0, cursor.getInt(0))
+            }
+            database.query("PRAGMA table_info(alert_materializations)").use { cursor ->
+                val nameIndex = cursor.getColumnIndexOrThrow("name")
+                var found = false
+                while (cursor.moveToNext()) found = found || cursor.getString(nameIndex) == "wearRevision"
+                assertEquals(true, found)
             }
         }
     }

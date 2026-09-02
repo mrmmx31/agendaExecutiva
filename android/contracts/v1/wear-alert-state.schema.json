@@ -3,7 +3,7 @@
   "$id": "https://agenda.local/contracts/v1/wear-alert-state.schema.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["contract_version", "alert_id", "revision", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "updated_at", "criticality", "actions", "snooze_options_minutes", "status"],
+  "required": ["contract_version", "alert_id", "revision", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "updated_at", "criticality", "actions", "snooze_options_minutes", "status", "acknowledged_operation_id"],
   "properties": {
     "contract_version": { "const": 1 },
     "alert_id": { "type": "string", "format": "uuid" },
@@ -32,6 +32,7 @@
       "uniqueItems": true,
       "items": { "type": "integer", "minimum": 5, "maximum": 240 }
     },
-    "status": { "enum": ["PENDING", "COMPLETED", "SNOOZED", "CANCELLED", "EXPIRED"] }
+    "status": { "enum": ["PENDING", "COMPLETED", "SNOOZED", "CANCELLED", "EXPIRED"] },
+    "acknowledged_operation_id": { "type": ["string", "null"], "format": "uuid" }
   }
 }

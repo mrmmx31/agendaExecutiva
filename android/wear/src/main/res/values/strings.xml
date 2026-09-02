@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Agenda</string>
+    <string name="no_active_alert">Nenhum alerta ativo</string>
+    <string name="complete">Concluir</string>
+    <string name="snooze">Adiar</string>
+    <string name="snooze_for">Adiar por</string>
+    <string name="minutes_format">%1$d min</string>
+    <string name="completed">Concluído</string>
+    <string name="snoozed_for_format">Adiado por %1$d min</string>
 </resources>

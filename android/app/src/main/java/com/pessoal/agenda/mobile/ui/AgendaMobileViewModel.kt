@@ -29,6 +29,7 @@ import com.pessoal.agenda.mobile.pairing.PairingClient
 import com.pessoal.agenda.mobile.pairing.PairingException
 import com.pessoal.agenda.mobile.sync.HttpsSyncTransport
 import com.pessoal.agenda.mobile.sync.SyncRepository
+import com.pessoal.agenda.mobile.wear.AndroidWearStateCleaner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -234,6 +235,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             audioTestJob?.cancel()
             alertScheduling.pause()
             AndroidAlertNotificationPublisher(getApplication()).cancelAllVisualAlerts()
+            AndroidWearStateCleaner(getApplication()).clearAll()
         }
     }
 
@@ -253,7 +255,15 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             snoozePolicy = snoozePolicy,
             routeStatus = sensoryOutput.routeStatus(effective.audioRoute),
         )
-        if (effective.globalEnabled) alertScheduling.reactivate() else alertScheduling.pause()
+        val now = Instant.now()
+        val temporarilySilent = effective.pausedUntil?.let(Instant::parse)?.isAfter(now) == true ||
+            effective.quietHours?.contains(now.atZone(ZoneId.systemDefault()).toLocalTime()) == true
+        if (effective.globalEnabled && !temporarilySilent) {
+            alertScheduling.reactivate()
+        } else {
+            alertScheduling.pause()
+            AndroidWearStateCleaner(getApplication()).clearAll()
+        }
     }
 
     fun pauseSensoryAlerts(minutes: Int?) = execute(
@@ -266,6 +276,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         audioTestJob?.cancel()
         alertScheduling.pause()
         AndroidAlertNotificationPublisher(getApplication()).cancelAllVisualAlerts()
+        if (minutes != null) AndroidWearStateCleaner(getApplication()).clearAll()
         sensorySettings.value = SensorySettingsUiState(
             profile = profile,
             snoozePolicy = stored.snoozePolicy,

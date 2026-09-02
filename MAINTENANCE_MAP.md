@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 40%, restando 60%; `P2-01`, `P2-02`, `P2-03` e `P2-04` concluídas.
+- Projeto 2: implementação em 50%, restando 50%; `P2-01` a `P2-05` concluídas.
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -84,11 +84,11 @@ Não criar um módulo Java/Kotlin compartilhado entre Maven desktop e Android an
 
 ## 6. Componentes móveis planejados
 
-Implementado em `P2-02`:
+Implementado até `P2-05`:
 
 | Área | Local |
 |---|---|
-| Room v4, entidades, DAO e migrações | `android/app/src/main/java/com/pessoal/agenda/mobile/data/local/` |
+| Room v5, entidades, DAO e migrações | `android/app/src/main/java/com/pessoal/agenda/mobile/data/local/` |
 | Transações, fixtures e fila | `android/app/src/main/java/com/pessoal/agenda/mobile/data/OfflineRepository.kt` |
 | Estado e ações da UI | `android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileViewModel.kt` |
 | Telas Compose | `android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileApp.kt` |
@@ -112,6 +112,8 @@ Implementado em `P2-02`:
 | Matriz P2-04 | `android/P2_04_MATRIX.md`; cenários, gates, resultados e limites do AVD |
 | Contrato Wear v1 | `android/wear-contract/`, `contracts/WEAR_V1.md` e `wear-alert-state.schema.json` |
 | Aplicativo Wear | `android/wear/`; mesmo `applicationId` e assinatura do telefone, sem segredo mestre |
+| Transporte e ações Wear | `mobile/wear/`, `wear/sync/` e `wear/data/`; DataItems duráveis, revisão monotônica e outbox Room |
+| Matriz P2-05 | `android/P2_05_MATRIX.md`; conexão, ações conectadas, reconciliação offline, UI e limites |
 
 | Domínio | Android | Wear | Desktop |
 |---|---|---|---|
@@ -160,7 +162,7 @@ Nenhuma permissão entra “para uso futuro”. Cada uma exige requisito, tela e
 | `ACCESS_NETWORK_STATE`, `FOREGROUND_SERVICE` | P2-04 | capacidades normais declaradas pelo runtime WorkManager; o worker atual não usa rede nem foreground | revisar ao atualizar/remover WorkManager |
 | `POST_NOTIFICATIONS` | P2-04 | alertas visuais opt-in após switch contextual | perfil permanece desligado e entregas são suprimidas sem consumir repetição |
 | `VIBRATE` | P2-04 | pulso curto opt-in no canal `PHONE_VIBRATION` | canal de vibração fica indisponível; visual e áudio seguem independentes |
-| Bluetooth/Wear APIs | P2-05 | comunicação oficial com Wear | telefone continua funcional |
+| Data Layer Wear (sem permissão runtime própria) | P2-05 | comunicação oficial com Wear | telefone continua funcional e usa notificação espelhada |
 | Health Connect por tipo | P2-07 | relatório autorizado | categoria fica vazia |
 | histórico/background health | posterior | somente hipótese aprovada | leitura limitada ao permitido |
 | sensores Wear | posterior | medição própria validada | usar dados já disponíveis |

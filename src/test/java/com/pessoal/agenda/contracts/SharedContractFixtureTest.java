@@ -70,6 +70,6 @@ class SharedContractFixtureTest {
     private static final Set<String> ALERT_DEFINITION_KEYS = Set.of("contract_version", "alert_id", "origin", "reference_id", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "criticality", "allowed_channels", "repeat_policy", "actions");
     private static final Set<String> SENSORY_PROFILE_KEYS = Set.of("contract_version", "global_enabled", "enabled_channels", "quiet_hours", "paused_until", "cooldown_minutes", "audio_route");
     private static final Set<String> ALERT_ACTION_KEYS = Set.of("contract_version", "operation_id", "alert_id", "source_device_id", "action", "occurred_at", "snooze_until");
-    private static final Set<String> WEAR_ALERT_STATE_KEYS = Set.of("contract_version", "alert_id", "revision", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "updated_at", "criticality", "actions", "snooze_options_minutes", "status");
+    private static final Set<String> WEAR_ALERT_STATE_KEYS = Set.of("contract_version", "alert_id", "revision", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "updated_at", "criticality", "actions", "snooze_options_minutes", "status", "acknowledged_operation_id");
     private static final Set<String> RESULT_STATES = Set.of("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE");
 }

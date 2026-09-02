@@ -10,7 +10,7 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
-- Contrato Wear v1, módulo compartilhado e scaffold Compose neutro no relógio, com dois de seis itens da P2-05 concluídos
+- P2-05 concluída com Data Layer durável, Room no relógio, revisão monotônica, `Concluir`/`Adiar` offline, confirmação após reconexão e matriz pareada
 - Matriz automatizada P2-04 para permissão, silêncio, cooldown, sobreposição, ações offline, reinício e mudança de rota no AVD
 - Configurações sensoriais Android com presets explícitos, pausa, silêncio, cooldown, vibração opt-in, teste de áudio cancelável e fallback de rota visível
 - Notificação Android visual opt-in, privada e silenciosa, com permissão contextual e ações offline idempotentes `Concluir` e `Adiar`

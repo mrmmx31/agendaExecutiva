@@ -66,7 +66,7 @@ class SharedContractFixtureTest {
         val ALERT_DEFINITION_KEYS = setOf("contract_version", "alert_id", "origin", "reference_id", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "criticality", "allowed_channels", "repeat_policy", "actions")
         val SENSORY_PROFILE_KEYS = setOf("contract_version", "global_enabled", "enabled_channels", "quiet_hours", "paused_until", "cooldown_minutes", "audio_route")
         val ALERT_ACTION_KEYS = setOf("contract_version", "operation_id", "alert_id", "source_device_id", "action", "occurred_at", "snooze_until")
-        val WEAR_ALERT_STATE_KEYS = setOf("contract_version", "alert_id", "revision", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "updated_at", "criticality", "actions", "snooze_options_minutes", "status")
+        val WEAR_ALERT_STATE_KEYS = setOf("contract_version", "alert_id", "revision", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "updated_at", "criticality", "actions", "snooze_options_minutes", "status", "acknowledged_operation_id")
         val RESULT_STATES = setOf("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE")
     }
 }

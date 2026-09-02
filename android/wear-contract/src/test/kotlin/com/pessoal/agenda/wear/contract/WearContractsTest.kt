@@ -50,6 +50,10 @@ class WearContractsTest {
         assertNull(WearDataPaths.alertId("/agenda/v1/alerts/not-a-uuid"))
         assertNull(WearDataPaths.alertId("/agenda/v1/alerts/$id/extra"))
         assertNull(WearDataPaths.alertId("/other/$id"))
+
+        val operationId = "40000000-0000-4000-8000-000000000001"
+        assertEquals(operationId, WearDataPaths.operationId(WearDataPaths.action(operationId)))
+        assertNull(WearDataPaths.operationId("/agenda/v1/actions/not-a-uuid"))
     }
 
     private fun validState() = WearAlertState(
@@ -66,6 +70,7 @@ class WearContractsTest {
         actions = WearAlertState.REQUIRED_ACTIONS,
         snoozeOptionsMinutes = listOf(10, 30, 60),
         status = WearAlertStatus.PENDING,
+        acknowledgedOperationId = null,
     )
 
     private fun validAction(action: WearActionType, snoozeUntil: String?) = WearAlertAction(

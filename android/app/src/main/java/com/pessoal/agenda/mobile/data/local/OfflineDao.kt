@@ -30,6 +30,9 @@ interface OfflineDao {
     @Query("SELECT * FROM alert_actions WHERE operationId=:operationId")
     suspend fun alertAction(operationId: String): AlertActionEntity?
 
+    @Query("SELECT * FROM alert_actions WHERE alertId=:alertId ORDER BY createdAt DESC LIMIT 1")
+    suspend fun latestAlertAction(alertId: String): AlertActionEntity?
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAlertAction(value: AlertActionEntity)
 
@@ -42,16 +45,16 @@ interface OfflineDao {
     @Upsert
     suspend fun upsertSensoryProfile(value: SensoryProfileEntity)
 
-    @Query("UPDATE alert_materializations SET state='COMPLETED', completedAt=:now, updatedAt=:now WHERE alertId=:alertId AND state!='COMPLETED'")
+    @Query("UPDATE alert_materializations SET state='COMPLETED', completedAt=:now, updatedAt=:now, wearRevision=wearRevision+1 WHERE alertId=:alertId AND state!='COMPLETED'")
     suspend fun completeAlert(alertId: String, now: String): Int
 
-    @Query("UPDATE alert_materializations SET state='SNOOZED', nextEligibleAt=:until, snoozeCount=snoozeCount+1, updatedAt=:now WHERE alertId=:alertId AND state!='COMPLETED' AND snoozeCount<:maximumCount")
+    @Query("UPDATE alert_materializations SET state='SNOOZED', nextEligibleAt=:until, snoozeCount=snoozeCount+1, updatedAt=:now, wearRevision=wearRevision+1 WHERE alertId=:alertId AND state!='COMPLETED' AND snoozeCount<:maximumCount")
     suspend fun snoozeAlert(alertId: String, until: String, now: String, maximumCount: Int): Int
 
-    @Query("UPDATE alert_materializations SET state='DELIVERED', deliveryCount=deliveryCount+1, lastDeliveryAt=:now, updatedAt=:now WHERE alertId=:alertId AND state!='COMPLETED' AND deliveryCount<:maximumDeliveries")
+    @Query("UPDATE alert_materializations SET state='DELIVERED', deliveryCount=deliveryCount+1, lastDeliveryAt=:now, updatedAt=:now, wearRevision=wearRevision+1 WHERE alertId=:alertId AND state!='COMPLETED' AND deliveryCount<:maximumDeliveries")
     suspend fun markAlertDelivered(alertId: String, now: String, maximumDeliveries: Int): Int
 
-    @Query("UPDATE alert_materializations SET state=:state, updatedAt=:now WHERE alertId=:alertId AND state!='COMPLETED'")
+    @Query("UPDATE alert_materializations SET state=:state, updatedAt=:now, wearRevision=wearRevision+1 WHERE alertId=:alertId AND state!='COMPLETED'")
     suspend fun markAlertDeliveryOutcome(alertId: String, state: String, now: String): Int
 
     @Query("SELECT COUNT(*) FROM alert_definitions")
@@ -88,13 +91,13 @@ interface OfflineDao {
     """)
     suspend fun reactivatableAlertSchedules(): List<AlertScheduleRow>
 
-    @Query("UPDATE alert_materializations SET state='SCHEDULED', nextEligibleAt=:nextAt, updatedAt=:now WHERE alertId=:alertId AND state NOT IN ('COMPLETED','CANCELLED','EXPIRED','DELIVERY_LIMIT_REACHED')")
+    @Query("UPDATE alert_materializations SET state='SCHEDULED', nextEligibleAt=:nextAt, updatedAt=:now, wearRevision=wearRevision+1 WHERE alertId=:alertId AND state NOT IN ('COMPLETED','CANCELLED','EXPIRED','DELIVERY_LIMIT_REACHED')")
     suspend fun scheduleAlertEvaluation(alertId: String, nextAt: String, now: String): Int
 
-    @Query("UPDATE alert_materializations SET state=:state, updatedAt=:now WHERE alertId=:alertId AND state NOT IN ('COMPLETED','CANCELLED')")
+    @Query("UPDATE alert_materializations SET state=:state, updatedAt=:now, wearRevision=wearRevision+1 WHERE alertId=:alertId AND state NOT IN ('COMPLETED','CANCELLED')")
     suspend fun updateAlertEvaluationState(alertId: String, state: String, now: String): Int
 
-    @Query("UPDATE alert_materializations SET state='CANCELLED', updatedAt=:now WHERE alertId=:alertId AND state NOT IN ('COMPLETED','CANCELLED')")
+    @Query("UPDATE alert_materializations SET state='CANCELLED', updatedAt=:now, wearRevision=wearRevision+1 WHERE alertId=:alertId AND state NOT IN ('COMPLETED','CANCELLED')")
     suspend fun cancelAlert(alertId: String, now: String): Int
 
     @Query("SELECT * FROM mobile_metadata WHERE `key` = :key")

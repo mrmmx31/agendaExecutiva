@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Rule
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -15,6 +16,12 @@ class MobileDatabaseMigrationTest {
         InstrumentationRegistry.getInstrumentation(),
         MobileDatabase::class.java,
     )
+
+    @Before
+    fun ensureDatabaseDirectory() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        check(context.getDatabasePath(TEST_DATABASE).parentFile?.let { it.exists() || it.mkdirs() } == true)
+    }
 
     @Test
     fun migrateMetadataDatabaseThroughDurableAlerts() {
@@ -27,12 +34,13 @@ class MobileDatabaseMigrationTest {
 
         helper.runMigrationsAndValidate(
             TEST_DATABASE,
-            5,
+            6,
             true,
             MobileDatabase.MIGRATION_1_2,
             MobileDatabase.MIGRATION_2_3,
             MobileDatabase.MIGRATION_3_4,
             MobileDatabase.MIGRATION_4_5,
+            MobileDatabase.MIGRATION_5_6,
         ).use { database ->
             database.query("SELECT value FROM mobile_metadata WHERE `key`='contract_version'").use { cursor ->
                 cursor.moveToFirst()
@@ -68,8 +76,8 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            QUEUE_DATABASE, 5, true, MobileDatabase.MIGRATION_2_3,
-            MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
+            QUEUE_DATABASE, 6, true, MobileDatabase.MIGRATION_2_3,
+            MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5, MobileDatabase.MIGRATION_5_6,
         ).use { database ->
             database.query("SELECT status, attemptCount, updatedAt FROM pending_operations").use { cursor ->
                 cursor.moveToFirst()
@@ -85,7 +93,8 @@ class MobileDatabaseMigrationTest {
         helper.createDatabase(ALERT_DATABASE, 3).close()
 
         helper.runMigrationsAndValidate(
-            ALERT_DATABASE, 5, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
+            ALERT_DATABASE, 6, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
+            MobileDatabase.MIGRATION_5_6,
         ).use { database ->
             database.query("SELECT COUNT(*) FROM alert_definitions").use { cursor ->
                 cursor.moveToFirst()
@@ -101,6 +110,7 @@ class MobileDatabaseMigrationTest {
                 while (cursor.moveToNext()) found = found || cursor.getString(nameIndex) == "wearRevision"
                 assertEquals(true, found)
             }
+            database.query("SELECT wearRevision, acknowledgedWearOperationId FROM protocol_runs LIMIT 0").close()
         }
     }
 

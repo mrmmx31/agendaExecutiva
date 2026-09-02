@@ -39,3 +39,34 @@ data class WearActionOutboxEntity(
     val createdAt: String,
     val updatedAt: String,
 )
+
+@Entity(tableName = "wear_protocol_states", indices = [Index("status")])
+data class WearProtocolStateEntity(
+    @PrimaryKey val runId: String,
+    val protocolId: String,
+    val revision: Long,
+    val protocolTitle: String,
+    val stepId: String?,
+    val stepLabel: String?,
+    val stepPosition: Int?,
+    val stepCount: Int,
+    val updatedAt: String,
+    val status: String,
+    val acknowledgedOperationId: String?,
+    val localFeedback: Boolean,
+    val localActionPending: Boolean,
+)
+
+@Entity(
+    tableName = "wear_protocol_action_outbox",
+    indices = [Index("runId"), Index("state")],
+)
+data class WearProtocolActionOutboxEntity(
+    @PrimaryKey val operationId: String,
+    val runId: String,
+    val payload: ByteArray,
+    val state: String,
+    val attemptCount: Int,
+    val createdAt: String,
+    val updatedAt: String,
+)

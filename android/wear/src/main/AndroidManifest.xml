@@ -35,6 +35,13 @@
                     android:host="*"
                     android:pathPrefix="/agenda/v1/alerts/" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/agenda/v1/protocol-runs/" />
+            </intent-filter>
         </service>
     </application>
 </manifest>

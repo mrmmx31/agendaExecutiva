@@ -14,6 +14,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import com.pessoal.agenda.wear.contract.WearProtocolStatus
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -84,6 +85,38 @@ class OfflineRepositoryTest {
         val operations = repository.operations.first()
         assertEquals(5, operations.size)
         assertEquals((1L..5L).toList(), operations.sortedBy { it.sequence }.map { it.sequence })
+    }
+
+    @Test
+    fun protocolWearStateAdvancesAndAcknowledgesExactOperation() = runBlocking {
+        repository.initializeFictitiousData()
+        val runId = repository.startProtocol(OfflineRepository.FIXTURE_PROTOCOL)
+        val first = requireNotNull(repository.protocolWearState(runId))
+        assertEquals(WearProtocolStatus.ACTIVE, first.status)
+        assertEquals("Chaves", first.stepLabel)
+        assertEquals(1, first.stepPosition)
+
+        val operationId = "30000000-0000-4000-8000-000000000001"
+        assertTrue(repository.completeProtocolStep(runId, requireNotNull(first.stepId), operationId))
+
+        val next = requireNotNull(repository.protocolWearState(runId))
+        assertEquals(2, next.revision)
+        assertEquals(operationId, next.acknowledgedOperationId)
+        assertEquals("Carteira", next.stepLabel)
+        assertEquals(2, next.stepPosition)
+    }
+
+    @Test
+    fun mobileProtocolChangeIsQueuedForReviewWithoutMutatingTemplate() = runBlocking {
+        repository.initializeFictitiousData()
+
+        repository.proposeProtocolStep(OfflineRepository.FIXTURE_PROTOCOL, "  Conferir crachá  ")
+
+        val operation = repository.operations.first().single()
+        assertEquals("PROTOCOL_STRUCTURE_PROPOSED", operation.commandType)
+        assertEquals(1L, operation.baseRevision)
+        assertTrue(operation.payloadJson.contains("Conferir crachá"))
+        assertEquals(4, database.offline().protocolSteps(OfflineRepository.FIXTURE_PROTOCOL).size)
     }
 
     @Test

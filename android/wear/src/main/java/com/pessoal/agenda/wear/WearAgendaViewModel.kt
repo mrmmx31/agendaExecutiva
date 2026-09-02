@@ -8,6 +8,8 @@ import com.pessoal.agenda.wear.data.WearAlertStore
 import com.pessoal.agenda.wear.data.WearDatabase
 import com.pessoal.agenda.wear.data.WearDeviceIdentity
 import com.pessoal.agenda.wear.data.WearVisibleAlert
+import com.pessoal.agenda.wear.data.WearProtocolStore
+import com.pessoal.agenda.wear.data.WearVisibleProtocolStep
 import com.pessoal.agenda.wear.sync.WearInitialStateReader
 import com.pessoal.agenda.wear.sync.WearOutboxScheduler
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,6 +20,7 @@ import kotlinx.coroutines.launch
 class WearAgendaViewModel(application: Application) : AndroidViewModel(application) {
     private val identity = WearDeviceIdentity(application)
     private val store = WearAlertStore(WearDatabase.get(application), { identity.deviceId })
+    private val protocolStore = WearProtocolStore(WearDatabase.get(application), { identity.deviceId })
     private val outbox = WearOutboxScheduler(application)
 
     val alert: StateFlow<WearVisibleAlert?> = store.observeVisibleAlert().stateIn(
@@ -26,10 +29,16 @@ class WearAgendaViewModel(application: Application) : AndroidViewModel(applicati
         initialValue = null,
     )
 
+    val protocolStep: StateFlow<WearVisibleProtocolStep?> = protocolStore.observeCurrentStep().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = null,
+    )
+
     init {
         outbox.enqueue()
         viewModelScope.launch {
-            runCatching { WearInitialStateReader(application).refresh(store) }
+            runCatching { WearInitialStateReader(application).refresh(store, protocolStore) }
         }
     }
 
@@ -39,6 +48,17 @@ class WearAgendaViewModel(application: Application) : AndroidViewModel(applicati
 
     fun dismissFeedback(alertId: String) {
         viewModelScope.launch { store.dismissFeedback(alertId) }
+    }
+
+    fun completeProtocolStep(runId: String) {
+        viewModelScope.launch {
+            runCatching { protocolStore.recordCompletion(runId) }
+                .onSuccess { outbox.enqueue() }
+        }
+    }
+
+    fun dismissProtocolFeedback(runId: String) {
+        viewModelScope.launch { protocolStore.dismissFeedback(runId) }
     }
 
     private fun record(alertId: String, action: WearActionType, minutes: Int?) {

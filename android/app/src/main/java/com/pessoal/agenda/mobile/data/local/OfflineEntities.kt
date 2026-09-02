@@ -75,6 +75,8 @@ data class ProtocolRunEntity(
     val protocolRevision: Long,
     val startedAt: String,
     val completedAt: String? = null,
+    val wearRevision: Long = 1,
+    val acknowledgedWearOperationId: String? = null,
 )
 
 @Entity(

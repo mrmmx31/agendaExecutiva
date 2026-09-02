@@ -30,6 +30,7 @@ import androidx.wear.compose.material3.Text
 import com.pessoal.agenda.wear.contract.WearActionType
 import com.pessoal.agenda.wear.data.WearFeedback
 import com.pessoal.agenda.wear.data.WearVisibleAlert
+import com.pessoal.agenda.wear.data.WearVisibleProtocolStep
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -42,11 +43,15 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AgendaWearRoute(viewModel: WearAgendaViewModel = viewModel()) {
     val alert by viewModel.alert.collectAsStateWithLifecycle()
+    val protocolStep by viewModel.protocolStep.collectAsStateWithLifecycle()
     AgendaWearApp(
         alert = alert,
+        protocolStep = protocolStep,
         onComplete = viewModel::complete,
         onSnooze = viewModel::snooze,
         onFeedbackShown = viewModel::dismissFeedback,
+        onCompleteProtocolStep = viewModel::completeProtocolStep,
+        onProtocolFeedbackShown = viewModel::dismissProtocolFeedback,
     )
 }
 
@@ -56,6 +61,9 @@ fun AgendaWearApp(
     onComplete: (String) -> Unit,
     onSnooze: (String, Int) -> Unit,
     onFeedbackShown: (String) -> Unit,
+    protocolStep: WearVisibleProtocolStep? = null,
+    onCompleteProtocolStep: (String) -> Unit = {},
+    onProtocolFeedbackShown: (String) -> Unit = {},
 ) {
     MaterialTheme {
         var choosingSnooze by remember(alert?.alertId) { mutableStateOf(false) }
@@ -64,6 +72,12 @@ fun AgendaWearApp(
             if (alert != null && feedback != null) {
                 delay(FEEDBACK_MILLIS)
                 onFeedbackShown(alert.alertId)
+            }
+        }
+        LaunchedEffect(protocolStep?.runId, protocolStep?.feedback) {
+            if (alert == null && protocolStep?.feedback == true) {
+                delay(FEEDBACK_MILLIS)
+                onProtocolFeedbackShown(protocolStep.runId)
             }
         }
         Column(
@@ -81,20 +95,77 @@ fun AgendaWearApp(
                 textAlign = TextAlign.Center,
             )
             when {
-                alert == null -> EmptyState()
+                alert == null && protocolStep == null -> EmptyState()
+                alert == null && protocolStep?.feedback == true -> ProtocolFeedbackState()
+                alert == null && protocolStep?.actionPending == true -> ProtocolPendingState()
+                alert == null && protocolStep != null -> ProtocolStepActions(
+                    step = protocolStep,
+                    onComplete = { onCompleteProtocolStep(protocolStep.runId) },
+                )
                 feedback != null -> FeedbackState(feedback)
-                choosingSnooze -> SnoozeOptions(
+                alert != null && choosingSnooze -> SnoozeOptions(
                     alert = alert,
                     onSnooze = { minutes -> onSnooze(alert.alertId, minutes) },
                 )
-                else -> AlertActions(
+                alert != null -> AlertActions(
                     alert = alert,
                     onComplete = { onComplete(alert.alertId) },
                     onChooseSnooze = { choosingSnooze = true },
                 )
+                else -> EmptyState()
             }
         }
     }
+}
+
+@Composable
+private fun ProtocolStepActions(step: WearVisibleProtocolStep, onComplete: () -> Unit) {
+    Text(
+        text = step.protocolTitle,
+        modifier = Modifier.padding(top = 8.dp),
+        color = Color(0xFFC8CAC6),
+        style = MaterialTheme.typography.bodySmall,
+        textAlign = TextAlign.Center,
+    )
+    Text(
+        text = step.stepLabel,
+        modifier = Modifier.padding(top = 4.dp),
+        color = Color.White,
+        style = MaterialTheme.typography.titleSmall,
+        textAlign = TextAlign.Center,
+    )
+    Text(
+        text = stringResource(R.string.protocol_step_progress, step.stepPosition, step.stepCount),
+        modifier = Modifier.padding(top = 3.dp, bottom = 10.dp),
+        color = Color(0xFFC8CAC6),
+        style = MaterialTheme.typography.bodySmall,
+        textAlign = TextAlign.Center,
+    )
+    Button(onClick = onComplete, modifier = Modifier.fillMaxWidth(), label = {
+        Text(stringResource(R.string.complete_step))
+    })
+}
+
+@Composable
+private fun ProtocolFeedbackState() {
+    Text(
+        text = stringResource(R.string.step_completed),
+        modifier = Modifier.padding(top = 10.dp),
+        color = Color(0xFF74D6B5),
+        style = MaterialTheme.typography.titleSmall,
+        textAlign = TextAlign.Center,
+    )
+}
+
+@Composable
+private fun ProtocolPendingState() {
+    Text(
+        text = stringResource(R.string.step_confirmation_pending),
+        modifier = Modifier.padding(top = 10.dp),
+        color = Color(0xFFC8CAC6),
+        style = MaterialTheme.typography.bodyMedium,
+        textAlign = TextAlign.Center,
+    )
 }
 
 @Composable

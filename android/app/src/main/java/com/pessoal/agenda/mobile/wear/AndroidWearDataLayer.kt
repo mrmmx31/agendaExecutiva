@@ -23,12 +23,14 @@ import com.pessoal.agenda.mobile.alert.notification.AlertNotificationAction
 import com.pessoal.agenda.mobile.alert.notification.AndroidAlertNotificationPublisher
 import com.pessoal.agenda.mobile.alert.scheduling.AlertSchedulingCoordinator
 import com.pessoal.agenda.mobile.data.AlertStore
+import com.pessoal.agenda.mobile.data.OfflineRepository
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
 import com.pessoal.agenda.mobile.pairing.DeviceCredentialStore
 import com.pessoal.agenda.wear.contract.WearActionType
 import com.pessoal.agenda.wear.contract.WearAlertAction
 import com.pessoal.agenda.wear.contract.WearContractCodec
 import com.pessoal.agenda.wear.contract.WearDataPaths
+import com.pessoal.agenda.wear.contract.WearProtocolCodec
 import java.time.Instant
 import java.util.UUID
 import kotlin.coroutines.resume
@@ -43,6 +45,27 @@ interface AlertWearPublisher {
 
 object NoOpAlertWearPublisher : AlertWearPublisher {
     override suspend fun publish(alertId: String) = WearStatePublishResult.NOT_ELIGIBLE
+}
+
+class AndroidWearProtocolPublisher(
+    private val repository: OfflineRepository,
+    private val client: WearStateDataClient,
+) {
+    constructor(context: Context, repository: OfflineRepository) : this(
+        repository,
+        PlayServicesWearStateDataClient(context.applicationContext),
+    )
+
+    suspend fun publish(runId: String): WearStatePublishResult {
+        val state = repository.protocolWearState(runId) ?: return WearStatePublishResult.NOT_ELIGIBLE
+        return try {
+            client.put(WearDataPaths.protocolState(runId), WearProtocolCodec.encodeState(state))
+            WearStatePublishResult.STORED
+        } catch (error: Exception) {
+            Log.w("AgendaWearProtocol", "Etapa Wear não armazenada: ${error.javaClass.simpleName}")
+            WearStatePublishResult.UNAVAILABLE
+        }
+    }
 }
 
 interface WearStateDataClient {
@@ -127,23 +150,106 @@ class PhoneWearActionEnqueuer(private val context: Context) {
 class PhoneWearActionReconciler(private val context: Context) {
     suspend fun reconcile() {
         val client = Wearable.getDataClient(context.applicationContext)
-        val uri = Uri.parse("wear://*${WearDataPaths.ACTION_PREFIX}")
-        val items = client.getDataItems(uri, DataClient.FILTER_PREFIX).awaitResult()
-        try {
-            val enqueuer = PhoneWearActionEnqueuer(context.applicationContext)
-            items.forEach { enqueuer.enqueue(it.uri, it.data) }
-        } finally {
-            items.release()
+        listOf(WearDataPaths.ACTION_PREFIX, WearDataPaths.PROTOCOL_ACTION_PREFIX).forEach { prefix ->
+            val items = client.getDataItems(Uri.parse("wear://*$prefix"), DataClient.FILTER_PREFIX).awaitResult()
+            try {
+                val alertEnqueuer = PhoneWearActionEnqueuer(context.applicationContext)
+                val protocolEnqueuer = PhoneWearProtocolActionEnqueuer(context.applicationContext)
+                items.forEach {
+                    alertEnqueuer.enqueue(it.uri, it.data)
+                    protocolEnqueuer.enqueue(it.uri, it.data)
+                }
+            } finally {
+                items.release()
+            }
         }
     }
 }
 
 class PhoneWearListenerService : WearableListenerService() {
     override fun onDataChanged(dataEvents: DataEventBuffer) {
-        val enqueuer = PhoneWearActionEnqueuer(this)
+        val alertEnqueuer = PhoneWearActionEnqueuer(this)
+        val protocolEnqueuer = PhoneWearProtocolActionEnqueuer(this)
         dataEvents
             .filter { it.type == DataEvent.TYPE_CHANGED }
-            .forEach { event -> enqueuer.enqueue(event.dataItem.uri, event.dataItem.data) }
+            .forEach { event ->
+                alertEnqueuer.enqueue(event.dataItem.uri, event.dataItem.data)
+                protocolEnqueuer.enqueue(event.dataItem.uri, event.dataItem.data)
+            }
+    }
+}
+
+class PhoneWearProtocolActionEnqueuer(private val context: Context) {
+    fun enqueue(uri: Uri, payload: ByteArray?) {
+        val operationId = WearDataPaths.protocolOperationId(uri.path.orEmpty()) ?: return
+        val action = payload?.takeIf { it.size <= MAX_ACTION_BYTES }
+            ?.let { runCatching { WearProtocolCodec.decodeAction(it) }.getOrNull() }
+        if (action == null || action.operationId != operationId) {
+            Wearable.getDataClient(context).deleteDataItems(uri, DataClient.FILTER_LITERAL)
+            return
+        }
+        val request = OneTimeWorkRequestBuilder<PhoneWearProtocolActionWorker>()
+            .setInputData(workDataOf(
+                PhoneWearProtocolActionWorker.URI_KEY to uri.toString(),
+                PhoneWearProtocolActionWorker.PAYLOAD_KEY to payload,
+            ))
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            PhoneWearProtocolActionWorker.uniqueName(operationId),
+            ExistingWorkPolicy.KEEP,
+            request,
+        )
+    }
+
+    private companion object { const val MAX_ACTION_BYTES = 4 * 1024 }
+}
+
+class PhoneWearProtocolActionWorker(
+    appContext: Context,
+    parameters: WorkerParameters,
+) : CoroutineWorker(appContext, parameters) {
+    override suspend fun doWork(): Result {
+        val uri = inputData.getString(URI_KEY)?.let(Uri::parse)
+            ?: return Result.failure(errorData("INVALID_URI"))
+        val payload = inputData.getByteArray(PAYLOAD_KEY)
+            ?: return Result.failure(errorData("INVALID_PAYLOAD"))
+        return try {
+            val operationId = WearDataPaths.protocolOperationId(uri.path.orEmpty())
+                ?: return Result.failure(errorData("INVALID_PATH"))
+            val action = WearProtocolCodec.decodeAction(payload)
+            require(action.operationId == operationId) { "Operação e caminho divergentes." }
+            val credentials = DeviceCredentialStore(applicationContext)
+            val repository = OfflineRepository(
+                MobileDatabase.get(applicationContext),
+                deviceIdProvider = { credentials.deviceId },
+            )
+            repository.completeProtocolStep(action.runId, action.stepId, action.operationId)
+            if (AndroidWearProtocolPublisher(applicationContext, repository).publish(action.runId) !=
+                WearStatePublishResult.STORED
+            ) {
+                return if (runAttemptCount < MAX_ATTEMPTS - 1) Result.retry()
+                else Result.failure(errorData("WEAR_ACK_FAILED"))
+            }
+            Wearable.getDataClient(applicationContext)
+                .deleteDataItems(uri, DataClient.FILTER_LITERAL)
+                .awaitResult()
+            Result.success()
+        } catch (error: IllegalArgumentException) {
+            Result.failure(errorData("INVALID_ACTION"))
+        } catch (error: Exception) {
+            if (runAttemptCount < MAX_ATTEMPTS - 1) Result.retry()
+            else Result.failure(errorData("WEAR_PROTOCOL_ACTION_FAILED"))
+        }
+    }
+
+    private fun errorData(code: String): Data = workDataOf(ERROR_KEY to code)
+
+    companion object {
+        const val URI_KEY = "wear_protocol_action_uri"
+        const val PAYLOAD_KEY = "wear_protocol_action_payload"
+        const val ERROR_KEY = "error_code"
+        private const val MAX_ATTEMPTS = 5
+        fun uniqueName(operationId: String): String = "agenda-wear-protocol-action-${UUID.fromString(operationId)}"
     }
 }
 

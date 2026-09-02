@@ -30,6 +30,8 @@ final class SyncBatchProcessor {
     private static final Set<String> RUN_FIELDS = Set.of(
             "run_id", "protocol_id", "protocol_revision", "started_at");
     private static final Set<String> STEP_FIELDS = Set.of("run_id", "step_id", "completed_at");
+    private static final Set<String> PROTOCOL_PROPOSAL_FIELDS = Set.of(
+            "protocol_id", "base_revision", "proposed_step_label", "proposed_at");
 
     private final DesktopSyncRepository repository;
     private final Gson gson = new GsonBuilder().serializeNulls().create();
@@ -98,6 +100,8 @@ final class SyncBatchProcessor {
                         input(operation, "APPLIED", null, null, null), payload, baseRevision);
                 case "PROTOCOL_STEP_COMPLETED" -> processProtocolStep(
                         input(operation, "APPLIED", null, null, null), payload);
+                case "PROTOCOL_STRUCTURE_PROPOSED" -> processProtocolProposal(
+                        input(operation, "APPLIED", null, null, null), payload, baseRevision);
                 default -> storeRejected(operation, "BUSINESS_RULE");
             };
         } catch (DesktopSyncRepository.SyncPersistenceException error) {
@@ -161,6 +165,27 @@ final class SyncBatchProcessor {
         DesktopSyncRepository.StoredOperation stored = repository.applyProtocolEvent(
                 input, gson.toJson(payload));
         return gson.fromJson(stored.resultJson(), JsonObject.class);
+    }
+
+    private JsonObject processProtocolProposal(DesktopSyncRepository.OperationInput input,
+                                               JsonObject payload, Long baseRevision) {
+        if (!repository.hasRole(input.deviceId(), "PROTOCOLS_EXECUTE")) {
+            return storeRejected(input, "ROLE_DENIED");
+        }
+        require(payload != null && payload.keySet().equals(PROTOCOL_PROPOSAL_FIELDS));
+        String protocolId = requiredUuid(payload, "protocol_id");
+        require(protocolId.equals(input.entityId()));
+        long proposedBase = payload.get("base_revision").getAsLong();
+        require(proposedBase >= 1 && baseRevision != null && baseRevision == proposedBase);
+        String label = requiredString(payload, "proposed_step_label").trim();
+        require(!label.isEmpty() && label.length() <= 120);
+        Instant.parse(requiredString(payload, "proposed_at"));
+        long currentRevision = repository.currentRevision("protocol", protocolId);
+        if (currentRevision == 0) return storeRejected(input, "BUSINESS_RULE");
+        DesktopSyncRepository.StoredOperation conflict = repository.storeConflict(
+                input, proposedBase, "STRUCTURE_DIVERGED", gson.toJson(payload),
+                repository.currentEntityJson("protocol", protocolId), currentRevision);
+        return gson.fromJson(conflict.resultJson(), JsonObject.class);
     }
 
     private JsonObject storeRejected(JsonObject operation, String errorCode) {

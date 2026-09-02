@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 53,3% do Projeto 2 |
+| Status | Implementação em andamento; 58,3% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-05` estão concluídas e dois dos seis itens de `P2-06` também. O avanço geral é 53,3% e restam 46,7%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-05` estão concluídas e cinco dos seis itens de `P2-06` também. O avanço geral é 58,3% e restam 41,7%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -663,18 +663,20 @@ Espelhamento validado, módulo Wear, Data Layer, dois botões, estado offline m�
 
 Execução offline, passo atual, relógio, sugestões determinísticas e revisão de alterações estruturais.
 
-**Status:** Em andamento, 33,3% (2 de 6 itens concluídos).
+**Status:** Em andamento, 83,3% (5 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
 - [x] fechar contrato mínimo do passo atual e da confirmação Wear, sem contexto ou dado sensível adicional;
 - [x] oferecer `Vou sair` diretamente no smartphone e Dashboard, com abertura imediata ou até três escolhas determinísticas;
-- [ ] publicar o passo atual no relógio e persistir a confirmação offline antes do feedback;
-- [ ] convergir a confirmação idempotente no telefone e avançar para o próximo passo;
-- [ ] encaminhar alterações estruturais móveis para revisão explícita antes de mudar o template desktop;
+- [x] publicar o passo atual no relógio e persistir a confirmação offline antes do feedback;
+- [x] convergir a confirmação idempotente no telefone e avançar para o próximo passo;
+- [x] encaminhar alterações estruturais móveis para revisão explícita antes de mudar o template desktop;
 - [ ] aprovar matriz offline/pareada, temas, retomada, conclusão e ausência de localização/estímulo espontâneo.
 
-**Evidência inicial:** `WearProtocolStepState` e `WearProtocolStepAction` limitam o payload a IDs, revisão, título curto, passo atual, posição e confirmação; schemas e fixtures fechados são compartilhados com Kotlin e Java. No Android, `Vou sair` prioriza nomes explícitos de saída, limita a superfície a três opções e abre diretamente quando existe uma única candidata. Uma execução ativa apenas leva ao checklist existente. No desktop, a ação fica no bloco `Agora` e abre o template de saída sem passar pelo editor.
+**Evidência:** `WearProtocolStepState` e `WearProtocolStepAction` limitam o payload a IDs, revisão, título curto, passo atual, posição e confirmação; schemas e fixtures fechados são compartilhados com Kotlin e Java. No Android, `Vou sair` prioriza nomes explícitos de saída, limita a superfície a três opções e abre diretamente quando existe uma única candidata. Uma execução ativa apenas leva ao checklist existente. No desktop, a ação fica no bloco `Agora` e abre o template de saída sem passar pelo editor.
+
+Room v6 no telefone mantém revisão e ack da execução; Room v2 no relógio persiste passo e outbox antes do feedback. A confirmação pendente bloqueia repetição, o telefone reutiliza o `operation_id` Wear e publica a próxima revisão. Alertas sensoriais têm prioridade visual e o passo do protocolo oferece somente `Concluir etapa`. `Sugerir item` enfileira `PROTOCOL_STRUCTURE_PROPOSED`; o servidor sempre o registra como revisão `STRUCTURE_DIVERGED` e não altera o template. A matriz local está em [`android/P2_06_MATRIX.md`](android/P2_06_MATRIX.md). Falta somente refazer o pareamento dos AVDs, perdido ao corrigir um boot `RUNNING_LOCKED`, e aprovar o percurso Data Layer ponta a ponta.
 
 ### P2-07 — Saúde e relatório básico
 
@@ -735,4 +737,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Iniciar `P2-06` pelo contrato mínimo de execução de protocolos móveis e pelo fluxo explícito `Vou sair`, mantendo operação offline e sem localização.
+Refazer o pareamento dos AVDs e executar o gate Data Layer de protocolo descrito em `android/P2_06_MATRIX.md`; depois concluir `P2-06`.

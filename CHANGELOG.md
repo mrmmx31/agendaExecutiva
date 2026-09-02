@@ -10,6 +10,7 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- P2-06 em 83,3% com `Vou sair`, passo atual e confirmação offline no Wear, Room v6/v2 e sugestões estruturais obrigatoriamente encaminhadas para revisão
 - Início da P2-06 com ação direta `Vou sair` no Android e Dashboard, seleção curta determinística e contrato mínimo do passo atual no Wear
 - P2-05 concluída com Data Layer durável, Room no relógio, revisão monotônica, `Concluir`/`Adiar` offline, confirmação após reconexão e matriz pareada
 - Matriz automatizada P2-04 para permissão, silêncio, cooldown, sobreposição, ações offline, reinício e mudança de rota no AVD

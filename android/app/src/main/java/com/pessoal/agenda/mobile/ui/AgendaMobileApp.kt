@@ -113,6 +113,7 @@ fun AgendaMobileApp(
             onSaveCapture = viewModel::saveCapture,
             onStartProtocol = viewModel::startProtocol,
             onCompleteStep = viewModel::completeStep,
+            onProposeProtocolStep = viewModel::proposeProtocolStep,
             onSync = viewModel::syncNow,
             onPair = viewModel::pairDesktop,
             onCancelPairing = viewModel::cancelPairing,
@@ -171,6 +172,7 @@ internal fun AgendaMobileScreen(
     onPauseSensoryAlerts: (Int?) -> Unit = {},
     onTestAudio: () -> Unit = {},
     onRefreshAudioRoute: () -> Unit = {},
+    onProposeProtocolStep: (String, String) -> Unit = { _, _ -> },
 ) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var showPairing by rememberSaveable { mutableStateOf(false) }
@@ -326,6 +328,7 @@ internal fun AgendaMobileScreen(
                         state.busy,
                         onStartProtocol,
                         onCompleteStep,
+                        onProposeProtocolStep,
                     )
                     MobileSection.QUEUE -> QueueScreen(state.operations, state.conflicts)
                 }
@@ -576,7 +579,37 @@ private fun ProtocolScreen(
     busy: Boolean,
     onStart: (String) -> Unit,
     onComplete: (String, String) -> Unit,
+    onProposeStep: (String, String) -> Unit,
 ) {
+    var proposalProtocol by remember { mutableStateOf<ProtocolTemplateEntity?>(null) }
+    var proposalLabel by remember { mutableStateOf("") }
+    proposalProtocol?.let { protocol ->
+        AlertDialog(
+            onDismissRequest = { proposalProtocol = null },
+            title = { Text("Sugerir item") },
+            text = {
+                OutlinedTextField(
+                    value = proposalLabel,
+                    onValueChange = { proposalLabel = it.take(120) },
+                    label = { Text("Novo item para ${protocol.title}") },
+                    singleLine = false,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onProposeStep(protocol.id, proposalLabel)
+                        proposalProtocol = null
+                        proposalLabel = ""
+                    },
+                    enabled = proposalLabel.isNotBlank() && !busy,
+                ) { Text("Enviar para revisão") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { proposalProtocol = null }) { Text("Cancelar") }
+            },
+        )
+    }
     ScreenList(title = "Protocolos") {
         if (activeSteps.isNotEmpty()) {
             item {
@@ -612,6 +645,15 @@ private fun ProtocolScreen(
                     OutlinedButton(onClick = { onStart(protocol.id) }, enabled = !busy) {
                         Icon(Icons.Outlined.PlayArrow, contentDescription = null)
                         Text("Iniciar")
+                    }
+                    IconButton(
+                        onClick = {
+                            proposalLabel = ""
+                            proposalProtocol = protocol
+                        },
+                        enabled = !busy,
+                    ) {
+                        Icon(Icons.Outlined.Add, contentDescription = "Sugerir item")
                     }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

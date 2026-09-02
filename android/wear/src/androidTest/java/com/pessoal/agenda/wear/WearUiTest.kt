@@ -8,6 +8,7 @@ import com.pessoal.agenda.wear.contract.WearAlertStatus
 import com.pessoal.agenda.wear.contract.WearActionType
 import com.pessoal.agenda.wear.data.WearFeedback
 import com.pessoal.agenda.wear.data.WearVisibleAlert
+import com.pessoal.agenda.wear.data.WearVisibleProtocolStep
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -69,6 +70,37 @@ class WearUiTest {
         assertEquals(ALERT_ID, dismissed)
     }
 
+    @Test
+    fun protocolShowsOnlyCurrentStepAndCompletion() {
+        var completed: String? = null
+        compose.setContent {
+            AgendaWearApp(
+                alert = null,
+                onComplete = {},
+                onSnooze = { _, _ -> },
+                onFeedbackShown = {},
+                protocolStep = protocolStep(),
+                onCompleteProtocolStep = { completed = it },
+            )
+        }
+
+        compose.onNodeWithText("Chaves").assertIsDisplayed()
+        compose.onNodeWithText("Etapa 1 de 4").assertIsDisplayed()
+        compose.onNodeWithText("Concluir etapa").performClick()
+        compose.onNodeWithText("Adiar").assertDoesNotExist()
+        assertEquals(RUN_ID, completed)
+    }
+
+    @Test
+    fun sensoryAlertHasPriorityOverProtocol() {
+        compose.setContent {
+            AgendaWearApp(alert(), {}, { _, _ -> }, {}, protocolStep())
+        }
+
+        compose.onNodeWithText("Revisar compromisso").assertIsDisplayed()
+        compose.onNodeWithText("Chaves").assertDoesNotExist()
+    }
+
     private fun alert(feedback: WearFeedback? = null) = WearVisibleAlert(
         alertId = ALERT_ID,
         text = "Revisar compromisso",
@@ -78,7 +110,19 @@ class WearUiTest {
         feedback = feedback,
     )
 
+    private fun protocolStep() = WearVisibleProtocolStep(
+        runId = RUN_ID,
+        protocolTitle = "Saída rápida",
+        stepId = "70000000-0000-4000-8000-000000000003",
+        stepLabel = "Chaves",
+        stepPosition = 1,
+        stepCount = 4,
+        feedback = false,
+        actionPending = false,
+    )
+
     private companion object {
         const val ALERT_ID = "70000000-0000-4000-8000-000000000001"
+        const val RUN_ID = "70000000-0000-4000-8000-000000000002"
     }
 }

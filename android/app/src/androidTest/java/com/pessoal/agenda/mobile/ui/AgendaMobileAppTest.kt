@@ -90,6 +90,40 @@ class AgendaMobileAppTest {
     }
 
     @Test
+    fun protocolStepSuggestionRequiresExplicitReviewSubmission() {
+        var proposal: Pair<String, String>? = null
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(protocols = listOf(ProtocolTemplateEntity(
+                        id = "protocol-id",
+                        title = "Saída de casa",
+                        revision = 1,
+                        createdAt = "2026-09-02T12:00:00Z",
+                        updatedAt = "2026-09-02T12:00:00Z",
+                    ))),
+                    onSaveCapture = { _, _ -> },
+                    onStartProtocol = {},
+                    onCompleteStep = { _, _ -> },
+                    onSync = {},
+                    onPair = { _, _ -> },
+                    onCancelPairing = {},
+                    onPairingCompletionShown = {},
+                    onFeedbackShown = {},
+                    onProposeProtocolStep = { id, label -> proposal = id to label },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Protocolos").performClick()
+        compose.onNodeWithContentDescription("Sugerir item").performClick()
+        compose.onNodeWithText("Novo item para Saída de casa").performTextInput("Conferir crachá")
+        assertEquals(null, proposal)
+        compose.onNodeWithText("Enviar para revisão").performClick()
+        assertEquals("protocol-id" to "Conferir crachá", proposal)
+    }
+
+    @Test
     fun captureDraftIsSentAndOnlyClearedBySuccessCallback() {
         var received = ""
         compose.setContent {

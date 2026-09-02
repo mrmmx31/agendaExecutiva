@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativos Android e Wear OS do Projeto 2 com núcleo offline e `P2-03`, `P2-04` e `P2-05` concluídos. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline; saúde e IA ainda não estão ativas.
+Aplicativos Android e Wear OS do Projeto 2 com `P2-01` a `P2-05` concluídas e `P2-06` em 5 de 6 itens. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline; saúde e IA ainda não estão ativas.
 
 ## Requisitos
 
@@ -55,15 +55,15 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - O Google Pixel Watch do AVD precisou das permissões de notificações e dispositivos próximos; isso não altera as permissões do aplicativo Agenda.
 - Data Layer pareado aprovado para estado, `Concluir`, `Adiar` e reconciliação depois de o app do telefone ser reaberto; matriz em [`P2_05_MATRIX.md`](P2_05_MATRIX.md).
 - Room Android v5 mantém revisão Wear; Room próprio do relógio persiste alerta e outbox antes do feedback.
-- P2-06 iniciada com `Vou sair` na tela Hoje, escolha de até três protocolos e contrato fechado para o passo atual no Wear.
+- P2-06 implementa `Vou sair`, escolha determinística, passo atual e confirmação offline no Wear e sugestões estruturais que exigem revisão; falta o gate pareado descrito em [`P2_06_MATRIX.md`](P2_06_MATRIX.md).
 
 ## Limites
 
 - Package: `com.pessoal.agenda.mobile`.
 - Banco: `agenda-mobile.db`, separado do SQLite desktop.
-- Banco atual: Room v5, com schema exportado em `app/schemas/` e migrações explícitas `1 -> 2 -> 3 -> 4 -> 5`.
+- Banco atual: Room v6 no telefone e v2 no relógio, com schemas exportados e migrações explícitas.
 - Contrato atual: v1, catalogado em `contracts/README.md`.
-- O Data Layer transporta somente o estado mínimo de alerta e as ações Wear v1; protocolos entram em `P2-06` e dados sensíveis não fazem parte do payload.
+- O Data Layer transporta somente estados e ações mínimas v1 de alertas e do passo atual do protocolo; dados sensíveis não fazem parte desses payloads.
 - Backup e transferência de dados Android estão desativados.
 - Nenhuma permissão é solicitada durante instalação ou startup.
 - WorkManager declara permissões normais de boot, wake lock, rede e serviço interno; `POST_NOTIFICATIONS` só é solicitado ao ativar um perfil que inclua o canal visual.

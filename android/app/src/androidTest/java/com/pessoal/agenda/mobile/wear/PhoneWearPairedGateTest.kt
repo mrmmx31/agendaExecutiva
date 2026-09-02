@@ -12,6 +12,8 @@ import com.pessoal.agenda.mobile.alert.AlertRepeatPolicy
 import com.pessoal.agenda.mobile.alert.FunctionalCriticality
 import com.pessoal.agenda.mobile.alert.SensoryChannel
 import com.pessoal.agenda.mobile.data.AlertStore
+import com.pessoal.agenda.mobile.data.OfflineRepository
+import com.pessoal.agenda.mobile.pairing.DeviceCredentialStore
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
 import com.pessoal.agenda.wear.contract.WearAlertStatus
 import java.time.Instant
@@ -72,6 +74,25 @@ class PhoneWearPairedGateTest {
         assertEquals("COMPLETED", database.offline().alertMaterialization(OFFLINE_ALERT_ID)?.state)
     }
 
+    @Test
+    fun publishProtocolStepFixture() = runBlocking {
+        val repository = protocolRepository()
+        repository.initializeFictitiousData()
+        val runId = repository.startProtocol(OfflineRepository.FIXTURE_PROTOCOL)
+        assertEquals(WearStatePublishResult.STORED, AndroidWearProtocolPublisher(context, repository).publish(runId))
+    }
+
+    @Test
+    fun assertProtocolAdvancedAfterWearConfirmation() = runBlocking {
+        val repository = protocolRepository()
+        repeat(150) {
+            val state = repository.protocolWearState(requireNotNull(database.offline().activeRun()).id)
+            if (state?.stepPosition == 2 && state.acknowledgedOperationId != null) return@runBlocking
+            delay(200)
+        }
+        error("Confirmação da etapa Wear não convergiu em 30 segundos.")
+    }
+
     private suspend fun publishFixture(alertId: String, title: String) {
         store.ensureInstallationProfile()
         if (database.offline().alertMaterialization(alertId) == null) {
@@ -106,6 +127,11 @@ class PhoneWearPairedGateTest {
         }
         error("Convergência Wear não ocorreu em 20 segundos.")
     }
+
+    private fun protocolRepository() = OfflineRepository(
+        database,
+        deviceIdProvider = { DeviceCredentialStore(context).deviceId },
+    )
 
     private companion object {
         const val SNOOZE_ALERT_ID = "91000000-0000-4000-8000-000000000001"

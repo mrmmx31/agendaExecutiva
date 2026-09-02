@@ -30,6 +30,7 @@ import com.pessoal.agenda.mobile.pairing.PairingException
 import com.pessoal.agenda.mobile.sync.HttpsSyncTransport
 import com.pessoal.agenda.mobile.sync.SyncRepository
 import com.pessoal.agenda.mobile.wear.AndroidWearStateCleaner
+import com.pessoal.agenda.mobile.wear.AndroidWearProtocolPublisher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -158,11 +159,21 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
 
     fun startProtocol(protocolId: String) = execute(
         successMessage = "Protocolo iniciado offline.",
-    ) { repository.startProtocol(protocolId) }
+    ) {
+        val runId = repository.startProtocol(protocolId)
+        AndroidWearProtocolPublisher(getApplication(), repository).publish(runId)
+    }
 
     fun completeStep(runId: String, stepId: String) = execute(
         successMessage = "Passo confirmado.",
-    ) { repository.completeProtocolStep(runId, stepId) }
+    ) {
+        repository.completeProtocolStep(runId, stepId)
+        AndroidWearProtocolPublisher(getApplication(), repository).publish(runId)
+    }
+
+    fun proposeProtocolStep(protocolId: String, label: String) = execute(
+        successMessage = "Sugestão enviada para a fila de revisão.",
+    ) { repository.proposeProtocolStep(protocolId, label) }
 
     fun syncNow() = execute(successMessage = "Sincronização concluída.") {
         check(canSync.value) { "Telefone ainda não pareado." }

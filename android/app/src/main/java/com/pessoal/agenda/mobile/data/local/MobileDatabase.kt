@@ -24,7 +24,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AlertActionEntity::class,
         SensoryProfileEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class MobileDatabase : RoomDatabase() {
@@ -40,7 +40,9 @@ abstract class MobileDatabase : RoomDatabase() {
                 context.applicationContext,
                 MobileDatabase::class.java,
                 DATABASE_NAME,
-            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build().also { instance = it }
+            ).addMigrations(
+                MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+            ).build().also { instance = it }
         }
 
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -208,6 +210,13 @@ abstract class MobileDatabase : RoomDatabase() {
                 database.execSQL(
                     "ALTER TABLE alert_materializations ADD COLUMN wearRevision INTEGER NOT NULL DEFAULT 1",
                 )
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE protocol_runs ADD COLUMN wearRevision INTEGER NOT NULL DEFAULT 1")
+                database.execSQL("ALTER TABLE protocol_runs ADD COLUMN acknowledgedWearOperationId TEXT")
             }
         }
     }

@@ -11,6 +11,8 @@ import com.pessoal.agenda.mobile.data.local.ProtocolRunStepEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolStepEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
+import com.pessoal.agenda.wear.contract.WearProtocolStatus
+import com.pessoal.agenda.wear.contract.WearProtocolStepState
 import java.security.MessageDigest
 import java.time.Clock
 import java.time.Instant
@@ -136,21 +138,70 @@ class OfflineRepository(
         runId
     }
 
-    suspend fun completeProtocolStep(runId: String, stepId: String): Boolean = database.withTransaction {
+    suspend fun completeProtocolStep(
+        runId: String,
+        stepId: String,
+        operationId: String = validId(),
+    ): Boolean = database.withTransaction {
+        UUID.fromString(operationId)
         val existing = requireNotNull(dao.runStep(runId, stepId)) { "Passo da execucao inexistente." }
         if (existing.completedAt != null) return@withTransaction false
         val occurredAt = instant()
         if (dao.completeRunStep(runId, stepId, occurredAt) != 1) return@withTransaction false
         enqueue(
-            operationId = validId(),
+            operationId = operationId,
             entityType = "protocol_run_step",
             entityId = stepId,
             commandType = "PROTOCOL_STEP_COMPLETED",
             occurredAt = occurredAt,
             payloadJson = Json.encodeToString(ProtocolStepCompletedPayload(runId, stepId, occurredAt)),
         )
+        check(dao.acknowledgeWearProtocolAction(runId, operationId) == 1)
         if (dao.incompleteRunStepCount(runId) == 0) dao.completeRun(runId, occurredAt)
         true
+    }
+
+    suspend fun protocolWearState(runId: String): WearProtocolStepState? = database.withTransaction {
+        val run = dao.protocolRun(runId) ?: return@withTransaction null
+        val rows = dao.runSteps(runId)
+        if (rows.size !in 1..100) return@withTransaction null
+        val current = rows.firstOrNull { it.completedAt == null }
+        WearProtocolStepState(
+            contractVersion = WearProtocolStepState.CONTRACT_VERSION,
+            runId = run.id,
+            protocolId = run.protocolId,
+            revision = run.wearRevision,
+            protocolTitle = rows.first().protocolTitle.trim().take(80),
+            stepId = current?.stepId,
+            stepLabel = current?.label?.trim()?.take(120),
+            stepPosition = current?.position?.plus(1),
+            stepCount = rows.size,
+            updatedAt = run.completedAt
+                ?: rows.mapNotNull(ActiveRunStepRow::completedAt).maxOrNull()
+                ?: run.startedAt,
+            status = if (current == null) WearProtocolStatus.COMPLETED else WearProtocolStatus.ACTIVE,
+            acknowledgedOperationId = run.acknowledgedWearOperationId,
+        ).also(WearProtocolStepState::validate)
+    }
+
+    suspend fun proposeProtocolStep(protocolId: String, rawLabel: String): String = database.withTransaction {
+        val protocol = requireNotNull(dao.protocol(protocolId)) { "Protocolo inexistente." }
+        val label = rawLabel.trim()
+        require(label.isNotEmpty() && label.length <= 120) { "O item deve ter entre 1 e 120 caracteres." }
+        val operationId = validId()
+        val occurredAt = instant()
+        enqueue(
+            operationId = operationId,
+            entityType = "protocol",
+            entityId = protocolId,
+            commandType = "PROTOCOL_STRUCTURE_PROPOSED",
+            occurredAt = occurredAt,
+            payloadJson = Json.encodeToString(
+                ProtocolStructureProposedPayload(protocolId, protocol.revision, label, occurredAt),
+            ),
+            baseRevision = protocol.revision,
+        )
+        operationId
     }
 
     private suspend fun enqueue(
@@ -235,4 +286,12 @@ private data class ProtocolStepCompletedPayload(
     @SerialName("run_id") val runId: String,
     @SerialName("step_id") val stepId: String,
     @SerialName("completed_at") val completedAt: String,
+)
+
+@Serializable
+private data class ProtocolStructureProposedPayload(
+    @SerialName("protocol_id") val protocolId: String,
+    @SerialName("base_revision") val baseRevision: Long,
+    @SerialName("proposed_step_label") val proposedStepLabel: String,
+    @SerialName("proposed_at") val proposedAt: String,
 )

@@ -1,0 +1,18 @@
+{
+  "contract_version": 1,
+  "entry_id": "a1000000-0000-4000-8000-000000000002",
+  "kind": "MEDICATION",
+  "name": "Item ficticio A",
+  "amount": null,
+  "unit": null,
+  "planned_at": "2026-09-02T12:00:00Z",
+  "occurred_at": "2026-09-02T12:05:00Z",
+  "time_zone": "America/Manaus",
+  "context": null,
+  "perceived_effect": null,
+  "note": null,
+  "source": "MANUAL",
+  "revision": 1,
+  "tombstone": false,
+  "updated_at": "2026-09-02T12:05:00Z"
+}

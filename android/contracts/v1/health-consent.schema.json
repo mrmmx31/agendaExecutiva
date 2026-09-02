@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/health-consent.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "consent_id", "category", "purpose", "enabled", "foreground_only", "retention_days", "granted_at", "revoked_at", "updated_at"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "consent_id": { "type": "string", "format": "uuid" },
+    "category": { "enum": ["HEART_RATE", "RESTING_HEART_RATE", "SLEEP", "ACTIVITY", "MEDICATION", "SUBSTANCE", "SYMPTOM", "ROUTINE_NOTE"] },
+    "purpose": { "const": "USER_REVIEWABLE_REPORT" },
+    "enabled": { "type": "boolean" },
+    "foreground_only": { "type": "boolean" },
+    "retention_days": { "type": "integer", "minimum": 1, "maximum": 3650 },
+    "granted_at": { "type": ["string", "null"], "format": "date-time" },
+    "revoked_at": { "type": ["string", "null"], "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}

@@ -29,6 +29,9 @@ class SharedContractFixtureTest {
         assertKeys("wear-alert-state.valid.json", WEAR_ALERT_STATE_KEYS);
         assertKeys("wear-protocol-step-state.valid.json", WEAR_PROTOCOL_STATE_KEYS);
         assertKeys("wear-protocol-step-action.valid.json", WEAR_PROTOCOL_ACTION_KEYS);
+        assertKeys("health-consent.valid.json", HEALTH_CONSENT_KEYS);
+        assertKeys("intake-log.valid.json", INTAKE_LOG_KEYS);
+        assertKeys("symptom-log.valid.json", SYMPTOM_LOG_KEYS);
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").get("status").getAsString());
         assertEquals("APPLIED", fixture("sync-result.valid.json").get("status").getAsString());
@@ -36,6 +39,9 @@ class SharedContractFixtureTest {
         assertFalse(fixture("sensory-profile.valid.json").get("global_enabled").getAsBoolean());
         assertEquals("SNOOZE", fixture("alert-action.valid.json").get("action").getAsString());
         assertEquals("PENDING", fixture("wear-alert-state.valid.json").get("status").getAsString());
+        assertEquals("SYMPTOM", fixture("health-consent.valid.json").get("category").getAsString());
+        assertEquals("MANUAL", fixture("intake-log.valid.json").get("source").getAsString());
+        assertEquals("MANUAL", fixture("symptom-log.valid.json").get("source").getAsString());
     }
 
     @Test
@@ -75,5 +81,8 @@ class SharedContractFixtureTest {
     private static final Set<String> WEAR_ALERT_STATE_KEYS = Set.of("contract_version", "alert_id", "revision", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "updated_at", "criticality", "actions", "snooze_options_minutes", "status", "acknowledged_operation_id");
     private static final Set<String> WEAR_PROTOCOL_STATE_KEYS = Set.of("contract_version", "run_id", "protocol_id", "revision", "protocol_title", "step_id", "step_label", "step_position", "step_count", "updated_at", "status", "acknowledged_operation_id");
     private static final Set<String> WEAR_PROTOCOL_ACTION_KEYS = Set.of("contract_version", "operation_id", "run_id", "step_id", "source_device_id", "occurred_at");
+    private static final Set<String> HEALTH_CONSENT_KEYS = Set.of("contract_version", "consent_id", "category", "purpose", "enabled", "foreground_only", "retention_days", "granted_at", "revoked_at", "updated_at");
+    private static final Set<String> INTAKE_LOG_KEYS = Set.of("contract_version", "entry_id", "kind", "name", "amount", "unit", "planned_at", "occurred_at", "time_zone", "context", "perceived_effect", "note", "source", "revision", "tombstone", "updated_at");
+    private static final Set<String> SYMPTOM_LOG_KEYS = Set.of("contract_version", "entry_id", "label", "occurred_at", "time_zone", "intensity", "note", "source", "revision", "tombstone", "updated_at");
     private static final Set<String> RESULT_STATES = Set.of("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE");
 }

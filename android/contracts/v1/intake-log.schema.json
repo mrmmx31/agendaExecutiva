@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/intake-log.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "entry_id", "kind", "name", "amount", "unit", "planned_at", "occurred_at", "time_zone", "context", "perceived_effect", "note", "source", "revision", "tombstone", "updated_at"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "entry_id": { "type": "string", "format": "uuid" },
+    "kind": { "enum": ["MEDICATION", "SUBSTANCE"] },
+    "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "amount": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+    "unit": { "type": ["string", "null"], "minLength": 1, "maxLength": 40 },
+    "planned_at": { "type": ["string", "null"], "format": "date-time" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "time_zone": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "context": { "type": ["string", "null"], "maxLength": 500 },
+    "perceived_effect": { "type": ["string", "null"], "maxLength": 500 },
+    "note": { "type": ["string", "null"], "maxLength": 2000 },
+    "source": { "const": "MANUAL" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "tombstone": { "type": "boolean" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}

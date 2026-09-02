@@ -1,0 +1,12 @@
+{
+  "contract_version": 1,
+  "consent_id": "a1000000-0000-4000-8000-000000000001",
+  "category": "SYMPTOM",
+  "purpose": "USER_REVIEWABLE_REPORT",
+  "enabled": false,
+  "foreground_only": true,
+  "retention_days": 365,
+  "granted_at": null,
+  "revoked_at": null,
+  "updated_at": "2026-09-02T12:00:00Z"
+}

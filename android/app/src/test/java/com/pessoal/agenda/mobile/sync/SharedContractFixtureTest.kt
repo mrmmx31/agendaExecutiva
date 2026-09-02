@@ -24,6 +24,9 @@ class SharedContractFixtureTest {
         assertKeys("wear-alert-state.valid.json", WEAR_ALERT_STATE_KEYS)
         assertKeys("wear-protocol-step-state.valid.json", WEAR_PROTOCOL_STATE_KEYS)
         assertKeys("wear-protocol-step-action.valid.json", WEAR_PROTOCOL_ACTION_KEYS)
+        assertKeys("health-consent.valid.json", HEALTH_CONSENT_KEYS)
+        assertKeys("intake-log.valid.json", INTAKE_LOG_KEYS)
+        assertKeys("symptom-log.valid.json", SYMPTOM_LOG_KEYS)
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").requiredText("status"))
         assertEquals("APPLIED", fixture("sync-result.valid.json").requiredText("status"))
@@ -31,6 +34,9 @@ class SharedContractFixtureTest {
         assertFalse(fixture("sensory-profile.valid.json").requiredText("global_enabled").toBoolean())
         assertEquals("SNOOZE", fixture("alert-action.valid.json").requiredText("action"))
         assertEquals("PENDING", fixture("wear-alert-state.valid.json").requiredText("status"))
+        assertEquals("SYMPTOM", fixture("health-consent.valid.json").requiredText("category"))
+        assertEquals("MANUAL", fixture("intake-log.valid.json").requiredText("source"))
+        assertEquals("MANUAL", fixture("symptom-log.valid.json").requiredText("source"))
     }
 
     @Test
@@ -71,6 +77,9 @@ class SharedContractFixtureTest {
         val WEAR_ALERT_STATE_KEYS = setOf("contract_version", "alert_id", "revision", "text", "reason", "source_device_id", "scheduled_at", "valid_until", "updated_at", "criticality", "actions", "snooze_options_minutes", "status", "acknowledged_operation_id")
         val WEAR_PROTOCOL_STATE_KEYS = setOf("contract_version", "run_id", "protocol_id", "revision", "protocol_title", "step_id", "step_label", "step_position", "step_count", "updated_at", "status", "acknowledged_operation_id")
         val WEAR_PROTOCOL_ACTION_KEYS = setOf("contract_version", "operation_id", "run_id", "step_id", "source_device_id", "occurred_at")
+        val HEALTH_CONSENT_KEYS = setOf("contract_version", "consent_id", "category", "purpose", "enabled", "foreground_only", "retention_days", "granted_at", "revoked_at", "updated_at")
+        val INTAKE_LOG_KEYS = setOf("contract_version", "entry_id", "kind", "name", "amount", "unit", "planned_at", "occurred_at", "time_zone", "context", "perceived_effect", "note", "source", "revision", "tombstone", "updated_at")
+        val SYMPTOM_LOG_KEYS = setOf("contract_version", "entry_id", "label", "occurred_at", "time_zone", "intensity", "note", "source", "revision", "tombstone", "updated_at")
         val RESULT_STATES = setOf("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE")
     }
 }

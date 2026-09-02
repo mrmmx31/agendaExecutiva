@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/symptom-log.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "entry_id", "label", "occurred_at", "time_zone", "intensity", "note", "source", "revision", "tombstone", "updated_at"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "entry_id": { "type": "string", "format": "uuid" },
+    "label": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "time_zone": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "intensity": { "type": ["integer", "null"], "minimum": 0, "maximum": 10 },
+    "note": { "type": ["string", "null"], "maxLength": 2000 },
+    "source": { "const": "MANUAL" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "tombstone": { "type": "boolean" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}

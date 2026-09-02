@@ -10,6 +10,7 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Primeiro item da P2-07 com inventário de dados, ADR da fronteira criptográfica e contratos fechados fictícios para consentimento, ingestão e sintoma
 - P2-06 concluída com gate Data Layer pareado do protocolo: publicação no telefone, confirmação durável no Wear, ack idempotente e avanço validado nos dois dispositivos virtuais
 - Marco intermediário da P2-06 com `Vou sair`, passo atual e confirmação offline no Wear, Room v6/v2 e sugestões estruturais obrigatoriamente encaminhadas para revisão
 - Início da P2-06 com ação direta `Vou sair` no Android e Dashboard, seleção curta determinística e contrato mínimo do passo atual no Wear

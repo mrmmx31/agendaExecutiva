@@ -25,12 +25,18 @@ mesma versão.
 | `wear-alert-state.schema.json` | cópia mínima e revisionada de um alerta no relógio |
 | `wear-protocol-step-state.schema.json` | passo atual mínimo e revisionado no relógio |
 | `wear-protocol-step-action.schema.json` | confirmação idempotente do passo pelo relógio |
+| `health-consent.schema.json` | opt-in granular, finalidade, retenção e revogação |
+| `intake-log.schema.json` | fato manual de medicação ou substância, sem inferência |
+| `symptom-log.schema.json` | sintoma ou evento subjetivo informado manualmente |
 
 O pareamento e o modelo de ameaça da fase seguinte estão em
 `PAIRING_V1.md` e `THREAT_MODEL_P2_03.md`.
 
 Os limites sensoriais e as formas das ações estão em `ALERTS_V1.md`.
 O transporte e os limites do relógio estão em `WEAR_V1.md`.
+O inventário e a fronteira de proteção de saúde estão em
+`../../docs/privacy/HEALTH_DATA_INVENTORY.md` e
+`../../docs/adr/0001-health-data-security-boundary.md`.
 
 O envelope inclui UUID da operação, dispositivo, sequência monotônica,
 instante, fuso, versão do contrato, comando, entidade, payload e SHA-256 do

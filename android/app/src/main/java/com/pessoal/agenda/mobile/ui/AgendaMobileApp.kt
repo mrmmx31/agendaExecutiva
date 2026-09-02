@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
@@ -149,6 +150,11 @@ fun AgendaMobileApp(
             onPauseSensoryAlerts = viewModel::pauseSensoryAlerts,
             onTestAudio = viewModel::toggleAudioTest,
             onRefreshAudioRoute = viewModel::refreshAudioRoute,
+            onHealthConsentChanged = viewModel::setHealthConsent,
+            onSaveIntake = viewModel::saveIntake,
+            onDeleteIntake = viewModel::deleteIntake,
+            onSaveSymptom = viewModel::saveSymptom,
+            onDeleteSymptom = viewModel::deleteSymptom,
             initialPairingInvitation = initialPairingInvitation,
         )
     }
@@ -173,10 +179,16 @@ internal fun AgendaMobileScreen(
     onTestAudio: () -> Unit = {},
     onRefreshAudioRoute: () -> Unit = {},
     onProposeProtocolStep: (String, String) -> Unit = { _, _ -> },
+    onHealthConsentChanged: (com.pessoal.agenda.mobile.health.HealthCategory, Boolean) -> Unit = { _, _ -> },
+    onSaveIntake: (String?, com.pessoal.agenda.mobile.health.IntakeInput) -> Unit = { _, _ -> },
+    onDeleteIntake: (String) -> Unit = {},
+    onSaveSymptom: (String?, com.pessoal.agenda.mobile.health.SymptomInput) -> Unit = { _, _ -> },
+    onDeleteSymptom: (String) -> Unit = {},
 ) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var showPairing by rememberSaveable { mutableStateOf(false) }
     var showSensorySettings by rememberSaveable { mutableStateOf(false) }
+    var showHealth by rememberSaveable { mutableStateOf(false) }
     var showLeavingChoices by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.feedback) {
@@ -236,8 +248,8 @@ internal fun AgendaMobileScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(if (showSensorySettings) "Configurações sensoriais" else "Agenda")
-                        if (!showSensorySettings) {
+                        Text(when { showHealth -> "Saúde e privacidade"; showSensorySettings -> "Configurações sensoriais"; else -> "Agenda" })
+                        if (!showSensorySettings && !showHealth) {
                             Text(
                                 text = "Núcleo offline",
                                 style = MaterialTheme.typography.labelMedium,
@@ -247,14 +259,17 @@ internal fun AgendaMobileScreen(
                     }
                 },
                 navigationIcon = {
-                    if (showSensorySettings) {
-                        IconButton(onClick = { showSensorySettings = false }) {
+                    if (showSensorySettings || showHealth) {
+                        IconButton(onClick = { showSensorySettings = false; showHealth = false }) {
                             Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Voltar")
                         }
                     }
                 },
                 actions = {
-                    if (!showSensorySettings) {
+                    if (!showSensorySettings && !showHealth) {
+                        IconButton(onClick = { showHealth = true }) {
+                            Icon(Icons.Outlined.FavoriteBorder, contentDescription = "Saúde e privacidade")
+                        }
                         IconButton(onClick = { showSensorySettings = true }) {
                             Icon(Icons.Outlined.Settings, contentDescription = "Configurações sensoriais")
                         }
@@ -265,7 +280,7 @@ internal fun AgendaMobileScreen(
         },
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            if (!showSensorySettings) {
+            if (!showSensorySettings && !showHealth) {
                 NavigationBar {
                     MobileSection.entries.forEachIndexed { index, section ->
                         NavigationBarItem(
@@ -280,7 +295,17 @@ internal fun AgendaMobileScreen(
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            if (showSensorySettings) {
+            if (showHealth) {
+                HealthPrivacyScreen(
+                    state = state.health,
+                    busy = state.busy,
+                    onConsentChanged = onHealthConsentChanged,
+                    onSaveIntake = onSaveIntake,
+                    onDeleteIntake = onDeleteIntake,
+                    onSaveSymptom = onSaveSymptom,
+                    onDeleteSymptom = onDeleteSymptom,
+                )
+            } else if (showSensorySettings) {
                 SensorySettingsScreen(
                     state = state.sensorySettings,
                     alertsEnabled = state.sensorySettings.profile.globalEnabled,

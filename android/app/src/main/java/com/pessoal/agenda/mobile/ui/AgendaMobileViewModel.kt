@@ -31,6 +31,13 @@ import com.pessoal.agenda.mobile.sync.HttpsSyncTransport
 import com.pessoal.agenda.mobile.sync.SyncRepository
 import com.pessoal.agenda.mobile.wear.AndroidWearStateCleaner
 import com.pessoal.agenda.mobile.wear.AndroidWearProtocolPublisher
+import com.pessoal.agenda.mobile.health.AndroidKeystoreHealthDataCipher
+import com.pessoal.agenda.mobile.health.HealthCategory
+import com.pessoal.agenda.mobile.health.HealthStore
+import com.pessoal.agenda.mobile.health.IntakeInput
+import com.pessoal.agenda.mobile.health.SymptomInput
+import com.pessoal.agenda.mobile.health.VersionedHealthRecord
+import com.pessoal.agenda.mobile.data.local.HealthConsentEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -57,6 +64,13 @@ data class MobileUiState(
     val pairingCompletion: Long = 0,
     val visualAlertsEnabled: Boolean = false,
     val sensorySettings: SensorySettingsUiState = SensorySettingsUiState(),
+    val health: HealthUiState = HealthUiState(),
+)
+
+data class HealthUiState(
+    val consents: List<HealthConsentEntity> = emptyList(),
+    val intakes: List<VersionedHealthRecord<IntakeInput>> = emptyList(),
+    val symptoms: List<VersionedHealthRecord<SymptomInput>> = emptyList(),
 )
 
 data class SensorySettingsUiState(
@@ -79,6 +93,10 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         deviceIdProvider = { credentialStore.deviceId },
     )
     private val alertStore = AlertStore(MobileDatabase.get(application))
+    private val healthStore = HealthStore(
+        MobileDatabase.get(application),
+        AndroidKeystoreHealthDataCipher(),
+    )
     private val alertScheduling = AlertSchedulingCoordinator(application, alertStore)
     private val busy = MutableStateFlow(false)
     private val feedback = MutableStateFlow<String?>(null)
@@ -87,6 +105,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     private val pairingCompletion = MutableStateFlow(0L)
     private val visualAlertsEnabled = MutableStateFlow(false)
     private val sensorySettings = MutableStateFlow(SensorySettingsUiState())
+    private val health = MutableStateFlow(HealthUiState())
     private val sensoryOutput = AndroidSensoryOutput(application)
     private var audioTestJob: Job? = null
     private var pairingJob: Job? = null
@@ -111,8 +130,9 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         pairingCompletion,
         visualAlertsEnabled,
         sensorySettings,
-    ) { inProgress, completion, alertsEnabled, settings ->
-        PairingUiState(inProgress, completion, alertsEnabled, settings)
+        health,
+    ) { inProgress, completion, alertsEnabled, settings, healthState ->
+        PairingUiState(inProgress, completion, alertsEnabled, settings, healthState)
     }
 
     val state: StateFlow<MobileUiState> = combine(
@@ -132,6 +152,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             pairingCompletion = pairingState.completion,
             visualAlertsEnabled = pairingState.visualAlertsEnabled,
             sensorySettings = pairingState.sensorySettings,
+            health = pairingState.health,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MobileUiState())
 
@@ -143,6 +164,8 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
                 }
                 repository.alignDeviceIdentity()
                 repository.initializeFictitiousData()
+                healthStore.initializeConsentCatalog()
+                refreshHealth()
                 val storedProfile = alertStore.ensureInstallationProfile()
                 visualAlertsEnabled.value = storedProfile.profile.globalEnabled && notificationsAllowed()
                 sensorySettings.value = storedProfile.settingsState()
@@ -174,6 +197,37 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     fun proposeProtocolStep(protocolId: String, label: String) = execute(
         successMessage = "Sugestão enviada para a fila de revisão.",
     ) { repository.proposeProtocolStep(protocolId, label) }
+
+    fun setHealthConsent(category: HealthCategory, enabled: Boolean) = execute(
+        successMessage = if (enabled) "Categoria ativada." else "Categoria revogada.",
+    ) {
+        healthStore.setConsent(category, enabled)
+        refreshHealth()
+    }
+
+    fun saveIntake(id: String?, input: IntakeInput) = execute(
+        successMessage = if (id == null) "Registro salvo localmente." else "Registro corrigido.",
+    ) {
+        if (id == null) healthStore.createIntake(input) else healthStore.updateIntake(id, input)
+        refreshHealth()
+    }
+
+    fun deleteIntake(id: String) = execute(successMessage = "Registro excluído.") {
+        healthStore.deleteIntake(id)
+        refreshHealth()
+    }
+
+    fun saveSymptom(id: String?, input: SymptomInput) = execute(
+        successMessage = if (id == null) "Evento salvo localmente." else "Evento corrigido.",
+    ) {
+        if (id == null) healthStore.createSymptom(input) else healthStore.updateSymptom(id, input)
+        refreshHealth()
+    }
+
+    fun deleteSymptom(id: String) = execute(successMessage = "Evento excluído.") {
+        healthStore.deleteSymptom(id)
+        refreshHealth()
+    }
 
     fun syncNow() = execute(successMessage = "Sincronização concluída.") {
         check(canSync.value) { "Telefone ainda não pareado." }
@@ -360,6 +414,14 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
                 == PackageManager.PERMISSION_GRANTED)
     }
 
+    private suspend fun refreshHealth() {
+        health.value = HealthUiState(
+            consents = healthStore.consents(),
+            intakes = healthStore.intakes(),
+            symptoms = healthStore.symptoms(),
+        )
+    }
+
     private fun execute(
         successMessage: String,
         onSuccess: () -> Unit = {},
@@ -397,4 +459,5 @@ private data class PairingUiState(
     val completion: Long,
     val visualAlertsEnabled: Boolean,
     val sensorySettings: SensorySettingsUiState,
+    val health: HealthUiState,
 )

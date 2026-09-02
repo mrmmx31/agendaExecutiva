@@ -1,6 +1,7 @@
 {
   "contract_version": 1,
   "entry_id": "a1000000-0000-4000-8000-000000000003",
+  "kind": "SYMPTOM",
   "label": "Evento ficticio B",
   "occurred_at": "2026-09-02T13:00:00Z",
   "time_zone": "America/Manaus",

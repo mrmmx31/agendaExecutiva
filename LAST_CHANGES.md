@@ -7,8 +7,8 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | feat(health): persistir registros cifrados no Room |
-| Data | 2026-09-02 17:40:01 -0400 |
+| Mensagem | feat(health): adicionar gestao local e consentimentos |
+| Data | 2026-09-02 18:13:55 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
@@ -20,36 +20,40 @@ PROJECT2_SPEC.md
 README.md
 SPEC.md
 android/README.md
-android/app/schemas/com.pessoal.agenda.mobile.data.local.MobileDatabase/7.json
-android/app/src/androidTest/java/com/pessoal/agenda/mobile/data/local/MobileDatabaseMigrationTest.kt
-android/app/src/androidTest/java/com/pessoal/agenda/mobile/health/AndroidKeystoreHealthDataCipherTest.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/data/local/HealthEntities.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/data/local/MobileDatabase.kt
+android/app/src/androidTest/java/com/pessoal/agenda/mobile/ui/AgendaMobileAppTest.kt
 android/app/src/main/java/com/pessoal/agenda/mobile/data/local/OfflineDao.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/health/HealthDataCipher.kt
 android/app/src/main/java/com/pessoal/agenda/mobile/health/HealthStore.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileApp.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileViewModel.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/ui/HealthPrivacyScreen.kt
 android/app/src/test/java/com/pessoal/agenda/mobile/health/HealthStoreTest.kt
+android/app/src/test/java/com/pessoal/agenda/mobile/sync/SharedContractFixtureTest.kt
+android/contracts/fixtures/v1/symptom-log.valid.json
+android/contracts/v1/symptom-log.schema.json
+src/test/java/com/pessoal/agenda/contracts/SharedContractFixtureTest.java
 ```
 
 ## Diff Resumido
 
 ```diff
- CHANGELOG.md                                       |    1 +
- MAINTENANCE_MAP.md                                 |    5 +-
- PROJECT2_SPEC.md                                   |   12 +-
- README.md                                          |    2 +-
- SPEC.md                                            |    4 +-
- android/README.md                                  |    6 +-
- .../7.json                                         | 1448 ++++++++++++++++++++
- .../data/local/MobileDatabaseMigrationTest.kt      |   15 +-
- .../health/AndroidKeystoreHealthDataCipherTest.kt  |   23 +
- .../agenda/mobile/data/local/HealthEntities.kt     |   54 +
- .../agenda/mobile/data/local/MobileDatabase.kt     |   43 +-
- .../pessoal/agenda/mobile/data/local/OfflineDao.kt |   36 +
- .../agenda/mobile/health/HealthDataCipher.kt       |   67 +
- .../pessoal/agenda/mobile/health/HealthStore.kt    |  262 ++++
- .../agenda/mobile/health/HealthStoreTest.kt        |  117 ++
- 15 files changed, 2077 insertions(+), 18 deletions(-)
+ CHANGELOG.md                                       |   1 +
+ MAINTENANCE_MAP.md                                 |   5 +-
+ PROJECT2_SPEC.md                                   |  12 +-
+ README.md                                          |   2 +-
+ SPEC.md                                            |   4 +-
+ android/README.md                                  |   3 +-
+ .../agenda/mobile/ui/AgendaMobileAppTest.kt        |  63 +++++
+ .../pessoal/agenda/mobile/data/local/OfflineDao.kt |   6 +
+ .../pessoal/agenda/mobile/health/HealthStore.kt    |  21 +-
+ .../pessoal/agenda/mobile/ui/AgendaMobileApp.kt    |  39 ++-
+ .../agenda/mobile/ui/AgendaMobileViewModel.kt      |  67 +++++-
+ .../agenda/mobile/ui/HealthPrivacyScreen.kt        | 261 +++++++++++++++++++++
+ .../agenda/mobile/health/HealthStoreTest.kt        |  14 ++
+ .../mobile/sync/SharedContractFixtureTest.kt       |   2 +-
+ .../contracts/fixtures/v1/symptom-log.valid.json   |   1 +
+ android/contracts/v1/symptom-log.schema.json       |   3 +-
+ .../contracts/SharedContractFixtureTest.java       |   2 +-
+ 17 files changed, 479 insertions(+), 27 deletions(-)
 ```
 
 ---

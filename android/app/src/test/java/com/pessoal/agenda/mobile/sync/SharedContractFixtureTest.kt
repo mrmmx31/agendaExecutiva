@@ -79,7 +79,7 @@ class SharedContractFixtureTest {
         val WEAR_PROTOCOL_ACTION_KEYS = setOf("contract_version", "operation_id", "run_id", "step_id", "source_device_id", "occurred_at")
         val HEALTH_CONSENT_KEYS = setOf("contract_version", "consent_id", "category", "purpose", "enabled", "foreground_only", "retention_days", "granted_at", "revoked_at", "updated_at")
         val INTAKE_LOG_KEYS = setOf("contract_version", "entry_id", "kind", "name", "amount", "unit", "planned_at", "occurred_at", "time_zone", "context", "perceived_effect", "note", "source", "revision", "tombstone", "updated_at")
-        val SYMPTOM_LOG_KEYS = setOf("contract_version", "entry_id", "label", "occurred_at", "time_zone", "intensity", "note", "source", "revision", "tombstone", "updated_at")
+        val SYMPTOM_LOG_KEYS = setOf("contract_version", "entry_id", "kind", "label", "occurred_at", "time_zone", "intensity", "note", "source", "revision", "tombstone", "updated_at")
         val RESULT_STATES = setOf("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE")
     }
 }

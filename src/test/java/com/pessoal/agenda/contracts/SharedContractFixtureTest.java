@@ -83,6 +83,6 @@ class SharedContractFixtureTest {
     private static final Set<String> WEAR_PROTOCOL_ACTION_KEYS = Set.of("contract_version", "operation_id", "run_id", "step_id", "source_device_id", "occurred_at");
     private static final Set<String> HEALTH_CONSENT_KEYS = Set.of("contract_version", "consent_id", "category", "purpose", "enabled", "foreground_only", "retention_days", "granted_at", "revoked_at", "updated_at");
     private static final Set<String> INTAKE_LOG_KEYS = Set.of("contract_version", "entry_id", "kind", "name", "amount", "unit", "planned_at", "occurred_at", "time_zone", "context", "perceived_effect", "note", "source", "revision", "tombstone", "updated_at");
-    private static final Set<String> SYMPTOM_LOG_KEYS = Set.of("contract_version", "entry_id", "label", "occurred_at", "time_zone", "intensity", "note", "source", "revision", "tombstone", "updated_at");
+    private static final Set<String> SYMPTOM_LOG_KEYS = Set.of("contract_version", "entry_id", "kind", "label", "occurred_at", "time_zone", "intensity", "note", "source", "revision", "tombstone", "updated_at");
     private static final Set<String> RESULT_STATES = Set.of("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE");
 }

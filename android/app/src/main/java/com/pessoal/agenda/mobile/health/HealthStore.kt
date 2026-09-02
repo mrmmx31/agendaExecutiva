@@ -22,6 +22,7 @@ enum class HealthCategory {
 }
 
 enum class IntakeKind { MEDICATION, SUBSTANCE }
+enum class SubjectiveKind { SYMPTOM, ROUTINE_NOTE }
 
 data class IntakeInput(
     val kind: IntakeKind,
@@ -40,6 +41,7 @@ data class SymptomInput(
     val occurredAt: String,
     val intensity: Int? = null,
     val note: String? = null,
+    val kind: SubjectiveKind = SubjectiveKind.SYMPTOM,
 )
 
 data class VersionedHealthRecord<T>(val id: String, val revision: Long, val value: T)
@@ -115,6 +117,11 @@ class HealthStore(
         return VersionedHealthRecord(id, row.revision, payload.toInput())
     }
 
+    suspend fun intakes(): List<VersionedHealthRecord<IntakeInput>> = dao.healthIntakes().map { row ->
+        val payload = decrypt<IntakePayload>(row.id, row.revision, row.ciphertext, row.iv)
+        VersionedHealthRecord(row.id, row.revision, payload.toInput())
+    }
+
     suspend fun deleteIntake(id: String) = database.withTransaction {
         val current = requireNotNull(dao.healthIntake(id))
         if (current.tombstone) return@withTransaction
@@ -126,7 +133,7 @@ class HealthStore(
 
     suspend fun createSymptom(input: SymptomInput): String = database.withTransaction {
         validate(input)
-        requireConsent(HealthCategory.SYMPTOM)
+        requireConsent(if (input.kind == SubjectiveKind.SYMPTOM) HealthCategory.SYMPTOM else HealthCategory.ROUTINE_NOTE)
         val id = validId()
         writeSymptom(id, 1, input, "CREATED")
         id
@@ -134,7 +141,7 @@ class HealthStore(
 
     suspend fun updateSymptom(id: String, input: SymptomInput) = database.withTransaction {
         validate(input)
-        requireConsent(HealthCategory.SYMPTOM)
+        requireConsent(if (input.kind == SubjectiveKind.SYMPTOM) HealthCategory.SYMPTOM else HealthCategory.ROUTINE_NOTE)
         val current = requireNotNull(dao.healthSymptom(id)).also { require(!it.tombstone) }
         writeSymptom(id, current.revision + 1, input, "CORRECTED")
     }
@@ -144,6 +151,11 @@ class HealthStore(
         if (row.tombstone) return null
         val payload = decrypt<SymptomPayload>(row.id, row.revision, row.ciphertext, row.iv)
         return VersionedHealthRecord(id, row.revision, payload.toInput())
+    }
+
+    suspend fun symptoms(): List<VersionedHealthRecord<SymptomInput>> = dao.healthSymptoms().map { row ->
+        val payload = decrypt<SymptomPayload>(row.id, row.revision, row.ciphertext, row.iv)
+        VersionedHealthRecord(row.id, row.revision, payload.toInput())
     }
 
     suspend fun deleteSymptom(id: String) = database.withTransaction {
@@ -244,6 +256,7 @@ private data class IntakePayload(
 private data class SymptomPayload(
     @SerialName("contract_version") val contractVersion: Int = 1,
     val label: String,
+    val kind: String = SubjectiveKind.SYMPTOM.name,
     @SerialName("occurred_at") val occurredAt: String,
     @SerialName("time_zone") val timeZone: String,
     val intensity: Int?,
@@ -251,11 +264,11 @@ private data class SymptomPayload(
     val source: String = "MANUAL",
     @SerialName("recorded_at") val recordedAt: String,
 ) {
-    fun toInput() = SymptomInput(label, occurredAt, intensity, note)
+    fun toInput() = SymptomInput(label, occurredAt, intensity, note, SubjectiveKind.valueOf(kind))
 
     companion object {
         fun from(input: SymptomInput, zone: String, now: String) = SymptomPayload(
-            label = input.label.trim(), occurredAt = input.occurredAt, timeZone = zone,
+            label = input.label.trim(), kind = input.kind.name, occurredAt = input.occurredAt, timeZone = zone,
             intensity = input.intensity, note = input.note, recordedAt = now,
         )
     }

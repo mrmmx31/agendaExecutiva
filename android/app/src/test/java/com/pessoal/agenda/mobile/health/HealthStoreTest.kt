@@ -70,6 +70,7 @@ class HealthStoreTest {
         val stored = requireNotNull(database.offline().healthIntake(id))
         assertFalse(stored.ciphertext.contains("Item ficticio"))
         assertEquals("Item ficticio", store.intake(id)?.value?.name)
+        assertEquals(listOf(id), store.intakes().map { it.id })
 
         store.updateIntake(id, fictitiousIntake().copy(name = "Item ficticio corrigido"))
         assertEquals(2L, store.intake(id)?.revision)
@@ -81,6 +82,7 @@ class HealthStoreTest {
         assertEquals("", deleted.ciphertext)
         assertEquals("", deleted.iv)
         assertNull(store.intake(id))
+        assertTrue(store.intakes().isEmpty())
         assertEquals(listOf("CREATED", "CORRECTED", "DELETED"), database.offline().healthAudit(id).map { it.action })
     }
 
@@ -95,6 +97,18 @@ class HealthStoreTest {
 
         assertEquals("Evento ficticio", store.symptom(id)?.value?.label)
         assertNull(store.symptom(id)?.value?.intensity)
+    }
+
+    @Test
+    fun routineNoteRequiresItsOwnConsent() = runBlocking {
+        store.initializeConsentCatalog()
+        store.setConsent(HealthCategory.ROUTINE_NOTE, true)
+
+        val id = store.createSymptom(
+            SymptomInput("Observacao ficticia", "2026-09-02T14:00:00Z", kind = SubjectiveKind.ROUTINE_NOTE),
+        )
+
+        assertEquals(SubjectiveKind.ROUTINE_NOTE, store.symptom(id)?.value?.kind)
     }
 
     private fun fictitiousIntake() = IntakeInput(

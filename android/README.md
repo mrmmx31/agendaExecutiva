@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativos Android e Wear OS do Projeto 2 com `P2-01` a `P2-06` concluídas e `P2-07` em 2 de 6 itens. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline. Saúde possui contratos e persistência local cifrada; coleta Health Connect e IA não estão ativas.
+Aplicativos Android e Wear OS do Projeto 2 com `P2-01` a `P2-06` concluídas e `P2-07` em 3 de 6 itens. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline. Saúde possui contratos, persistência cifrada e UI local; coleta Health Connect e IA não estão ativas.
 
 ## Requisitos
 
@@ -57,6 +57,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - Room Android v5 mantém revisão Wear; Room próprio do relógio persiste alerta e outbox antes do feedback.
 - P2-06 entrega `Vou sair`, escolha determinística, passo atual e confirmação offline no Wear e sugestões estruturais que exigem revisão; o percurso pareado está aprovado em [`P2_06_MATRIX.md`](P2_06_MATRIX.md).
 - P2-07 possui contratos, inventário de privacidade e Room v7 com payloads AES-GCM protegidos pelo Keystore; nenhuma permissão Health Connect foi declarada.
+- `Saúde e privacidade` oferece oito opt-ins e formulários locais para medicação, substância, sintoma/evento e nota de rotina, com correção e exclusão explícita.
 
 ## Limites
 

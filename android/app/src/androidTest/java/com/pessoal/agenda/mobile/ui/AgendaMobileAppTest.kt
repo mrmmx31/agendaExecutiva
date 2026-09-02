@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -16,6 +17,9 @@ import com.pessoal.agenda.mobile.alert.SensoryProfile
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
+import com.pessoal.agenda.mobile.data.local.HealthConsentEntity
+import com.pessoal.agenda.mobile.health.HealthCategory
+import com.pessoal.agenda.mobile.health.IntakeInput
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -55,6 +59,65 @@ class AgendaMobileAppTest {
         compose.onNodeWithText("Agenda").assertIsDisplayed()
         compose.onNodeWithText("Somente neste telefone").assertIsDisplayed()
         compose.onNodeWithText("Tarefa fictícia").assertIsDisplayed()
+    }
+
+    @Test
+    fun healthScreenRequiresCategoryOptInBeforeManualEntry() {
+        var requested: Pair<HealthCategory, Boolean>? = null
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(health = HealthUiState(consents = listOf(
+                        HealthConsentEntity(
+                            id = "consent-id", category = HealthCategory.MEDICATION.name,
+                            purpose = "USER_REVIEWABLE_REPORT", enabled = false,
+                            foregroundOnly = true, retentionDays = 365,
+                            grantedAt = null, revokedAt = null, updatedAt = "2026-09-02T12:00:00Z",
+                        ),
+                    ))),
+                    onSaveCapture = { _, _ -> }, onStartProtocol = {}, onCompleteStep = { _, _ -> },
+                    onSync = {}, onPair = { _, _ -> }, onCancelPairing = {},
+                    onPairingCompletionShown = {}, onFeedbackShown = {},
+                    onHealthConsentChanged = { category, value -> requested = category to value },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Saúde e privacidade").performClick()
+        compose.onNodeWithText("Saúde e privacidade").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Ativar Medicação").performClick()
+        assertEquals(HealthCategory.MEDICATION to true, requested)
+    }
+
+    @Test
+    fun healthManualEntryIsSentOnlyAfterExplicitSave() {
+        var saved: IntakeInput? = null
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(health = HealthUiState(consents = listOf(
+                        HealthConsentEntity(
+                            id = "consent-id", category = HealthCategory.MEDICATION.name,
+                            purpose = "USER_REVIEWABLE_REPORT", enabled = true,
+                            foregroundOnly = true, retentionDays = 365,
+                            grantedAt = "2026-09-02T12:00:00Z", revokedAt = null,
+                            updatedAt = "2026-09-02T12:00:00Z",
+                        ),
+                    ))),
+                    onSaveCapture = { _, _ -> }, onStartProtocol = {}, onCompleteStep = { _, _ -> },
+                    onSync = {}, onPair = { _, _ -> }, onCancelPairing = {},
+                    onPairingCompletionShown = {}, onFeedbackShown = {},
+                    onSaveIntake = { _, value -> saved = value },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Saúde e privacidade").performClick()
+        compose.onAllNodesWithText("Medicação")[1].performClick()
+        compose.onNodeWithText("Nome").performTextInput("Item fictício de interface")
+        assertEquals(null, saved)
+        compose.onNodeWithText("Salvar").performClick()
+        assertEquals("Item fictício de interface", saved?.name)
     }
 
     @Test

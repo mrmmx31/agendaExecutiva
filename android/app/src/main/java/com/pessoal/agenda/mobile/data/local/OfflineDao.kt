@@ -27,6 +27,9 @@ interface OfflineDao {
     @Query("SELECT * FROM health_intake_logs WHERE id=:id")
     suspend fun healthIntake(id: String): HealthIntakeLogEntity?
 
+    @Query("SELECT * FROM health_intake_logs WHERE tombstone=0 ORDER BY updatedAt DESC")
+    suspend fun healthIntakes(): List<HealthIntakeLogEntity>
+
     @Query("UPDATE health_intake_logs SET ciphertext='', iv='', revision=:revision, tombstone=1, updatedAt=:now WHERE id=:id AND tombstone=0")
     suspend fun tombstoneHealthIntake(id: String, revision: Long, now: String): Int
 
@@ -35,6 +38,9 @@ interface OfflineDao {
 
     @Query("SELECT * FROM health_symptom_logs WHERE id=:id")
     suspend fun healthSymptom(id: String): HealthSymptomLogEntity?
+
+    @Query("SELECT * FROM health_symptom_logs WHERE tombstone=0 ORDER BY updatedAt DESC")
+    suspend fun healthSymptoms(): List<HealthSymptomLogEntity>
 
     @Query("UPDATE health_symptom_logs SET ciphertext='', iv='', revision=:revision, tombstone=1, updatedAt=:now WHERE id=:id AND tombstone=0")
     suspend fun tombstoneHealthSymptom(id: String, revision: Long, now: String): Int

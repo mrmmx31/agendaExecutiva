@@ -28,6 +28,7 @@ mesma versão.
 | `health-consent.schema.json` | opt-in granular, finalidade, retenção e revogação |
 | `intake-log.schema.json` | fato manual de medicação ou substância, sem inferência |
 | `symptom-log.schema.json` | sintoma ou evento subjetivo informado manualmente |
+| `health-summary.schema.json` | agregado importado com cobertura, unidade, origem e lacuna explícita |
 
 O pareamento e o modelo de ameaça da fase seguinte estão em
 `PAIRING_V1.md` e `THREAT_MODEL_P2_03.md`.

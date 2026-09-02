@@ -27,8 +27,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         HealthIntakeLogEntity::class,
         HealthSymptomLogEntity::class,
         HealthChangeAuditEntity::class,
+        HealthSummaryEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class MobileDatabase : RoomDatabase() {
@@ -47,6 +48,7 @@ abstract class MobileDatabase : RoomDatabase() {
             ).addMigrations(
                 MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
                 MIGRATION_6_7,
+                MIGRATION_7_8,
             ).build().also { instance = it }
         }
 
@@ -258,6 +260,20 @@ abstract class MobileDatabase : RoomDatabase() {
                     )
                 """.trimIndent())
                 database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_health_change_audit_entityType_entityId_revision ON health_change_audit(entityType, entityId, revision)")
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS health_summaries (
+                        id TEXT NOT NULL PRIMARY KEY, consentId TEXT NOT NULL,
+                        category TEXT NOT NULL, ciphertext TEXT NOT NULL, iv TEXT NOT NULL,
+                        revision INTEGER NOT NULL, importedAt TEXT NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_health_summaries_category ON health_summaries(category)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_health_summaries_importedAt ON health_summaries(importedAt)")
             }
         }
     }

@@ -27,6 +27,7 @@ class SharedContractFixtureTest {
         assertKeys("health-consent.valid.json", HEALTH_CONSENT_KEYS)
         assertKeys("intake-log.valid.json", INTAKE_LOG_KEYS)
         assertKeys("symptom-log.valid.json", SYMPTOM_LOG_KEYS)
+        assertKeys("health-summary.valid.json", HEALTH_SUMMARY_KEYS)
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").requiredText("status"))
         assertEquals("APPLIED", fixture("sync-result.valid.json").requiredText("status"))
@@ -37,6 +38,7 @@ class SharedContractFixtureTest {
         assertEquals("SYMPTOM", fixture("health-consent.valid.json").requiredText("category"))
         assertEquals("MANUAL", fixture("intake-log.valid.json").requiredText("source"))
         assertEquals("MANUAL", fixture("symptom-log.valid.json").requiredText("source"))
+        assertEquals("HEART_RATE", fixture("health-summary.valid.json").requiredText("category"))
     }
 
     @Test
@@ -80,6 +82,7 @@ class SharedContractFixtureTest {
         val HEALTH_CONSENT_KEYS = setOf("contract_version", "consent_id", "category", "purpose", "enabled", "foreground_only", "retention_days", "granted_at", "revoked_at", "updated_at")
         val INTAKE_LOG_KEYS = setOf("contract_version", "entry_id", "kind", "name", "amount", "unit", "planned_at", "occurred_at", "time_zone", "context", "perceived_effect", "note", "source", "revision", "tombstone", "updated_at")
         val SYMPTOM_LOG_KEYS = setOf("contract_version", "entry_id", "kind", "label", "occurred_at", "time_zone", "intensity", "note", "source", "revision", "tombstone", "updated_at")
+        val HEALTH_SUMMARY_KEYS = setOf("contract_version", "summary_id", "consent_id", "category", "period_start", "period_end", "coverage_start", "coverage_end", "sample_count", "metrics", "source_packages", "missing_reason", "imported_at")
         val RESULT_STATES = setOf("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE")
     }
 }

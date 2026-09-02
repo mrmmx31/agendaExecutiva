@@ -8,10 +8,10 @@ desligada, pode ser revogada isoladamente e permanece fora de recomendacoes.
 
 | Categoria | Origem inicial | Finalidade permitida | Retencao padrao | Conteudo sensivel cifrado |
 |---|---|---|---|---|
-| Frequencia cardiaca | Health Connect, leitura futura | resumo revisavel de periodo | 365 dias | agregados e origem |
-| Frequencia em repouso | Health Connect, leitura futura | resumo revisavel de periodo | 365 dias | agregados e origem |
-| Sono | Health Connect, leitura futura | cobertura e horarios no relatorio | 365 dias | agregados e origem |
-| Atividade | Health Connect, leitura futura | cobertura e agregado no relatorio | 365 dias | agregados e origem |
+| Frequencia cardiaca | Health Connect, foreground | resumo revisavel de periodo | 365 dias | agregados e origem |
+| Frequencia em repouso | Health Connect, foreground | resumo revisavel de periodo | 365 dias | agregados e origem |
+| Sono | Health Connect, foreground | cobertura e horarios no relatorio | 365 dias | agregados e origem |
+| Atividade | Health Connect, foreground | cobertura e agregado no relatorio | 365 dias | agregados e origem |
 | Medicacao | entrada manual | fato informado pelo usuario | ate exclusao ou 3650 dias | nome, quantidade, unidade e nota |
 | Substancia | entrada manual | fato informado pelo usuario | ate exclusao ou 3650 dias | nome, quantidade, contexto, efeito e nota |
 | Sintoma | entrada manual | fato informado pelo usuario | ate exclusao ou 3650 dias | rotulo, intensidade e nota |
@@ -38,7 +38,8 @@ unidade, intensidade, pureza, interacao, causalidade ou diagnostico.
 - banco, backup e logs nunca recebem plaintext sensivel fora do limite de uso;
 - sync usa o canal TLS pareado e somente categorias consentidas;
 - exportacao exige previa e escolha explicita de destino;
-- Health Connect, historico e background terao opt-ins separados;
+- Health Connect pede somente leitura das categorias ativas, no botao de importacao;
+- a janela inicial e de sete dias; historico ampliado e background nao sao solicitados;
 - revogar interrompe novas leituras sem afetar a Agenda operacional.
 
 ## Proibicoes

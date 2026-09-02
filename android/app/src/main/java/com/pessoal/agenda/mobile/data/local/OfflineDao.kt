@@ -51,6 +51,15 @@ interface OfflineDao {
     @Query("SELECT * FROM health_change_audit WHERE entityId=:entityId ORDER BY revision")
     suspend fun healthAudit(entityId: String): List<HealthChangeAuditEntity>
 
+    @Upsert
+    suspend fun upsertHealthSummary(value: HealthSummaryEntity)
+
+    @Query("SELECT * FROM health_summaries ORDER BY importedAt DESC")
+    suspend fun healthSummaries(): List<HealthSummaryEntity>
+
+    @Query("DELETE FROM health_summaries WHERE category=:category")
+    suspend fun deleteHealthSummaries(category: String): Int
+
     @Query("SELECT * FROM alert_definitions WHERE id=:id")
     suspend fun alertDefinition(id: String): AlertDefinitionEntity?
 

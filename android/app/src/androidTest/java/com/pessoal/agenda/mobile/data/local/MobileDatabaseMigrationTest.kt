@@ -34,7 +34,7 @@ class MobileDatabaseMigrationTest {
 
         helper.runMigrationsAndValidate(
             TEST_DATABASE,
-            7,
+            8,
             true,
             MobileDatabase.MIGRATION_1_2,
             MobileDatabase.MIGRATION_2_3,
@@ -42,6 +42,7 @@ class MobileDatabaseMigrationTest {
             MobileDatabase.MIGRATION_4_5,
             MobileDatabase.MIGRATION_5_6,
             MobileDatabase.MIGRATION_6_7,
+            MobileDatabase.MIGRATION_7_8,
         ).use { database ->
             database.query("SELECT value FROM mobile_metadata WHERE `key`='contract_version'").use { cursor ->
                 cursor.moveToFirst()
@@ -77,9 +78,10 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            QUEUE_DATABASE, 7, true, MobileDatabase.MIGRATION_2_3,
+            QUEUE_DATABASE, 8, true, MobileDatabase.MIGRATION_2_3,
             MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5, MobileDatabase.MIGRATION_5_6,
             MobileDatabase.MIGRATION_6_7,
+            MobileDatabase.MIGRATION_7_8,
         ).use { database ->
             database.query("SELECT status, attemptCount, updatedAt FROM pending_operations").use { cursor ->
                 cursor.moveToFirst()
@@ -95,8 +97,8 @@ class MobileDatabaseMigrationTest {
         helper.createDatabase(ALERT_DATABASE, 3).close()
 
         helper.runMigrationsAndValidate(
-            ALERT_DATABASE, 7, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
-            MobileDatabase.MIGRATION_5_6, MobileDatabase.MIGRATION_6_7,
+            ALERT_DATABASE, 8, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
+            MobileDatabase.MIGRATION_5_6, MobileDatabase.MIGRATION_6_7, MobileDatabase.MIGRATION_7_8,
         ).use { database ->
             database.query("SELECT COUNT(*) FROM alert_definitions").use { cursor ->
                 cursor.moveToFirst()
@@ -118,6 +120,7 @@ class MobileDatabaseMigrationTest {
                 assertEquals(0, cursor.getInt(0))
             }
             database.query("SELECT ciphertext, iv, revision, tombstone FROM health_intake_logs LIMIT 0").close()
+            database.query("SELECT category, ciphertext, iv FROM health_summaries LIMIT 0").close()
         }
     }
 

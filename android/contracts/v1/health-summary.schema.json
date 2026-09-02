@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/health-summary.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "summary_id", "consent_id", "category", "period_start", "period_end", "coverage_start", "coverage_end", "sample_count", "metrics", "source_packages", "missing_reason", "imported_at"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "summary_id": { "type": "string", "format": "uuid" },
+    "consent_id": { "type": "string", "format": "uuid" },
+    "category": { "enum": ["HEART_RATE", "RESTING_HEART_RATE", "SLEEP", "ACTIVITY"] },
+    "period_start": { "type": "string", "format": "date-time" },
+    "period_end": { "type": "string", "format": "date-time" },
+    "coverage_start": { "type": ["string", "null"], "format": "date-time" },
+    "coverage_end": { "type": ["string", "null"], "format": "date-time" },
+    "sample_count": { "type": "integer", "minimum": 0 },
+    "metrics": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "value", "unit"],
+        "properties": {
+          "name": { "enum": ["AVERAGE_BPM", "MINIMUM_BPM", "MAXIMUM_BPM", "SLEEP_MINUTES", "STEPS"] },
+          "value": { "type": "number" },
+          "unit": { "enum": ["bpm", "min", "count"] }
+        }
+      }
+    },
+    "source_packages": { "type": "array", "maxItems": 20, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 255 } },
+    "missing_reason": { "type": ["string", "null"], "enum": ["NO_DATA", "PERMISSION_REVOKED", "UNAVAILABLE", null] },
+    "imported_at": { "type": "string", "format": "date-time" }
+  }
+}

@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.pessoal.agenda.mobile"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.pessoal.agenda.mobile"
@@ -78,6 +78,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation(project(":wear-contract"))
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
+    implementation("androidx.health.connect:connect-client:1.1.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.test:core:1.6.1")
@@ -89,6 +90,7 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.room:room-testing:2.6.1")
     androidTestImplementation("androidx.work:work-testing:2.9.1")
+    androidTestImplementation("com.google.guava:guava:31.1-android")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.compose.ui:ui-test-manifest")
     androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")

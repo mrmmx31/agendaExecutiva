@@ -3,6 +3,10 @@ package com.pessoal.agenda.mobile.health
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
+import com.pessoal.agenda.mobile.health.connect.HealthConnectGateway
+import com.pessoal.agenda.mobile.health.connect.HealthConnectImportCoordinator
+import com.pessoal.agenda.mobile.health.connect.HealthConnectStatus
+import com.pessoal.agenda.mobile.health.connect.ImportedHealthSummary
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -111,11 +115,73 @@ class HealthStoreTest {
         assertEquals(SubjectiveKind.ROUTINE_NOTE, store.symptom(id)?.value?.kind)
     }
 
+    @Test
+    fun healthSummaryPreservesCoverageAndSourcesInsideCiphertext() = runBlocking {
+        store.initializeConsentCatalog()
+        store.setConsent(HealthCategory.HEART_RATE, true)
+        val consent = requireNotNull(store.consents().single { it.category == HealthCategory.HEART_RATE.name })
+        val summary = HealthSummary(
+            id = "a3000000-0000-4000-8000-000000000001",
+            consentId = consent.id,
+            category = HealthCategory.HEART_RATE,
+            periodStart = "2026-08-26T12:00:00Z",
+            periodEnd = "2026-09-02T12:00:00Z",
+            coverageStart = "2026-09-01T10:00:00Z",
+            coverageEnd = "2026-09-01T10:05:00Z",
+            sampleCount = 2,
+            metrics = listOf(HealthMetric(HealthMetricName.AVERAGE_BPM, 72.5, "bpm")),
+            sourcePackages = listOf("com.example.fixture"),
+            missingReason = null,
+            importedAt = "2026-09-02T12:00:00Z",
+        )
+
+        store.saveHealthSummary(summary)
+
+        val stored = database.offline().healthSummaries().single()
+        assertFalse(stored.ciphertext.contains("72.5"))
+        assertEquals(summary, store.healthSummaries().single())
+    }
+
+    @Test
+    fun importerReadsOnlyEnabledImportableCategoriesAndPreservesNoData() = runBlocking {
+        store.initializeConsentCatalog()
+        store.setConsent(HealthCategory.HEART_RATE, true)
+        store.setConsent(HealthCategory.MEDICATION, true)
+        val gateway = FakeHealthConnectGateway()
+        val importer = HealthConnectImportCoordinator(
+            gateway, store,
+            Clock.fixed(Instant.parse("2026-09-02T15:00:00Z"), ZoneOffset.UTC),
+            newId = { "a4000000-0000-4000-8000-000000000001" },
+        )
+
+        assertEquals(1, importer.importEnabled())
+
+        assertEquals(setOf(HealthCategory.HEART_RATE), gateway.requested)
+        val summary = store.healthSummaries().single()
+        assertEquals(0, summary.sampleCount)
+        assertTrue(summary.metrics.isEmpty())
+        assertEquals(HealthMissingReason.NO_DATA, summary.missingReason)
+        assertEquals("2026-08-26T15:00:00Z", summary.periodStart)
+    }
+
     private fun fictitiousIntake() = IntakeInput(
         kind = IntakeKind.MEDICATION,
         name = "Item ficticio",
         occurredAt = "2026-09-02T14:00:00Z",
     )
+}
+
+private class FakeHealthConnectGateway : HealthConnectGateway {
+    var requested: Set<HealthCategory> = emptySet()
+    override fun status() = HealthConnectStatus.AVAILABLE
+    override fun permissionsFor(categories: Set<HealthCategory>) = categories.mapTo(linkedSetOf()) { "read:${it.name}" }
+    override suspend fun grantedPermissions() = setOf("read:HEART_RATE")
+    override suspend fun readSummaries(categories: Set<HealthCategory>, start: Instant, end: Instant): List<ImportedHealthSummary> {
+        requested = categories
+        return categories.map {
+            ImportedHealthSummary(it, start, end, null, null, 0, emptyList(), emptyList(), HealthMissingReason.NO_DATA)
+        }
+    }
 }
 
 private class BoundTestCipher : HealthDataCipher {

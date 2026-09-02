@@ -14,10 +14,11 @@ dominio depende de uma interface de cifra para permitir testes deterministas sem
 chave real. Consentimento de produto e permissao Health Connect sao estados
 distintos; ambos sao necessarios para importar uma categoria.
 
-Health Connect nao entra no primeiro incremento e nenhuma permissao de saude e
-declarada antecipadamente. A integracao futura fara leituras em foreground por
-padrao. Historico alem do limite padrao e background exigem consentimentos e
-permissoes separados, depois de verificar disponibilidade da feature.
+Health Connect entra por uma interface isolada e declara apenas permissoes de
+leitura para frequencia cardiaca, frequencia em repouso, sono e passos. A
+declaracao no manifesto nao dispara o pedido: a UI solicita somente as categorias
+ativadas, ao tocar em importar. Leituras ocorrem em foreground e cobrem sete dias.
+Historico ampliado, background e escrita permanecem fora do escopo.
 
 Referencias oficiais consultadas em 2026-09-02:
 

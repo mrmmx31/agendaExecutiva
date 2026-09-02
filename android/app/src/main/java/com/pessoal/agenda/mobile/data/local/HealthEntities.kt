@@ -52,3 +52,17 @@ data class HealthChangeAuditEntity(
     val action: String,
     val occurredAt: String,
 )
+
+@Entity(
+    tableName = "health_summaries",
+    indices = [Index("category"), Index("importedAt")],
+)
+data class HealthSummaryEntity(
+    @PrimaryKey val id: String,
+    val consentId: String,
+    val category: String,
+    val ciphertext: String,
+    val iv: String,
+    val revision: Long,
+    val importedAt: String,
+)

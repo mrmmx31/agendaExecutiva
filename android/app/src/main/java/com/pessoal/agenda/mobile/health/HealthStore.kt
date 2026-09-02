@@ -5,6 +5,7 @@ import com.pessoal.agenda.mobile.data.local.HealthChangeAuditEntity
 import com.pessoal.agenda.mobile.data.local.HealthConsentEntity
 import com.pessoal.agenda.mobile.data.local.HealthIntakeLogEntity
 import com.pessoal.agenda.mobile.data.local.HealthSymptomLogEntity
+import com.pessoal.agenda.mobile.data.local.HealthSummaryEntity
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
 import java.time.Clock
 import java.time.Instant
@@ -45,6 +46,31 @@ data class SymptomInput(
 )
 
 data class VersionedHealthRecord<T>(val id: String, val revision: Long, val value: T)
+
+enum class HealthMetricName { AVERAGE_BPM, MINIMUM_BPM, MAXIMUM_BPM, SLEEP_MINUTES, STEPS }
+enum class HealthMissingReason { NO_DATA, PERMISSION_REVOKED, UNAVAILABLE }
+
+@Serializable
+data class HealthMetric(
+    val name: HealthMetricName,
+    val value: Double,
+    val unit: String,
+)
+
+data class HealthSummary(
+    val id: String,
+    val consentId: String,
+    val category: HealthCategory,
+    val periodStart: String,
+    val periodEnd: String,
+    val coverageStart: String?,
+    val coverageEnd: String?,
+    val sampleCount: Int,
+    val metrics: List<HealthMetric>,
+    val sourcePackages: List<String>,
+    val missingReason: HealthMissingReason?,
+    val importedAt: String,
+)
 
 class HealthStore(
     private val database: MobileDatabase,
@@ -158,6 +184,28 @@ class HealthStore(
         VersionedHealthRecord(row.id, row.revision, payload.toInput())
     }
 
+    suspend fun saveHealthSummary(summary: HealthSummary): String = database.withTransaction {
+        require(summary.category in IMPORTABLE_CATEGORIES)
+        val consent = requireNotNull(dao.healthConsent(summary.category.name))
+        require(consent.enabled && consent.id == summary.consentId)
+        validate(summary)
+        val id = summary.id.also(UUID::fromString)
+        val revision = 1L
+        val encrypted = encrypt(id, revision, HealthSummaryPayload.from(summary))
+        dao.upsertHealthSummary(
+            HealthSummaryEntity(
+                id = id, consentId = consent.id, category = summary.category.name,
+                ciphertext = encrypted.ciphertext, iv = encrypted.iv,
+                revision = revision, importedAt = summary.importedAt,
+            ),
+        )
+        id
+    }
+
+    suspend fun healthSummaries(): List<HealthSummary> = dao.healthSummaries().map { row ->
+        decrypt<HealthSummaryPayload>(row.id, row.revision, row.ciphertext, row.iv).toSummary()
+    }
+
     suspend fun deleteSymptom(id: String) = database.withTransaction {
         val current = requireNotNull(dao.healthSymptom(id))
         if (current.tombstone) return@withTransaction
@@ -217,10 +265,70 @@ class HealthStore(
         Instant.parse(value.occurredAt)
     }
 
+    private fun validate(value: HealthSummary) {
+        UUID.fromString(value.id)
+        UUID.fromString(value.consentId)
+        val start = Instant.parse(value.periodStart)
+        val end = Instant.parse(value.periodEnd)
+        require(start < end)
+        require(value.sampleCount >= 0)
+        require(value.metrics.size <= 8 && value.metrics.all { it.value.isFinite() })
+        require(value.sourcePackages.size <= 20 && value.sourcePackages.distinct().size == value.sourcePackages.size)
+        value.coverageStart?.let(Instant::parse)
+        value.coverageEnd?.let(Instant::parse)
+        Instant.parse(value.importedAt)
+        if (value.sampleCount == 0) {
+            require(value.coverageStart == null && value.coverageEnd == null && value.metrics.isEmpty())
+            require(value.missingReason != null)
+        } else {
+            require(value.coverageStart != null && value.coverageEnd != null && value.missingReason == null)
+        }
+    }
+
     companion object {
         const val PURPOSE = "USER_REVIEWABLE_REPORT"
         const val DEFAULT_RETENTION_DAYS = 365
         const val MAX_RETENTION_DAYS = 3650
+        val IMPORTABLE_CATEGORIES = setOf(
+            HealthCategory.HEART_RATE,
+            HealthCategory.RESTING_HEART_RATE,
+            HealthCategory.SLEEP,
+            HealthCategory.ACTIVITY,
+        )
+    }
+}
+
+@Serializable
+private data class HealthSummaryPayload(
+    @SerialName("contract_version") val contractVersion: Int = 1,
+    @SerialName("summary_id") val summaryId: String,
+    @SerialName("consent_id") val consentId: String,
+    val category: String,
+    @SerialName("period_start") val periodStart: String,
+    @SerialName("period_end") val periodEnd: String,
+    @SerialName("coverage_start") val coverageStart: String?,
+    @SerialName("coverage_end") val coverageEnd: String?,
+    @SerialName("sample_count") val sampleCount: Int,
+    val metrics: List<HealthMetric>,
+    @SerialName("source_packages") val sourcePackages: List<String>,
+    @SerialName("missing_reason") val missingReason: String?,
+    @SerialName("imported_at") val importedAt: String,
+) {
+    fun toSummary() = HealthSummary(
+        summaryId, consentId, HealthCategory.valueOf(category), periodStart, periodEnd,
+        coverageStart, coverageEnd, sampleCount, metrics, sourcePackages,
+        missingReason?.let(HealthMissingReason::valueOf), importedAt,
+    )
+
+    companion object {
+        fun from(value: HealthSummary) = HealthSummaryPayload(
+            summaryId = value.id, consentId = value.consentId, category = value.category.name,
+            periodStart = value.periodStart, periodEnd = value.periodEnd,
+            coverageStart = value.coverageStart, coverageEnd = value.coverageEnd,
+            sampleCount = value.sampleCount, metrics = value.metrics,
+            sourcePackages = value.sourcePackages, missingReason = value.missingReason?.name,
+            importedAt = value.importedAt,
+        )
     }
 }
 

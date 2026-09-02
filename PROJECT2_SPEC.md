@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 65% do Projeto 2 |
+| Status | Implementação em andamento; 66,7% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-06` estão concluídas e três dos seis itens de `P2-07` também. O avanço geral é 65% e restam 35%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-06` estão concluídas e quatro dos seis itens de `P2-07` também. O avanço geral é 66,7% e restam 33,3%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -684,14 +684,14 @@ Room v6 no telefone mantém revisão e ack da execução; Room v2 no relógio pe
 
 Consentimentos, Health Connect, entradas manuais, retenção, relatório com proveniência e exportação revisável. Sem recomendação clínica.
 
-**Status:** Em andamento, 50% (3 de 6 itens concluídos).
+**Status:** Em andamento, 66,7% (4 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
 - [x] catalogar categorias, finalidade, retenção, proibições, fronteira criptográfica e contratos v1 fictícios;
 - [x] evoluir o Room para v7 com consentimentos e registros manuais cifrados, trilha de correção, tombstone e migração testada;
 - [x] entregar `Saúde e privacidade` com opt-in granular, registro manual, histórico, correção, exclusão e nenhuma permissão antecipada;
-- [ ] integrar resumos autorizados do Health Connect em foreground, com origem, cobertura, lacunas e revogação por categoria;
+- [x] integrar resumos autorizados do Health Connect em foreground, com origem, cobertura, lacunas e revogação por categoria;
 - [ ] gerar snapshot reproduzível, prévia revisável e exportação explícita em JSON, CSV e PDF, sem inferência clínica;
 - [ ] aprovar matriz de negação, revogação, retenção, migração, exportação, temas e ausência de vazamento em log/sync.
 
@@ -700,6 +700,8 @@ Consentimentos, Health Connect, entradas manuais, retenção, relatório com pro
 **Evidência do segundo item:** Room v7 separa consentimentos, ingestões, sintomas e auditoria técnica. Tipo, horário, fuso e conteúdo manual ficam dentro de payload AES-256-GCM com nonce aleatório e AAD vinculada ao UUID/revisão; apenas identidade, revisão, tombstone e instante técnico ficam consultáveis. O catálogo cria oito categorias desligadas e gravação exige opt-in exato. Correção incrementa revisão sem preservar cópia antiga; exclusão limpa ciphertext/IV e mantém tombstone e ações `CREATED`, `CORRECTED` e `DELETED` sem texto. Quatro testes Robolectric passaram. No `emulator-5554`, o Keystore rejeitou AAD diferente e três testes instrumentados validaram migrações até v7. Nenhuma permissão Health Connect foi declarada e saúde ainda não entra na fila de sync, cujo payload atual não oferece armazenamento sensível compatível no desktop.
 
 **Evidência do terceiro item:** o atalho superior abre `Saúde e privacidade` sem comprimir os quatro destinos operacionais inferiores. A tela apresenta oito switches independentes, finalidade e revogação visíveis; medicação, substância, sintoma/evento e nota de rotina só habilitam seus formulários após o consentimento correspondente. Quantidade, unidade, contexto, efeito, intensidade e nota permanecem opcionais; a medicação pode registrar que o instante informado também era o planejado. Histórico decifrado existe apenas em memória, permite corrigir e exige confirmação antes de limpar o conteúdo e manter tombstone. Dois testes Compose no AVD provaram opt-in e salvamento explícito. A tela foi inspecionada em temas claro e escuro, sem texto residual, sobreposição ou estímulo. Health Connect continua sem permissão ou dependência.
+
+**Evidência do quarto item:** o cliente estável Health Connect `1.1.0` lê somente em foreground e somente as categorias com consentimento local ativo: frequência cardíaca, frequência em repouso, sono e passos. O pedido de permissões ocorre no botão `Importar resumos`, nunca ao abrir a tela ou ligar o consentimento. A janela fica limitada aos sete dias anteriores; o Room v8 guarda apenas resumos cifrados, origem, cobertura e contagem, mantendo `NO_DATA` em vez de fabricar zero. Não são pedidas permissões de escrita, histórico ampliado ou background. Contratos JSON compartilhados, teste unitário com gateway falso, migrações v8 e cifra Keystore passaram; quatro testes instrumentados foram aprovados no `emulator-5554`. A interface clara mostrou disponibilidade, botão contextual e abriu o onboarding oficial do Health Connect sem concessão nem dado real. A cadeia foi atualizada para AGP 8.9.1, Gradle 8.11.1 e `compileSdk 36`, preservando `targetSdk 34`; `test lint assembleDebug` passou com 178 tarefas para app e Wear.
 
 ### P2-08 — Telemetria local de recomendação
 
@@ -756,4 +758,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Implementar o quarto item de `P2-07`: integração Health Connect somente em foreground, por categorias autorizadas, com cobertura, origem, lacunas e revogação.
+Implementar o quinto item de `P2-07`: snapshot reproduzível, prévia e exportação explícita em JSON, CSV e PDF sem inferência clínica.

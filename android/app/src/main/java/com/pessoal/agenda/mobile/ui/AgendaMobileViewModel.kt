@@ -37,6 +37,10 @@ import com.pessoal.agenda.mobile.health.HealthStore
 import com.pessoal.agenda.mobile.health.IntakeInput
 import com.pessoal.agenda.mobile.health.SymptomInput
 import com.pessoal.agenda.mobile.health.VersionedHealthRecord
+import com.pessoal.agenda.mobile.health.HealthSummary
+import com.pessoal.agenda.mobile.health.connect.AndroidHealthConnectGateway
+import com.pessoal.agenda.mobile.health.connect.HealthConnectImportCoordinator
+import com.pessoal.agenda.mobile.health.connect.HealthConnectStatus
 import com.pessoal.agenda.mobile.data.local.HealthConsentEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -71,6 +75,8 @@ data class HealthUiState(
     val consents: List<HealthConsentEntity> = emptyList(),
     val intakes: List<VersionedHealthRecord<IntakeInput>> = emptyList(),
     val symptoms: List<VersionedHealthRecord<SymptomInput>> = emptyList(),
+    val summaries: List<HealthSummary> = emptyList(),
+    val connectStatus: HealthConnectStatus = HealthConnectStatus.UNAVAILABLE,
 )
 
 data class SensorySettingsUiState(
@@ -97,6 +103,8 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         MobileDatabase.get(application),
         AndroidKeystoreHealthDataCipher(),
     )
+    private val healthConnect = AndroidHealthConnectGateway(application)
+    private val healthImporter = HealthConnectImportCoordinator(healthConnect, healthStore)
     private val alertScheduling = AlertSchedulingCoordinator(application, alertStore)
     private val busy = MutableStateFlow(false)
     private val feedback = MutableStateFlow<String?>(null)
@@ -227,6 +235,28 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     fun deleteSymptom(id: String) = execute(successMessage = "Evento excluído.") {
         healthStore.deleteSymptom(id)
         refreshHealth()
+    }
+
+    fun healthPermissionsForEnabled(): Set<String> = healthConnect.permissionsFor(
+        health.value.consents.filter { it.enabled }.mapNotNullTo(linkedSetOf()) {
+            HealthCategory.valueOf(it.category).takeIf(AndroidHealthConnectGateway.IMPORTABLE::contains)
+        },
+    )
+
+    fun importHealthConnect(granted: Set<String>) {
+        val required = healthPermissionsForEnabled()
+        if (required.isEmpty()) {
+            feedback.value = "Ative ao menos uma categoria importável."
+            return
+        }
+        if (!granted.containsAll(required)) {
+            feedback.value = "Permissão não concedida; nenhum dado foi lido."
+            return
+        }
+        execute(successMessage = "Resumos de saúde atualizados.") {
+            healthImporter.importEnabled()
+            refreshHealth()
+        }
     }
 
     fun syncNow() = execute(successMessage = "Sincronização concluída.") {
@@ -419,6 +449,8 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             consents = healthStore.consents(),
             intakes = healthStore.intakes(),
             symptoms = healthStore.symptoms(),
+            summaries = healthStore.healthSummaries(),
+            connectStatus = healthConnect.status(),
         )
     }
 

@@ -1,0 +1,19 @@
+{
+  "contract_version": 1,
+  "summary_id": "a1000000-0000-4000-8000-000000000004",
+  "consent_id": "a1000000-0000-4000-8000-000000000001",
+  "category": "HEART_RATE",
+  "period_start": "2026-08-26T12:00:00Z",
+  "period_end": "2026-09-02T12:00:00Z",
+  "coverage_start": "2026-09-01T10:00:00Z",
+  "coverage_end": "2026-09-01T10:05:00Z",
+  "sample_count": 2,
+  "metrics": [
+    { "name": "AVERAGE_BPM", "value": 72.5, "unit": "bpm" },
+    { "name": "MINIMUM_BPM", "value": 70.0, "unit": "bpm" },
+    { "name": "MAXIMUM_BPM", "value": 75.0, "unit": "bpm" }
+  ],
+  "source_packages": ["com.example.fixture"],
+  "missing_reason": null,
+  "imported_at": "2026-09-02T12:00:00Z"
+}

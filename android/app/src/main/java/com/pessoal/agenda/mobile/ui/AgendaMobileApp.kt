@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.health.connect.client.PermissionController
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -108,6 +109,10 @@ fun AgendaMobileApp(
         if (granted) viewModel.setVisualAlertsEnabled(true)
         else viewModel.notificationPermissionDenied()
     }
+    val healthPermissionLauncher = rememberLauncherForActivityResult(
+        PermissionController.createRequestPermissionResultContract(),
+        viewModel::importHealthConnect,
+    )
     AgendaMobileTheme {
         AgendaMobileScreen(
             state = state,
@@ -155,6 +160,7 @@ fun AgendaMobileApp(
             onDeleteIntake = viewModel::deleteIntake,
             onSaveSymptom = viewModel::saveSymptom,
             onDeleteSymptom = viewModel::deleteSymptom,
+            onImportHealth = { healthPermissionLauncher.launch(viewModel.healthPermissionsForEnabled()) },
             initialPairingInvitation = initialPairingInvitation,
         )
     }
@@ -184,6 +190,7 @@ internal fun AgendaMobileScreen(
     onDeleteIntake: (String) -> Unit = {},
     onSaveSymptom: (String?, com.pessoal.agenda.mobile.health.SymptomInput) -> Unit = { _, _ -> },
     onDeleteSymptom: (String) -> Unit = {},
+    onImportHealth: () -> Unit = {},
 ) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var showPairing by rememberSaveable { mutableStateOf(false) }
@@ -304,6 +311,7 @@ internal fun AgendaMobileScreen(
                     onDeleteIntake = onDeleteIntake,
                     onSaveSymptom = onSaveSymptom,
                     onDeleteSymptom = onDeleteSymptom,
+                    onImportHealth = onImportHealth,
                 )
             } else if (showSensorySettings) {
                 SensorySettingsScreen(

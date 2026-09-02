@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
@@ -40,6 +41,8 @@ import com.pessoal.agenda.mobile.health.IntakeInput
 import com.pessoal.agenda.mobile.health.IntakeKind
 import com.pessoal.agenda.mobile.health.SymptomInput
 import com.pessoal.agenda.mobile.health.SubjectiveKind
+import com.pessoal.agenda.mobile.health.connect.AndroidHealthConnectGateway
+import com.pessoal.agenda.mobile.health.connect.HealthConnectStatus
 import java.time.Instant
 
 @Composable
@@ -51,6 +54,7 @@ internal fun HealthPrivacyScreen(
     onDeleteIntake: (String) -> Unit,
     onSaveSymptom: (String?, SymptomInput) -> Unit,
     onDeleteSymptom: (String) -> Unit,
+    onImportHealth: () -> Unit,
 ) {
     var intakeEditor by remember { mutableStateOf<Pair<String?, IntakeInput>?>(null) }
     var symptomEditor by remember { mutableStateOf<Pair<String?, SymptomInput>?>(null) }
@@ -89,6 +93,38 @@ internal fun HealthPrivacyScreen(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item { SectionTitle("Health Connect") }
+        item {
+            val importableEnabled = enabled.any { (category, active) ->
+                active && category in AndroidHealthConnectGateway.IMPORTABLE
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    when (state.connectStatus) {
+                        HealthConnectStatus.AVAILABLE -> "Disponível • leitura manual dos últimos 7 dias"
+                        HealthConnectStatus.UPDATE_REQUIRED -> "Atualização do Health Connect necessária"
+                        HealthConnectStatus.UNAVAILABLE -> "Indisponível neste aparelho"
+                    },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = onImportHealth,
+                    enabled = !busy && importableEnabled && state.connectStatus == HealthConnectStatus.AVAILABLE,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Icon(Icons.Outlined.Sync, null); Text("Importar resumos") }
+                state.summaries.firstOrNull()?.let { latest ->
+                    Text(
+                        "Última leitura: ${latest.category.label()} • ${latest.sampleCount} amostras",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Text(
+                    "Amostras brutas não são copiadas. Permissões são solicitadas apenas ao importar.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         item { SectionTitle("Permissões locais") }
         items(HealthCategory.entries, key = { it.name }) { category ->
             Row(

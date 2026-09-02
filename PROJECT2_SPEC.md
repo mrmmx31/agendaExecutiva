@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 61,7% do Projeto 2 |
+| Status | Implementação em andamento; 63,3% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-06` estão concluídas e um dos seis itens de `P2-07` também. O avanço geral é 61,7% e restam 38,3%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-06` estão concluídas e dois dos seis itens de `P2-07` também. O avanço geral é 63,3% e restam 36,7%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -684,18 +684,20 @@ Room v6 no telefone mantém revisão e ack da execução; Room v2 no relógio pe
 
 Consentimentos, Health Connect, entradas manuais, retenção, relatório com proveniência e exportação revisável. Sem recomendação clínica.
 
-**Status:** Em andamento, 16,7% (1 de 6 itens concluídos).
+**Status:** Em andamento, 33,3% (2 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
 - [x] catalogar categorias, finalidade, retenção, proibições, fronteira criptográfica e contratos v1 fictícios;
-- [ ] evoluir o Room para v7 com consentimentos e registros manuais cifrados, trilha de correção, tombstone e migração testada;
+- [x] evoluir o Room para v7 com consentimentos e registros manuais cifrados, trilha de correção, tombstone e migração testada;
 - [ ] entregar `Saúde e privacidade` com opt-in granular, registro manual, histórico, correção, exclusão e nenhuma permissão antecipada;
 - [ ] integrar resumos autorizados do Health Connect em foreground, com origem, cobertura, lacunas e revogação por categoria;
 - [ ] gerar snapshot reproduzível, prévia revisável e exportação explícita em JSON, CSV e PDF, sem inferência clínica;
 - [ ] aprovar matriz de negação, revogação, retenção, migração, exportação, temas e ausência de vazamento em log/sync.
 
 **Evidência do primeiro item:** `docs/privacy/HEALTH_DATA_INVENTORY.md` delimita oito categorias opt-in, finalidade exclusiva de relatório revisável, retenção, minimização, exclusão e usos proibidos. O ADR `0001` separa consentimento do produto e permissão da plataforma, fixa AES-256-GCM com chave não exportável no Android Keystore e mantém Health Connect fora deste incremento. Três schemas fechados e fixtures fictícias cobrem consentimento, ingestão manual e sintoma; `jq empty`, o teste de contrato Java e o teste Kotlin passaram. Nenhuma permissão, dependência de saúde, dado pessoal ou estímulo foi adicionado.
+
+**Evidência do segundo item:** Room v7 separa consentimentos, ingestões, sintomas e auditoria técnica. Tipo, horário, fuso e conteúdo manual ficam dentro de payload AES-256-GCM com nonce aleatório e AAD vinculada ao UUID/revisão; apenas identidade, revisão, tombstone e instante técnico ficam consultáveis. O catálogo cria oito categorias desligadas e gravação exige opt-in exato. Correção incrementa revisão sem preservar cópia antiga; exclusão limpa ciphertext/IV e mantém tombstone e ações `CREATED`, `CORRECTED` e `DELETED` sem texto. Quatro testes Robolectric passaram. No `emulator-5554`, o Keystore rejeitou AAD diferente e três testes instrumentados validaram migrações até v7. Nenhuma permissão Health Connect foi declarada e saúde ainda não entra na fila de sync, cujo payload atual não oferece armazenamento sensível compatível no desktop.
 
 ### P2-08 — Telemetria local de recomendação
 
@@ -752,4 +754,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Implementar o segundo item de `P2-07`: Room v7, cifra autenticada injetável, consentimentos e registros manuais fictícios com revisão e tombstone; Health Connect permanece desligado.
+Implementar o terceiro item de `P2-07`: tela `Saúde e privacidade` para opt-in granular, entradas manuais, histórico, correção e exclusão, sem solicitar Health Connect.

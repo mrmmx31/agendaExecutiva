@@ -34,13 +34,14 @@ class MobileDatabaseMigrationTest {
 
         helper.runMigrationsAndValidate(
             TEST_DATABASE,
-            6,
+            7,
             true,
             MobileDatabase.MIGRATION_1_2,
             MobileDatabase.MIGRATION_2_3,
             MobileDatabase.MIGRATION_3_4,
             MobileDatabase.MIGRATION_4_5,
             MobileDatabase.MIGRATION_5_6,
+            MobileDatabase.MIGRATION_6_7,
         ).use { database ->
             database.query("SELECT value FROM mobile_metadata WHERE `key`='contract_version'").use { cursor ->
                 cursor.moveToFirst()
@@ -76,8 +77,9 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            QUEUE_DATABASE, 6, true, MobileDatabase.MIGRATION_2_3,
+            QUEUE_DATABASE, 7, true, MobileDatabase.MIGRATION_2_3,
             MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5, MobileDatabase.MIGRATION_5_6,
+            MobileDatabase.MIGRATION_6_7,
         ).use { database ->
             database.query("SELECT status, attemptCount, updatedAt FROM pending_operations").use { cursor ->
                 cursor.moveToFirst()
@@ -93,8 +95,8 @@ class MobileDatabaseMigrationTest {
         helper.createDatabase(ALERT_DATABASE, 3).close()
 
         helper.runMigrationsAndValidate(
-            ALERT_DATABASE, 6, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
-            MobileDatabase.MIGRATION_5_6,
+            ALERT_DATABASE, 7, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
+            MobileDatabase.MIGRATION_5_6, MobileDatabase.MIGRATION_6_7,
         ).use { database ->
             database.query("SELECT COUNT(*) FROM alert_definitions").use { cursor ->
                 cursor.moveToFirst()
@@ -111,6 +113,11 @@ class MobileDatabaseMigrationTest {
                 assertEquals(true, found)
             }
             database.query("SELECT wearRevision, acknowledgedWearOperationId FROM protocol_runs LIMIT 0").close()
+            database.query("SELECT COUNT(*) FROM health_consents").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+            database.query("SELECT ciphertext, iv, revision, tombstone FROM health_intake_logs LIMIT 0").close()
         }
     }
 

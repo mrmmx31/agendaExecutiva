@@ -23,8 +23,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AlertDeliveryEntity::class,
         AlertActionEntity::class,
         SensoryProfileEntity::class,
+        HealthConsentEntity::class,
+        HealthIntakeLogEntity::class,
+        HealthSymptomLogEntity::class,
+        HealthChangeAuditEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class MobileDatabase : RoomDatabase() {
@@ -42,6 +46,7 @@ abstract class MobileDatabase : RoomDatabase() {
                 DATABASE_NAME,
             ).addMigrations(
                 MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+                MIGRATION_6_7,
             ).build().also { instance = it }
         }
 
@@ -217,6 +222,42 @@ abstract class MobileDatabase : RoomDatabase() {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE protocol_runs ADD COLUMN wearRevision INTEGER NOT NULL DEFAULT 1")
                 database.execSQL("ALTER TABLE protocol_runs ADD COLUMN acknowledgedWearOperationId TEXT")
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS health_consents (
+                        id TEXT NOT NULL PRIMARY KEY, category TEXT NOT NULL, purpose TEXT NOT NULL,
+                        enabled INTEGER NOT NULL, foregroundOnly INTEGER NOT NULL,
+                        retentionDays INTEGER NOT NULL, grantedAt TEXT, revokedAt TEXT,
+                        updatedAt TEXT NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_health_consents_category ON health_consents(category)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS health_intake_logs (
+                        id TEXT NOT NULL PRIMARY KEY, ciphertext TEXT NOT NULL, iv TEXT NOT NULL,
+                        revision INTEGER NOT NULL, tombstone INTEGER NOT NULL, updatedAt TEXT NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_health_intake_logs_updatedAt ON health_intake_logs(updatedAt)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS health_symptom_logs (
+                        id TEXT NOT NULL PRIMARY KEY, ciphertext TEXT NOT NULL, iv TEXT NOT NULL,
+                        revision INTEGER NOT NULL, tombstone INTEGER NOT NULL, updatedAt TEXT NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_health_symptom_logs_updatedAt ON health_symptom_logs(updatedAt)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS health_change_audit (
+                        changeId TEXT NOT NULL PRIMARY KEY, entityType TEXT NOT NULL,
+                        entityId TEXT NOT NULL, revision INTEGER NOT NULL, action TEXT NOT NULL,
+                        occurredAt TEXT NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_health_change_audit_entityType_entityId_revision ON health_change_audit(entityType, entityId, revision)")
             }
         }
     }

@@ -10,6 +10,7 @@ Versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 Esta seção acompanha a implementação definida em [`SPEC.md`](SPEC.md).
 
 ### Adicionado
+- Room v7 e store de saúde com catálogo opt-in, payloads AES-GCM/Keystore, revisão, tombstone e auditoria técnica sem conteúdo
 - Primeiro item da P2-07 com inventário de dados, ADR da fronteira criptográfica e contratos fechados fictícios para consentimento, ingestão e sintoma
 - P2-06 concluída com gate Data Layer pareado do protocolo: publicação no telefone, confirmação durável no Wear, ack idempotente e avanço validado nos dois dispositivos virtuais
 - Marco intermediário da P2-06 com `Vou sair`, passo atual e confirmação offline no Wear, Room v6/v2 e sugestões estruturais obrigatoriamente encaminhadas para revisão

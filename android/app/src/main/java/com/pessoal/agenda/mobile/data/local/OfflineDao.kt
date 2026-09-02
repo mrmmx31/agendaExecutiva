@@ -9,6 +9,42 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface OfflineDao {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertHealthConsent(value: HealthConsentEntity): Long
+
+    @Upsert
+    suspend fun upsertHealthConsent(value: HealthConsentEntity)
+
+    @Query("SELECT * FROM health_consents WHERE category=:category")
+    suspend fun healthConsent(category: String): HealthConsentEntity?
+
+    @Query("SELECT * FROM health_consents ORDER BY category")
+    suspend fun healthConsents(): List<HealthConsentEntity>
+
+    @Upsert
+    suspend fun upsertHealthIntake(value: HealthIntakeLogEntity)
+
+    @Query("SELECT * FROM health_intake_logs WHERE id=:id")
+    suspend fun healthIntake(id: String): HealthIntakeLogEntity?
+
+    @Query("UPDATE health_intake_logs SET ciphertext='', iv='', revision=:revision, tombstone=1, updatedAt=:now WHERE id=:id AND tombstone=0")
+    suspend fun tombstoneHealthIntake(id: String, revision: Long, now: String): Int
+
+    @Upsert
+    suspend fun upsertHealthSymptom(value: HealthSymptomLogEntity)
+
+    @Query("SELECT * FROM health_symptom_logs WHERE id=:id")
+    suspend fun healthSymptom(id: String): HealthSymptomLogEntity?
+
+    @Query("UPDATE health_symptom_logs SET ciphertext='', iv='', revision=:revision, tombstone=1, updatedAt=:now WHERE id=:id AND tombstone=0")
+    suspend fun tombstoneHealthSymptom(id: String, revision: Long, now: String): Int
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertHealthAudit(value: HealthChangeAuditEntity)
+
+    @Query("SELECT * FROM health_change_audit WHERE entityId=:entityId ORDER BY revision")
+    suspend fun healthAudit(entityId: String): List<HealthChangeAuditEntity>
+
     @Query("SELECT * FROM alert_definitions WHERE id=:id")
     suspend fun alertDefinition(id: String): AlertDefinitionEntity?
 

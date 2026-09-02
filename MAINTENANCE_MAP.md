@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 61,7%, restando 38,3%; `P2-01` a `P2-06` concluídas e `P2-07` em 1 de 6 itens.
+- Projeto 2: implementação em 63,3%, restando 36,7%; `P2-01` a `P2-06` concluídas e `P2-07` em 2 de 6 itens.
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -84,7 +84,7 @@ Não criar um módulo Java/Kotlin compartilhado entre Maven desktop e Android an
 
 ## 6. Componentes móveis planejados
 
-Implementado até o primeiro item de `P2-07`:
+Implementado até o segundo item de `P2-07`:
 
 | Área | Local |
 |---|---|
@@ -114,6 +114,7 @@ Implementado até o primeiro item de `P2-07`:
 | Aplicativo Wear | `android/wear/`; mesmo `applicationId` e assinatura do telefone, sem segredo mestre |
 | Transporte e ações Wear | `mobile/wear/`, `wear/sync/` e `wear/data/`; DataItems duráveis, revisão monotônica e outbox Room |
 | Contratos e privacidade de saúde | `android/contracts/v1/health-consent.schema.json`, `intake-log.schema.json`, `symptom-log.schema.json`, `docs/privacy/HEALTH_DATA_INVENTORY.md` e ADR `0001` |
+| Persistência sensível Android | `health/HealthStore.kt`, `HealthDataCipher.kt`, `data/local/HealthEntities.kt` e Room v7; AES-GCM/Keystore, revisão, tombstone e auditoria sem texto |
 | Matriz P2-05 | `android/P2_05_MATRIX.md`; conexão, ações conectadas, reconciliação offline, UI e limites |
 
 | Domínio | Android | Wear | Desktop |

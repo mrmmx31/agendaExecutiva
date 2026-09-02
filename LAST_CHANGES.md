@@ -7,8 +7,8 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | feat(health): definir contratos e fronteira de dados |
-| Data | 2026-09-02 17:14:49 -0400 |
+| Mensagem | feat(health): persistir registros cifrados no Room |
+| Data | 2026-09-02 17:40:01 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
@@ -20,40 +20,36 @@ PROJECT2_SPEC.md
 README.md
 SPEC.md
 android/README.md
-android/app/src/test/java/com/pessoal/agenda/mobile/sync/SharedContractFixtureTest.kt
-android/contracts/README.md
-android/contracts/fixtures/v1/health-consent.valid.json
-android/contracts/fixtures/v1/intake-log.valid.json
-android/contracts/fixtures/v1/symptom-log.valid.json
-android/contracts/v1/health-consent.schema.json
-android/contracts/v1/intake-log.schema.json
-android/contracts/v1/symptom-log.schema.json
-docs/adr/0001-health-data-security-boundary.md
-docs/privacy/HEALTH_DATA_INVENTORY.md
-src/test/java/com/pessoal/agenda/contracts/SharedContractFixtureTest.java
+android/app/schemas/com.pessoal.agenda.mobile.data.local.MobileDatabase/7.json
+android/app/src/androidTest/java/com/pessoal/agenda/mobile/data/local/MobileDatabaseMigrationTest.kt
+android/app/src/androidTest/java/com/pessoal/agenda/mobile/health/AndroidKeystoreHealthDataCipherTest.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/local/HealthEntities.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/local/MobileDatabase.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/local/OfflineDao.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/health/HealthDataCipher.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/health/HealthStore.kt
+android/app/src/test/java/com/pessoal/agenda/mobile/health/HealthStoreTest.kt
 ```
 
 ## Diff Resumido
 
 ```diff
- CHANGELOG.md                                       |  1 +
- MAINTENANCE_MAP.md                                 |  5 ++-
- PROJECT2_SPEC.md                                   | 19 ++++++--
- README.md                                          |  2 +-
- SPEC.md                                            |  4 +-
- android/README.md                                  |  3 +-
- .../mobile/sync/SharedContractFixtureTest.kt       |  9 ++++
- android/contracts/README.md                        |  6 +++
- .../fixtures/v1/health-consent.valid.json          | 12 +++++
- .../contracts/fixtures/v1/intake-log.valid.json    | 18 ++++++++
- .../contracts/fixtures/v1/symptom-log.valid.json   | 13 ++++++
- android/contracts/v1/health-consent.schema.json    | 19 ++++++++
- android/contracts/v1/intake-log.schema.json        | 25 +++++++++++
- android/contracts/v1/symptom-log.schema.json       | 20 +++++++++
- docs/adr/0001-health-data-security-boundary.md     | 46 +++++++++++++++++++
- docs/privacy/HEALTH_DATA_INVENTORY.md              | 51 ++++++++++++++++++++++
- .../contracts/SharedContractFixtureTest.java       |  9 ++++
- 17 files changed, 253 insertions(+), 9 deletions(-)
+ CHANGELOG.md                                       |    1 +
+ MAINTENANCE_MAP.md                                 |    5 +-
+ PROJECT2_SPEC.md                                   |   12 +-
+ README.md                                          |    2 +-
+ SPEC.md                                            |    4 +-
+ android/README.md                                  |    6 +-
+ .../7.json                                         | 1448 ++++++++++++++++++++
+ .../data/local/MobileDatabaseMigrationTest.kt      |   15 +-
+ .../health/AndroidKeystoreHealthDataCipherTest.kt  |   23 +
+ .../agenda/mobile/data/local/HealthEntities.kt     |   54 +
+ .../agenda/mobile/data/local/MobileDatabase.kt     |   43 +-
+ .../pessoal/agenda/mobile/data/local/OfflineDao.kt |   36 +
+ .../agenda/mobile/health/HealthDataCipher.kt       |   67 +
+ .../pessoal/agenda/mobile/health/HealthStore.kt    |  262 ++++
+ .../agenda/mobile/health/HealthStoreTest.kt        |  117 ++
+ 15 files changed, 2077 insertions(+), 18 deletions(-)
 ```
 
 ---

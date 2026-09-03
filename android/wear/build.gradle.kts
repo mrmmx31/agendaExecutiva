@@ -6,6 +6,17 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+val releaseSigningEnvironment = mapOf(
+    "storeFile" to System.getenv("AGENDA_RELEASE_STORE_FILE"),
+    "storePassword" to System.getenv("AGENDA_RELEASE_STORE_PASSWORD"),
+    "keyAlias" to System.getenv("AGENDA_RELEASE_KEY_ALIAS"),
+    "keyPassword" to System.getenv("AGENDA_RELEASE_KEY_PASSWORD"),
+)
+val releaseSigningConfigured = releaseSigningEnvironment.values.all { !it.isNullOrBlank() }
+require(releaseSigningEnvironment.values.none { !it.isNullOrBlank() } || releaseSigningConfigured) {
+    "Configure todas as variáveis AGENDA_RELEASE_* ou nenhuma delas."
+}
+
 android {
     namespace = "com.pessoal.agenda.wear"
     compileSdk = 35
@@ -20,6 +31,17 @@ android {
         manifestPlaceholders["appLabel"] = "Agenda Sensorial"
     }
 
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("releaseEnvironment") {
+                storeFile = file(requireNotNull(releaseSigningEnvironment["storeFile"]))
+                storePassword = releaseSigningEnvironment["storePassword"]
+                keyAlias = releaseSigningEnvironment["keyAlias"]
+                keyPassword = releaseSigningEnvironment["keyPassword"]
+            }
+        }
+    }
+
     buildTypes {
         create("fieldTest") {
             initWith(getByName("debug"))
@@ -29,6 +51,7 @@ android {
             matchingFallbacks += listOf("debug")
         }
         release {
+            signingConfig = signingConfigs.findByName("releaseEnvironment")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

@@ -28,7 +28,7 @@ instrument() {
   output="$(adb -s "$serial" shell am instrument -w \
     -e pairedGate true -e class "$class#$method" "$RUNNER")"
   printf '%s\n' "$output"
-  rg -q '^OK \(' <<<"$output" || fail "instrumentacao falhou: $class#$method"
+  grep -qE '^OK \(' <<<"$output" || fail "instrumentacao falhou: $class#$method"
 }
 
 install_pair() {
@@ -70,4 +70,3 @@ instrument "$WEAR" "$WEAR_CLASS" completeProtocolStepAndAwaitAcknowledgement
 instrument "$PHONE" "$PHONE_CLASS" assertProtocolAdvancedAfterWearConfirmation
 
 printf 'P2-10 emulator gate: aprovado\n'
-

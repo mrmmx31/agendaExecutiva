@@ -9,7 +9,7 @@ APP_APK="${1:-$ANDROID/app/build/outputs/apk/release/app-release-unsigned.apk}"
 WEAR_APK="${2:-$ANDROID/wear/build/outputs/apk/release/wear-release-unsigned.apk}"
 
 fail() { printf 'P2-10 static gate: %s\n' "$*" >&2; exit 1; }
-require_text() { rg -q --fixed-strings "$2" "$1" || fail "ausente em $1: $2"; }
+require_text() { grep -qF "$2" "$1" || fail "ausente em $1: $2"; }
 
 command -v xmllint >/dev/null || fail "xmllint indisponivel"
 command -v apkanalyzer >/dev/null || fail "apkanalyzer indisponivel"
@@ -33,21 +33,22 @@ require_text "$ANDROID/app/src/main/res/values/strings.xml" 'A Agenda não diagn
 
 allowed_permissions='^(android\.permission\.(ACCESS_NETWORK_STATE|FOREGROUND_SERVICE|INTERNET|POST_NOTIFICATIONS|RECEIVE_BOOT_COMPLETED|VIBRATE|WAKE_LOCK|health\.READ_(HEART_RATE|RESTING_HEART_RATE|SLEEP|STEPS))|com\.pessoal\.agenda\.mobile\.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION)$'
 for apk in "$APP_APK" "$WEAR_APK"; do
-  unexpected="$(apkanalyzer manifest permissions "$apk" 2>/dev/null | rg -v "$allowed_permissions" || true)"
+  unexpected="$(apkanalyzer manifest permissions "$apk" 2>/dev/null | grep -Ev "$allowed_permissions" || true)"
   [[ -z "$unexpected" ]] || fail "permissao inesperada em $apk: $unexpected"
 done
 
-if rg -n 'firebase|crashlytics|analytics|onnxruntime|play-services-tflite' \
+if grep -En 'firebase|crashlytics|analytics|onnxruntime|play-services-tflite' \
     "$ANDROID/app/build.gradle.kts" "$ANDROID/wear/build.gradle.kts"; then
   fail "SDK de analytics ou runtime nao aprovado"
 fi
-if rg -n 'Log\.|printStackTrace|println\(' \
+if grep -R -En --include='*.kt' 'Log\.|printStackTrace|println\(' \
     "$ANDROID/app/src/main/java/com/pessoal/agenda/mobile/health" \
     "$ANDROID/app/src/main/java/com/pessoal/agenda/mobile/recommendation"; then
   fail "log no limite de saude/recomendacao"
 fi
-if rg -n "(AIza[0-9A-Za-z_-]{20,}|BEGIN (RSA |EC |)PRIVATE KEY|client_secret[\"'=: ]+[A-Za-z0-9_-])" \
-    "$ANDROID" --glob '!**/build/**'; then
+if grep -R -En --exclude-dir=build \
+    "(AIza[0-9A-Za-z_-]{20,}|BEGIN (RSA |EC |)PRIVATE KEY|client_secret[\"'=: ]+[A-Za-z0-9_-])" \
+    "$ANDROID"; then
   fail "possivel segredo versionado"
 fi
 

@@ -41,7 +41,7 @@ fi
   printf 'sdk=%s\n' "$(adb -s "$SERIAL" shell getprop ro.build.version.sdk | tr -d '\r')"
   printf 'field_test_installed=%s\n' "$(adb -s "$SERIAL" shell pm path "$PACKAGE" | sed 's/package:/yes:/' || true)"
   printf '%s\n' 'battery:'
-  adb -s "$SERIAL" shell dumpsys battery | rg 'level:|temperature:|status:|plugged:'
+  adb -s "$SERIAL" shell dumpsys battery | grep -E 'level:|temperature:|status:|plugged:'
 } | tee "$REPORT"
 if [[ -n "$WEAR_SERIAL" ]]; then
   {

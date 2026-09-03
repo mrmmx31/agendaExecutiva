@@ -7,39 +7,41 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | build(android): isolar variante de teste fisico |
-| Data | 2026-09-03 01:04:48 -0400 |
+| Mensagem | build(release): preparar assinatura externa |
+| Data | 2026-09-03 01:30:41 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
 MAINTENANCE_MAP.md
-PROJECT2_SPEC.md
 android/P2_10_MATRIX.md
 android/README.md
 android/app/build.gradle.kts
-android/app/src/main/AndroidManifest.xml
+android/scripts/p2_10_emulator_gate.sh
 android/scripts/p2_10_physical_gate.sh
+android/scripts/p2_10_release_candidate.sh
+android/scripts/p2_10_resilience_gate.sh
+android/scripts/p2_10_static_gate.sh
 android/wear/build.gradle.kts
-android/wear/src/main/AndroidManifest.xml
-docs/release/PHYSICAL_TEST_RUNBOOK.md
+docs/release/SIGNING.md
 ```
 
 ## Diff Resumido
 
 ```diff
- MAINTENANCE_MAP.md                        |   1 +
- PROJECT2_SPEC.md                          |   9 +++
- android/P2_10_MATRIX.md                   |  16 ++++
- android/README.md                         |   1 +
- android/app/build.gradle.kts              |   8 ++
- android/app/src/main/AndroidManifest.xml  |   2 +-
- android/scripts/p2_10_physical_gate.sh    |  88 +++++++++++++++++++++
- android/wear/build.gradle.kts             |   8 ++
- android/wear/src/main/AndroidManifest.xml |   2 +-
- docs/release/PHYSICAL_TEST_RUNBOOK.md     | 126 ++++++++++++++++++++++++++++++
- 10 files changed, 259 insertions(+), 2 deletions(-)
+ MAINTENANCE_MAP.md                         |  1 +
+ android/P2_10_MATRIX.md                    | 12 +++++++
+ android/README.md                          |  1 +
+ android/app/build.gradle.kts               | 23 ++++++++++++
+ android/scripts/p2_10_emulator_gate.sh     |  3 +-
+ android/scripts/p2_10_physical_gate.sh     |  2 +-
+ android/scripts/p2_10_release_candidate.sh | 56 ++++++++++++++++++++++++++++++
+ android/scripts/p2_10_resilience_gate.sh   |  6 ++--
+ android/scripts/p2_10_static_gate.sh       | 13 +++----
+ android/wear/build.gradle.kts              | 23 ++++++++++++
+ docs/release/SIGNING.md                    | 30 ++++++++++++++++
+ 11 files changed, 158 insertions(+), 12 deletions(-)
 ```
 
 ---

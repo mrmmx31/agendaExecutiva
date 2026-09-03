@@ -73,6 +73,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - P2-10 cataloga dez gates em [`P2_10_MATRIX.md`](P2_10_MATRIX.md); escopo regulatório, aviso/declarações de privacidade e auditoria estática dos APKs release estão aprovados.
 - Os scripts `p2_10_emulator_gate.sh` e `p2_10_resilience_gate.sh` aprovam regressão pareada, rede ausente, processo, idle e reboot usando apenas seriais QEMU explícitos.
 - O build `fieldTest` gera telefone/Wear sob `com.pessoal.agenda.mobile.fieldtest`; o script físico recusa execução sem autorização e o runbook fica em [`PHYSICAL_TEST_RUNBOOK.md`](../docs/release/PHYSICAL_TEST_RUNBOOK.md).
+- A assinatura release é opcional e vem somente de quatro variáveis `AGENDA_RELEASE_*`; [`SIGNING.md`](../docs/release/SIGNING.md) e `p2_10_release_candidate.sh` verificam certificado comum e artefatos sem publicar.
 
 ## Limites
 

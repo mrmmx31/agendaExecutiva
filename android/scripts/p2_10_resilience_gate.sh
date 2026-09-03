@@ -46,7 +46,7 @@ instrument() {
   output="$(adb -s "$serial" shell am instrument -w \
     -e pairedGate "$paired" -e class "$class#$method" "$RUNNER")"
   printf '%s\n' "$output"
-  rg -q '^OK \(' <<<"$output" || fail "instrumentacao falhou: $class#$method"
+  grep -qE '^OK \(' <<<"$output" || fail "instrumentacao falhou: $class#$method"
 }
 
 instrument_retry() {
@@ -55,7 +55,7 @@ instrument_retry() {
     output="$(adb -s "$serial" shell am instrument -w \
       -e pairedGate true -e class "$class#$method" "$RUNNER")"
     printf '%s\n' "$output"
-    if rg -q '^OK \(' <<<"$output"; then return; fi
+    if grep -qE '^OK \(' <<<"$output"; then return; fi
     printf 'API Wear ainda indisponivel; tentativa %s/12\n' "$attempt"
     sleep 10
   done
@@ -106,7 +106,7 @@ printf '%s\n' '--- memoria telefone ---'
 adb -s "$PHONE" shell dumpsys meminfo com.pessoal.agenda.mobile | sed -n '1,18p'
 printf '%s\n' '--- jobs telefone ---'
 adb -s "$PHONE" shell dumpsys jobscheduler com.pessoal.agenda.mobile | \
-  rg -m 12 'JOB #|agenda-alert|Pending queue|Ready:' || true
+  grep -E -m 12 'JOB #|agenda-alert|Pending queue|Ready:' || true
 printf '%s\n' '--- bateria telefone (baseline virtual) ---'
 adb -s "$PHONE" shell dumpsys batterystats com.pessoal.agenda.mobile | sed -n '1,35p'
 printf 'P2-10 resilience gate: aprovado\n'

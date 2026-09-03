@@ -125,3 +125,15 @@ APKs release foram regenerados e o gate estatico continuou verde. Tres ensaios
 de recusa confirmaram que o script fisico termina antes de ADB sem autorizacao,
 serial ou com serial de emulador. Essa preparacao reduz risco, mas nao conta como
 evidencia dos gates 6 a 9.
+
+**Assinatura preparada:** os módulos aceitam as mesmas quatro variáveis
+`AGENDA_RELEASE_*`, todas ou nenhuma, sem segredo no repositório.
+`p2_10_release_candidate.sh` recusa configuração ausente, keystore dentro do
+projeto e certificados divergentes; quando houver credenciais autorizadas, gera
+e verifica APK/AAB dos dois módulos e checksums sem instalar ou publicar. A
+politica e o procedimento ficam em `docs/release/SIGNING.md`. Nenhuma chave foi
+de produção criada nesta etapa; a validação automatizada usou somente uma chave
+sintética de um dia fora do projeto e a removeu ao terminar. APK e AAB dos dois
+módulos passaram na verificação de assinatura e certificado comum. Em seguida,
+o gate integral sem credenciais aprovou 377 tarefas Gradle e 365 casos unitários,
+e os APKs release voltaram a ser não assinados. O gate 10 permanece pendente.

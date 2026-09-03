@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 86,7% do Projeto 2 |
+| Status | Implementação em andamento; 88,3% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-08` estão concluídas e `P2-09` tem 4 de 6 itens. O avanço geral é 86,7% e restam 13,3%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-08` estão concluídas e `P2-09` tem 5 de 6 itens. O avanço geral é 88,3% e restam 11,7%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -810,7 +810,7 @@ pessoal ou estímulo sensorial foi usado.
 
 Somente após volume mínimo: benchmark LiteRT/ONNX, avaliação offline, shadow mode, ativação opt-in e rollback.
 
-**Status:** Em andamento, 66,7% (4 de 6 itens concluídos).
+**Status:** Em andamento, 83,3% (5 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
@@ -818,7 +818,7 @@ Somente após volume mínimo: benchmark LiteRT/ONNX, avaliação offline, shadow
 - [x] implementar treino e avaliação offline reproduzíveis contra o `rules-v1`;
 - [x] executar o modelo em shadow mode sem alterar opções exibidas;
 - [x] persistir artefato com integridade, compatibilidade e rollback atômico;
-- [ ] entregar opt-in de ativação, inspeção e métricas de recursos;
+- [x] entregar opt-in de ativação, inspeção e métricas de recursos;
 - [ ] aprovar matriz final de privacidade, qualidade, falha, bateria, temas e documentação.
 
 **Evidência do primeiro item:** o ADR 0003 escolhe para o primeiro candidato um
@@ -869,6 +869,25 @@ Cinco testes instrumentados validaram migrações históricas e `9 -> 10` no
 `emulator-5554`; o APK final abriu em fullscreen no mesmo AVD. O Samsung físico
 visível no ADB não recebeu comando.
 
+**Evidência do quinto item:** a tela `Recomendações locais` separa coleta,
+`Treinar e avaliar`, ativação confirmada e `Restaurar regras`. Treino insuficiente
+informa a contagem exigida; modelo abaixo do baseline permanece em `SHADOW`.
+Versão, estado, amostras, top-1 comparável, concordância, prefixo do hash, tamanho
+do artefato, bytes aproximados dos pesos, duração do último treino e latência
+média de inferência ficam inspecionáveis. Treino, shadow e benchmark executam em
+`Dispatchers.Default`. Desligar a personalização também rebaixa o modelo ativo,
+evitando reativação implícita ao religar a coleta.
+
+Quando ativo e com 12 amostras do contexto, o modelo reordena somente os presets
+que `rules-v1` e o perfil sensorial já permitiram; não cria duração nem ação e a
+ordem personalizada segue para o estado Wear. Preferência manual, opt-out,
+contexto curto, falha e artefato inválido mantêm a ordem anterior. Três testes do
+motor e dois da integração Wear cobrem esses limites. Dezesseis testes Compose
+passaram no `emulator-5554`, incluindo comandos e confirmação; a tela real foi
+inspecionada em 360 dp nos temas claro e escuro, com texto e barras legíveis. O
+gate local aprovou testes, lint e APKs em 87 tarefas, e o contrato Java também
+passou. O telefone físico não recebeu comando.
+
 ### P2-10 — Dispositivos reais e revisão regulatória
 
 Telefone e relógio físicos, bateria, permissões, áudio, perda de conexão, exportação para médico e revisão do enquadramento antes de qualquer alegação clínica.
@@ -916,5 +935,5 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Entregar opt-in separado para ativar o modelo, inspeção de versão/métricas e
-medição local de latência, memória aproximada e tamanho do artefato.
+Concluir a matriz P2-09 de privacidade, qualidade, integridade, desempenho,
+temas, fallback e ausência de regressão antes de iniciar P2-10.

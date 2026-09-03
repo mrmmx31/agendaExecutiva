@@ -16,6 +16,7 @@ data class StoredPersonalModel(
     val model: AuditableLinearModel,
     val evaluation: PersonalModelEvaluation,
     val artifactSha256: String,
+    val artifactSizeBytes: Int,
 )
 
 enum class PersonalModelStatus { SHADOW, ACTIVE, ROLLED_BACK }
@@ -88,6 +89,11 @@ class PersonalModelArtifactStore(
 
     suspend fun versions(): List<PersonalModelArtifactEntity> = dao.personalModelArtifacts(MODEL_ID)
 
+    suspend fun load(modelVersion: String): StoredPersonalModel? = database.withTransaction {
+        validateVersion(modelVersion)
+        dao.personalModelArtifact(MODEL_ID, modelVersion)?.toStoredOrNull()
+    }
+
     suspend fun recordShadow(comparison: ShadowComparison) = database.withTransaction {
         val current = dao.personalModelShadowMetrics(MODEL_ID)
         dao.upsertPersonalModelShadowMetrics(
@@ -127,6 +133,7 @@ class PersonalModelArtifactStore(
                     top1Accuracy - baselineTop1Accuracy >= OfflinePersonalModelEvaluator.MINIMUM_ABSOLUTE_GAIN,
             ),
             artifactSha256 = artifactSha256,
+            artifactSizeBytes = artifactJson.toByteArray(Charsets.UTF_8).size,
         )
     }.getOrNull()
 

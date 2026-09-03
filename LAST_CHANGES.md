@@ -7,8 +7,8 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | feat(model): persistir artefato com rollback |
-| Data | 2026-09-02 23:09:17 -0400 |
+| Mensagem | feat(model): controlar ativacao pessoal |
+| Data | 2026-09-02 23:32:01 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
@@ -18,36 +18,48 @@ MAINTENANCE_MAP.md
 PROJECT2_SPEC.md
 SPEC.md
 android/README.md
-android/app/schemas/com.pessoal.agenda.mobile.data.local.MobileDatabase/10.json
-android/app/src/androidTest/java/com/pessoal/agenda/mobile/data/local/MobileDatabaseMigrationTest.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/data/local/MobileDatabase.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/data/local/OfflineDao.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/data/local/RecommendationEntities.kt
+android/app/src/androidTest/java/com/pessoal/agenda/mobile/ui/AgendaMobileAppTest.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/AlertStore.kt
 android/app/src/main/java/com/pessoal/agenda/mobile/recommendation/PersonalModelArtifactStore.kt
 android/app/src/main/java/com/pessoal/agenda/mobile/recommendation/PersonalRankingModel.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/recommendation/PersonalSnoozeOptionRanker.kt
 android/app/src/main/java/com/pessoal/agenda/mobile/recommendation/RecommendationStore.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileApp.kt
 android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileViewModel.kt
-android/app/src/test/java/com/pessoal/agenda/mobile/recommendation/PersonalModelArtifactStoreTest.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/ui/RecommendationSettingsScreen.kt
+android/app/src/test/java/com/pessoal/agenda/mobile/recommendation/ActivePersonalModelRecommendationEngineTest.kt
+android/app/src/test/java/com/pessoal/agenda/mobile/recommendation/PersonalSnoozeOptionRankerTest.kt
+android/app/src/test/java/com/pessoal/agenda/mobile/sync/SharedContractFixtureTest.kt
+android/contracts/RECOMMENDATION_V1.md
+android/contracts/fixtures/v1/recommendation-decision-model.valid.json
+android/contracts/v1/recommendation-decision.schema.json
+src/test/java/com/pessoal/agenda/contracts/SharedContractFixtureTest.java
 ```
 
 ## Diff Resumido
 
 ```diff
- MAINTENANCE_MAP.md                                 |    7 +-
- PROJECT2_SPEC.md                                   |   25 +-
- SPEC.md                                            |    4 +-
- android/README.md                                  |    5 +-
- .../10.json                                        | 2000 ++++++++++++++++++++
- .../data/local/MobileDatabaseMigrationTest.kt      |   42 +-
- .../agenda/mobile/data/local/MobileDatabase.kt     |   33 +-
- .../pessoal/agenda/mobile/data/local/OfflineDao.kt |   30 +
- .../mobile/data/local/RecommendationEntities.kt    |   36 +
- .../recommendation/PersonalModelArtifactStore.kt   |  148 ++
- .../mobile/recommendation/PersonalRankingModel.kt  |   38 +-
- .../mobile/recommendation/RecommendationStore.kt   |    5 +-
- .../agenda/mobile/ui/AgendaMobileViewModel.kt      |   13 +-
- .../PersonalModelArtifactStoreTest.kt              |  157 ++
- 14 files changed, 2522 insertions(+), 21 deletions(-)
+ MAINTENANCE_MAP.md                                 |   5 +-
+ PROJECT2_SPEC.md                                   |  31 ++++-
+ SPEC.md                                            |   4 +-
+ android/README.md                                  |   3 +-
+ .../agenda/mobile/ui/AgendaMobileAppTest.kt        |  79 +++++++++++
+ .../com/pessoal/agenda/mobile/data/AlertStore.kt   |  16 ++-
+ .../recommendation/PersonalModelArtifactStore.kt   |   7 +
+ .../mobile/recommendation/PersonalRankingModel.kt  | 153 +++++++++++++++------
+ .../recommendation/PersonalSnoozeOptionRanker.kt   |  66 +++++++++
+ .../mobile/recommendation/RecommendationStore.kt   |  10 +-
+ .../pessoal/agenda/mobile/ui/AgendaMobileApp.kt    |   9 ++
+ .../agenda/mobile/ui/AgendaMobileViewModel.kt      | 119 +++++++++++++++-
+ .../mobile/ui/RecommendationSettingsScreen.kt      |  90 +++++++++++-
+ .../ActivePersonalModelRecommendationEngineTest.kt | 116 ++++++++++++++++
+ .../PersonalSnoozeOptionRankerTest.kt              | 114 +++++++++++++++
+ .../mobile/sync/SharedContractFixtureTest.kt       |   2 +
+ android/contracts/RECOMMENDATION_V1.md             |   1 +
+ .../v1/recommendation-decision-model.valid.json    |  15 ++
+ .../v1/recommendation-decision.schema.json         |   6 +-
+ .../contracts/SharedContractFixtureTest.java       |   2 +
+ 20 files changed, 778 insertions(+), 70 deletions(-)
 ```
 
 ---

@@ -10,8 +10,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
@@ -34,6 +37,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.pessoal.agenda.mobile.data.local.RecommendationEventEntity
 import com.pessoal.agenda.mobile.recommendation.RecommendationActiveContext
@@ -42,6 +46,7 @@ import com.pessoal.agenda.mobile.recommendation.RecommendationChannel
 import com.pessoal.agenda.mobile.recommendation.RecommendationOption
 import com.pessoal.agenda.mobile.recommendation.RecommendationReason
 import com.pessoal.agenda.mobile.recommendation.RecommendationSettings
+import com.pessoal.agenda.mobile.recommendation.PersonalModelStatus
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -53,9 +58,13 @@ internal fun RecommendationSettingsScreen(
     onSaveSettings: (RecommendationSettings) -> Unit,
     onCorrectEvent: (String, RecommendationActiveContext, RecommendationCapacityContext) -> Unit,
     onClearHistory: () -> Unit,
+    onTrainModel: () -> Unit,
+    onActivateModel: (String) -> Unit,
+    onRollbackModel: () -> Unit,
 ) {
     var correction by remember { mutableStateOf<RecommendationEventEntity?>(null) }
     var confirmClear by remember { mutableStateOf(false) }
+    var confirmActivation by remember { mutableStateOf(false) }
 
     correction?.let { event ->
         EventContextCorrectionDialog(
@@ -71,7 +80,7 @@ internal fun RecommendationSettingsScreen(
         AlertDialog(
             onDismissRequest = { confirmClear = false },
             title = { Text("Apagar histórico local?") },
-            text = { Text("Eventos e decisões de recomendação serão removidos. Tarefas, alertas, protocolos e saúde não serão alterados.") },
+            text = { Text("Eventos, decisões, modelos e métricas locais serão removidos. Tarefas, alertas, protocolos e saúde não serão alterados.") },
             confirmButton = {
                 Button(onClick = { onClearHistory(); confirmClear = false }) {
                     Icon(Icons.Outlined.Delete, contentDescription = null)
@@ -79,6 +88,20 @@ internal fun RecommendationSettingsScreen(
                 }
             },
             dismissButton = { OutlinedButton(onClick = { confirmClear = false }) { Text("Cancelar") } },
+        )
+    }
+    if (confirmActivation && state.model.version != null) {
+        AlertDialog(
+            onDismissRequest = { confirmActivation = false },
+            title = { Text("Ativar modelo pessoal?") },
+            text = { Text("A ordem dos adiamentos poderá mudar. Limites das regras e ações explícitas continuam obrigatórios.") },
+            confirmButton = {
+                Button(onClick = { onActivateModel(state.model.version); confirmActivation = false }) {
+                    Icon(Icons.Outlined.CheckCircle, contentDescription = null)
+                    Text("Ativar")
+                }
+            },
+            dismissButton = { OutlinedButton(onClick = { confirmActivation = false }) { Text("Cancelar") } },
         )
     }
 
@@ -108,6 +131,58 @@ internal fun RecommendationSettingsScreen(
                     enabled = !busy,
                     modifier = Modifier.semantics { contentDescription = "Personalização local" },
                 )
+            }
+        }
+
+        item { RecommendationSectionTitle("Modelo pessoal") }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricRow("Estado", state.model.status.statusLabel(state.model.activeVersion))
+                MetricRow(
+                    "Adiamentos elegíveis",
+                    "${state.model.eligibleEventCount}/${com.pessoal.agenda.mobile.recommendation.OfflinePersonalModelEvaluator.MINIMUM_DATASET_SAMPLES}",
+                )
+                Button(
+                    onClick = onTrainModel,
+                    enabled = !busy && state.settings.personalizationEnabled &&
+                        state.model.eligibleEventCount >= com.pessoal.agenda.mobile.recommendation.OfflinePersonalModelEvaluator.MINIMUM_DATASET_SAMPLES,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Outlined.Refresh, contentDescription = null)
+                    Text("Treinar e avaliar")
+                }
+                if (state.model.version != null) {
+                    MetricRow("Versão", state.model.version)
+                    MetricRow("Treino / avaliação", "${state.model.trainingSampleCount} / ${state.model.evaluationSampleCount}")
+                    MetricRow("Top-1 modelo", state.model.top1Accuracy.percentLabel())
+                    MetricRow("Top-1 regras", state.model.baselineTop1Accuracy.percentLabel())
+                    MetricRow("Shadow", "${state.shadowMetrics.agreementCount}/${state.shadowMetrics.evaluatedCount} concordâncias")
+                    MetricRow("SHA-256", state.model.artifactHashPrefix ?: "Indisponível")
+                    MetricRow("Artefato", state.model.artifactSizeBytes.byteLabel())
+                    MetricRow("Pesos em memória", state.model.approximateWeightBytes.byteLabel())
+                    MetricRow("Último treino", state.model.lastTrainingMillis.millisLabel())
+                    MetricRow("Inferência", state.model.inferenceMicros.microsLabel())
+                }
+                if (state.model.eligibleForActivation && state.model.version != null) {
+                    Button(
+                        onClick = { confirmActivation = true },
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Outlined.CheckCircle, contentDescription = null)
+                        Text("Ativar modelo")
+                    }
+                }
+                if (state.model.activeVersion != null) {
+                    OutlinedButton(
+                        onClick = onRollbackModel,
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(Icons.AutoMirrored.Outlined.Undo, contentDescription = null)
+                        Text("Restaurar regras")
+                    }
+                }
             }
         }
 
@@ -229,7 +304,7 @@ private fun RecommendationOptionRow(option: RecommendationOption) {
 private fun MetricRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, modifier = Modifier.weight(1f))
-        Text(value, fontWeight = FontWeight.Medium)
+        Text(value, fontWeight = FontWeight.Medium, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
     }
 }
 
@@ -325,6 +400,7 @@ private fun RecommendationReason.label() = when (this) {
     RecommendationReason.DEVICE_AVAILABLE -> "Dispositivo disponível"
     RecommendationReason.ACTIVE_PROTOCOL -> "Protocolo ativo"
     RecommendationReason.DOMAIN_LIMIT_APPLIED -> "Limite de segurança aplicado"
+    RecommendationReason.PERSONAL_MODEL -> "Modelo pessoal ativo"
 }
 
 private fun com.pessoal.agenda.mobile.recommendation.RecommendationOptionCode.label() = name.optionLabel()
@@ -355,6 +431,16 @@ private fun String.contextLabel() = RecommendationActiveContext.valueOf(this).la
 private fun String.capacityLabel() = RecommendationCapacityContext.valueOf(this).label()
 private fun String.localLabel(): String = DATE_TIME.format(Instant.parse(this).atZone(ZoneId.systemDefault()))
 private fun secondsLabel(seconds: Int): String = if (seconds < 60) "$seconds s" else "${seconds / 60} min"
+private fun PersonalModelStatus?.statusLabel(activeVersion: String?): String = when {
+    activeVersion != null -> "Ativo: $activeVersion"
+    this == PersonalModelStatus.SHADOW -> "Em observação"
+    this == PersonalModelStatus.ROLLED_BACK -> "Regras restauradas"
+    else -> "Ainda não treinado"
+}
+private fun Double?.percentLabel() = this?.let { "%.1f%%".format(it * 100) } ?: "Sem medição"
+private fun Int?.byteLabel() = this?.let { "$it bytes" } ?: "Sem medição"
+private fun Long?.millisLabel() = this?.let { "$it ms" } ?: "Somente nesta execução"
+private fun Long?.microsLabel() = this?.let { "$it µs" } ?: "Sem medição"
 
 private val PREFERRED_CHANNELS = listOf<RecommendationChannel?>(
     null,

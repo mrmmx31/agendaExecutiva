@@ -36,6 +36,7 @@ class SharedContractFixtureTest {
         assertKeys("health-report.valid.json", HEALTH_REPORT_KEYS);
         assertKeys("recommendation-event.valid.json", RECOMMENDATION_EVENT_KEYS);
         assertKeys("recommendation-decision.valid.json", RECOMMENDATION_DECISION_KEYS);
+        assertKeys("recommendation-decision-model.valid.json", RECOMMENDATION_DECISION_KEYS);
         assertKeys("personal-ranking-dataset.valid.json", PERSONAL_RANKING_DATASET_KEYS);
         assertKeys("personal-model-manifest.valid.json", PERSONAL_MODEL_MANIFEST_KEYS);
 
@@ -52,6 +53,7 @@ class SharedContractFixtureTest {
         assertEquals(1, fixture("health-report.valid.json").get("contract_version").getAsInt());
         assertEquals("ALERT_SNOOZED", fixture("recommendation-event.valid.json").get("event_type").getAsString());
         assertTrue(fixture("recommendation-decision.valid.json").get("fallback").getAsBoolean());
+        assertEquals("PERSONAL_LINEAR_MODEL", fixture("recommendation-decision-model.valid.json").get("engine_id").getAsString());
         JsonObject dataset = fixture("personal-ranking-dataset.valid.json");
         assertEquals("SYNTHETIC_FIXTURE", dataset.get("source").getAsString());
         assertEquals(12, dataset.getAsJsonArray("samples").size());

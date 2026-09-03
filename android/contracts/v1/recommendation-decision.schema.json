@@ -9,8 +9,8 @@
     "contract_version": { "const": 1 },
     "recommendation_id": { "type": "string", "format": "uuid" },
     "generated_at": { "type": "string", "format": "date-time" },
-    "engine_id": { "const": "DETERMINISTIC_RULES" },
-    "rule_version": { "const": "rules-v1" },
+    "engine_id": { "enum": ["DETERMINISTIC_RULES", "PERSONAL_LINEAR_MODEL"] },
+    "rule_version": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9._-]+$" },
     "purpose": { "enum": ["SNOOZE_PRESET", "ALERT_CHANNEL", "PROTOCOL_SHORTCUT"] },
     "sample_count": { "type": "integer", "minimum": 0 },
     "minimum_samples": { "type": "integer", "minimum": 1 },
@@ -23,7 +23,7 @@
         "properties": {
           "option_code": { "enum": ["SNOOZE_5", "SNOOZE_10", "SNOOZE_15", "SNOOZE_30", "SNOOZE_60", "CHANNEL_VISUAL", "CHANNEL_AUDIO", "CHANNEL_WATCH", "PROTOCOL_EXIT"] },
           "rank": { "type": "integer", "minimum": 1, "maximum": 3 },
-          "reason_code": { "enum": ["CAUTIOUS_DEFAULT", "MANUAL_PREFERENCE", "ENOUGH_LOCAL_HISTORY", "QUIET_HOURS_GUARD", "DEVICE_AVAILABLE", "ACTIVE_PROTOCOL", "DOMAIN_LIMIT_APPLIED"] }
+          "reason_code": { "enum": ["CAUTIOUS_DEFAULT", "MANUAL_PREFERENCE", "ENOUGH_LOCAL_HISTORY", "QUIET_HOURS_GUARD", "DEVICE_AVAILABLE", "ACTIVE_PROTOCOL", "DOMAIN_LIMIT_APPLIED", "PERSONAL_MODEL"] }
         }
       }
     }

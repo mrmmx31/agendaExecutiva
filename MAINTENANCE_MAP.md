@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 86,7%, restando 13,3%; `P2-01` a `P2-08` concluídas e `P2-09` em 4 de 6 itens.
+- Projeto 2: implementação em 88,3%, restando 11,7%; `P2-01` a `P2-08` concluídas e `P2-09` em 5 de 6 itens.
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -84,7 +84,7 @@ Não criar um módulo Java/Kotlin compartilhado entre Maven desktop e Android an
 
 ## 6. Componentes móveis planejados
 
-Implementado até o quarto marco de `P2-09`:
+Implementado até o quinto marco de `P2-09`:
 
 | Área | Local |
 |---|---|
@@ -126,6 +126,7 @@ Implementado até o quarto marco de `P2-09`:
 | Treino e avaliação offline | `recommendation/PersonalRankingModel.kt`; linear auditável, split temporal, baseline e gate de promoção |
 | Shadow mode | `recommendation/ShadowingRecommendationEngine`; saída primária intacta, mínimo contextual, teto de treino e métricas apenas em memória |
 | Artefato e rollback | `recommendation/PersonalModelArtifactStore.kt` e Room v10; JSON canônico, SHA-256, promoção transacional e métricas agregadas |
+| Ativação e inspeção | `ui/RecommendationSettingsScreen.kt`, `AgendaMobileViewModel.kt` e `PersonalSnoozeOptionRanker.kt`; opt-in confirmado, métricas e presets Wear limitados |
 | Matriz P2-05 | `android/P2_05_MATRIX.md`; conexão, ações conectadas, reconciliação offline, UI e limites |
 
 | Domínio | Android | Wear | Desktop |

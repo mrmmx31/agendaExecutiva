@@ -17,6 +17,7 @@ Uma recomendação ordena opções; nunca executa ação.
 | `DEVICE_AVAILABLE` | dispositivo necessário está disponível |
 | `ACTIVE_PROTOCOL` | protocolo explicitamente ativo favorece seu atalho |
 | `DOMAIN_LIMIT_APPLIED` | regra de domínio removeu uma saída inválida |
+| `PERSONAL_MODEL` | modelo pessoal ativo reordenou opções já permitidas pelas regras |
 
 ## Dados proibidos
 

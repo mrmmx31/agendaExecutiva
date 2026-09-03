@@ -42,12 +42,17 @@ import com.pessoal.agenda.mobile.recommendation.RecommendationOptionCode
 import com.pessoal.agenda.mobile.recommendation.RecommendationSourceDevice
 import com.pessoal.agenda.mobile.recommendation.RecommendationStore
 import com.pessoal.agenda.mobile.recommendation.RecommendationTelemetry
+import com.pessoal.agenda.mobile.recommendation.PersonalSnoozeOptionRanker
 
 class AlertStore(
     private val database: MobileDatabase,
     private val clock: Clock = Clock.systemUTC(),
     private val recommendationTelemetry: RecommendationTelemetry = RecommendationTelemetry(
         RecommendationStore(database, clock),
+    ),
+    private val personalSnoozeOptionRanker: PersonalSnoozeOptionRanker = PersonalSnoozeOptionRanker(
+        database,
+        clock,
     ),
 ) {
     private val dao = database.offline()
@@ -332,6 +337,15 @@ class AlertStore(
             return@withTransaction null
         }
         val profile = dao.sensoryProfile(PROFILE_ID)?.stored() ?: return@withTransaction null
+        val snoozeOptions = personalSnoozeOptionRanker.rank(
+            defaults = profile.snoozePolicy.presetMinutes.take(WearAlertState.MAX_SNOOZE_OPTIONS),
+            alertKind = when (AlertOrigin.valueOf(definition.origin)) {
+                AlertOrigin.TASK -> RecommendationAlertKind.TASK
+                AlertOrigin.PROTOCOL -> RecommendationAlertKind.PROTOCOL
+                AlertOrigin.MANUAL -> RecommendationAlertKind.OTHER
+            },
+            deadline = Instant.parse(definition.validUntil),
+        )
         val latestAction = dao.latestAlertAction(alertId)
         val lastDelivery = materialization.lastDeliveryAt?.let(Instant::parse)
         val latestOccurred = latestAction?.occurredAt?.let(Instant::parse)
@@ -355,7 +369,7 @@ class AlertStore(
             updatedAt = materialization.updatedAt,
             criticality = WearCriticality.valueOf(definition.criticality),
             actions = WearAlertState.REQUIRED_ACTIONS,
-            snoozeOptionsMinutes = profile.snoozePolicy.presetMinutes.take(WearAlertState.MAX_SNOOZE_OPTIONS),
+            snoozeOptionsMinutes = snoozeOptions,
             status = status,
             acknowledgedOperationId = latestAction?.operationId,
         ).also(WearAlertState::validate)

@@ -29,7 +29,7 @@ enum class RecommendationChannel { VISUAL, PHONE_AUDIO, PHONE_VIBRATION, WATCH }
 enum class RecommendationPurpose { SNOOZE_PRESET, ALERT_CHANNEL, PROTOCOL_SHORTCUT }
 enum class RecommendationReason {
     CAUTIOUS_DEFAULT, MANUAL_PREFERENCE, ENOUGH_LOCAL_HISTORY, QUIET_HOURS_GUARD,
-    DEVICE_AVAILABLE, ACTIVE_PROTOCOL, DOMAIN_LIMIT_APPLIED,
+    DEVICE_AVAILABLE, ACTIVE_PROTOCOL, DOMAIN_LIMIT_APPLIED, PERSONAL_MODEL,
 }
 enum class RecommendationOptionCode {
     SNOOZE_5, SNOOZE_10, SNOOZE_15, SNOOZE_30, SNOOZE_60,
@@ -255,8 +255,12 @@ class RecommendationStore(
 
     private fun validate(decision: RecommendationDecision) {
         UUID.fromString(decision.id)
-        require(decision.engineId == RecommendationDecision.ENGINE_ID)
-        require(decision.ruleVersion == RecommendationDecision.RULE_VERSION)
+        require(
+            (decision.engineId == RecommendationDecision.ENGINE_ID &&
+                decision.ruleVersion == RecommendationDecision.RULE_VERSION) ||
+                (decision.engineId == ActivePersonalModelRecommendationEngine.MODEL_ENGINE_ID &&
+                    decision.ruleVersion.matches(Regex("[a-zA-Z0-9._-]{1,64}"))),
+        )
         require(decision.sampleCount >= 0 && decision.minimumSamples > 0)
         require(decision.fallback || decision.sampleCount >= decision.minimumSamples)
         require(decision.options.size in 1..3)

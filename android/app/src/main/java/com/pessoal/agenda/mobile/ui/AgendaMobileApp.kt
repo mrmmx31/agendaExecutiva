@@ -187,6 +187,9 @@ fun AgendaMobileApp(
             onSaveRecommendationSettings = viewModel::saveRecommendationSettings,
             onCorrectRecommendationEvent = viewModel::correctRecommendationEvent,
             onClearRecommendationHistory = viewModel::clearRecommendationHistory,
+            onTrainPersonalModel = viewModel::trainPersonalModel,
+            onActivatePersonalModel = viewModel::activatePersonalModel,
+            onRollbackPersonalModel = viewModel::rollbackPersonalModel,
             initialPairingInvitation = initialPairingInvitation,
         )
     }
@@ -225,6 +228,9 @@ internal fun AgendaMobileScreen(
     onSaveRecommendationSettings: (com.pessoal.agenda.mobile.recommendation.RecommendationSettings) -> Unit = {},
     onCorrectRecommendationEvent: (String, com.pessoal.agenda.mobile.recommendation.RecommendationActiveContext, com.pessoal.agenda.mobile.recommendation.RecommendationCapacityContext) -> Unit = { _, _, _ -> },
     onClearRecommendationHistory: () -> Unit = {},
+    onTrainPersonalModel: () -> Unit = {},
+    onActivatePersonalModel: (String) -> Unit = {},
+    onRollbackPersonalModel: () -> Unit = {},
 ) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var showPairing by rememberSaveable { mutableStateOf(false) }
@@ -374,6 +380,9 @@ internal fun AgendaMobileScreen(
                     onSaveSettings = onSaveRecommendationSettings,
                     onCorrectEvent = onCorrectRecommendationEvent,
                     onClearHistory = onClearRecommendationHistory,
+                    onTrainModel = onTrainPersonalModel,
+                    onActivateModel = onActivatePersonalModel,
+                    onRollbackModel = onRollbackPersonalModel,
                 )
             } else if (showSensorySettings) {
                 SensorySettingsScreen(

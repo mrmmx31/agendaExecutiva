@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativos Android e Wear OS do Projeto 2 com `P2-01` a `P2-08` concluídas e `P2-09` em 4 de 6 itens. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline. Saúde possui contratos, persistência cifrada, coleta Health Connect opt-in e relatório revisável; o ranking aprendido executa em shadow mode e possui artefato íntegro/rollback, mas `rules-v1` ainda controla toda saída visível.
+Aplicativos Android e Wear OS do Projeto 2 com `P2-01` a `P2-08` concluídas e `P2-09` em 5 de 6 itens. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline. Saúde possui contratos, persistência cifrada, coleta Health Connect opt-in e relatório revisável; o ranking aprendido tem treino, shadow, ativação confirmada, inspeção e rollback locais.
 
 ## Requisitos
 
@@ -68,6 +68,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - O avaliador P2-09 usa partição temporal 80/20, compara top-1 com `rules-v1` e não permite promoção com menos de 30 exemplos reservados ou ganho inferior a 5 pontos percentuais.
 - O wrapper de shadow mode retorna a decisão `rules-v1` intacta, limita o treino às 2.000 amostras recentes e mantém somente contagem/concordância em memória nesta etapa.
 - Room v10 persiste artefatos canônicos com SHA-256 e métricas shadow agregadas; ativação é transacional e hash/contrato inválido volta ao `rules-v1`.
+- A tela separa coleta, treino, ativação e rollback; mostra qualidade e custo local. Modelo ativo só reordena presets autorizados e essa ordem chega ao Wear.
 
 ## Limites
 

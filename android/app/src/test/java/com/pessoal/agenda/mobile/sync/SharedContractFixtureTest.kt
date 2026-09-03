@@ -31,6 +31,7 @@ class SharedContractFixtureTest {
         assertKeys("health-report.valid.json", HEALTH_REPORT_KEYS)
         assertKeys("recommendation-event.valid.json", RECOMMENDATION_EVENT_KEYS)
         assertKeys("recommendation-decision.valid.json", RECOMMENDATION_DECISION_KEYS)
+        assertKeys("recommendation-decision-model.valid.json", RECOMMENDATION_DECISION_KEYS)
         assertKeys("personal-ranking-dataset.valid.json", PERSONAL_RANKING_DATASET_KEYS)
         assertKeys("personal-model-manifest.valid.json", PERSONAL_MODEL_MANIFEST_KEYS)
 
@@ -47,6 +48,7 @@ class SharedContractFixtureTest {
         assertEquals("1", fixture("health-report.valid.json").requiredText("contract_version"))
         assertEquals("ALERT_SNOOZED", fixture("recommendation-event.valid.json").requiredText("event_type"))
         assertTrue(fixture("recommendation-decision.valid.json").requiredText("fallback").toBoolean())
+        assertEquals("PERSONAL_LINEAR_MODEL", fixture("recommendation-decision-model.valid.json").requiredText("engine_id"))
         val dataset = fixture("personal-ranking-dataset.valid.json")
         assertEquals("SYNTHETIC_FIXTURE", dataset.requiredText("source"))
         val samples = requireNotNull(dataset["samples"] as? kotlinx.serialization.json.JsonArray)

@@ -39,6 +39,7 @@ import com.pessoal.agenda.mobile.recommendation.RecommendationOptionCode
 import com.pessoal.agenda.mobile.recommendation.RecommendationReason
 import com.pessoal.agenda.mobile.recommendation.RecommendationSettings
 import com.pessoal.agenda.mobile.recommendation.RecommendationStatistics
+import com.pessoal.agenda.mobile.recommendation.PersonalModelStatus
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -433,6 +434,84 @@ class AgendaMobileAppTest {
         compose.onNodeWithText("Apagar histórico local?").assertIsDisplayed()
         compose.onNodeWithText("Apagar").performClick()
         assertEquals(true, cleared)
+    }
+
+    @Test
+    fun personalModelTrainingAndActivationRequireExplicitCommands() {
+        var trained = false
+        var activated: String? = null
+        val model = PersonalModelUiState(
+            eligibleEventCount = 90,
+            version = "local-v1",
+            status = PersonalModelStatus.SHADOW,
+            trainingSampleCount = 72,
+            evaluationSampleCount = 18,
+            top1Accuracy = 0.8,
+            baselineTop1Accuracy = 0.6,
+            eligibleForActivation = true,
+            artifactHashPrefix = "abcdef012345",
+            artifactSizeBytes = 2_048,
+            approximateWeightBytes = 1_040,
+            lastTrainingMillis = 12,
+            inferenceMicros = 8,
+        )
+        val recommendation = recommendationState().copy(
+            settings = recommendationState().settings.copy(personalizationEnabled = true),
+            model = model,
+        )
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(recommendation = recommendation),
+                    onSaveCapture = { _, _ -> }, onStartProtocol = {}, onCompleteStep = { _, _ -> },
+                    onSync = {}, onPair = { _, _ -> }, onCancelPairing = {},
+                    onPairingCompletionShown = {}, onFeedbackShown = {},
+                    onTrainPersonalModel = { trained = true },
+                    onActivatePersonalModel = { activated = it },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Recomendações locais").performClick()
+        compose.onNodeWithTag("recommendation-list").performScrollToNode(hasText("Treinar e avaliar"))
+        compose.onNodeWithText("Treinar e avaliar").assertIsEnabled().performClick()
+        assertEquals(true, trained)
+        compose.onNodeWithTag("recommendation-list").performScrollToNode(hasText("Ativar modelo"))
+        compose.onNodeWithText("Ativar modelo").performClick()
+        compose.onNodeWithText("Ativar modelo pessoal?").assertIsDisplayed()
+        assertEquals(null, activated)
+        compose.onNodeWithText("Ativar").performClick()
+        assertEquals("local-v1", activated)
+    }
+
+    @Test
+    fun activePersonalModelCanRestoreRulesDirectly() {
+        var restored = false
+        val recommendation = recommendationState().copy(
+            settings = recommendationState().settings.copy(personalizationEnabled = true),
+            model = PersonalModelUiState(
+                eligibleEventCount = 90,
+                version = "local-v1",
+                status = PersonalModelStatus.ACTIVE,
+                activeVersion = "local-v1",
+            ),
+        )
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(recommendation = recommendation),
+                    onSaveCapture = { _, _ -> }, onStartProtocol = {}, onCompleteStep = { _, _ -> },
+                    onSync = {}, onPair = { _, _ -> }, onCancelPairing = {},
+                    onPairingCompletionShown = {}, onFeedbackShown = {},
+                    onRollbackPersonalModel = { restored = true },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Recomendações locais").performClick()
+        compose.onNodeWithTag("recommendation-list").performScrollToNode(hasText("Restaurar regras"))
+        compose.onNodeWithText("Restaurar regras").performClick()
+        assertEquals(true, restored)
     }
 
     @Test

@@ -51,6 +51,11 @@ import com.pessoal.agenda.mobile.recommendation.ShadowMetrics
 import com.pessoal.agenda.mobile.recommendation.ShadowMetricsAccumulator
 import com.pessoal.agenda.mobile.recommendation.ShadowingRecommendationEngine
 import com.pessoal.agenda.mobile.recommendation.PersonalModelArtifactStore
+import com.pessoal.agenda.mobile.recommendation.ActivePersonalModelRecommendationEngine
+import com.pessoal.agenda.mobile.recommendation.AuditableLinearModel
+import com.pessoal.agenda.mobile.recommendation.OfflinePersonalModelEvaluator
+import com.pessoal.agenda.mobile.recommendation.PersonalModelStatus
+import com.pessoal.agenda.mobile.recommendation.PersonalRankingSampleExtractor
 import com.pessoal.agenda.mobile.health.IntakeInput
 import com.pessoal.agenda.mobile.health.SymptomInput
 import com.pessoal.agenda.mobile.health.VersionedHealthRecord
@@ -75,6 +80,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.cancelAndJoin
 import java.time.Instant
 import java.time.ZoneId
+import kotlin.system.measureNanoTime
 
 data class MobileUiState(
     val tasks: List<TaskReplicaEntity> = emptyList(),
@@ -106,6 +112,24 @@ data class RecommendationUiState(
     val statistics: RecommendationStatistics = RecommendationStatistics(),
     val baselineOptions: List<RecommendationOption> = emptyList(),
     val shadowMetrics: ShadowMetrics = ShadowMetrics(0, 0),
+    val model: PersonalModelUiState = PersonalModelUiState(),
+)
+
+data class PersonalModelUiState(
+    val eligibleEventCount: Int = 0,
+    val version: String? = null,
+    val status: PersonalModelStatus? = null,
+    val activeVersion: String? = null,
+    val trainingSampleCount: Int = 0,
+    val evaluationSampleCount: Int = 0,
+    val top1Accuracy: Double? = null,
+    val baselineTop1Accuracy: Double? = null,
+    val eligibleForActivation: Boolean = false,
+    val artifactHashPrefix: String? = null,
+    val artifactSizeBytes: Int? = null,
+    val approximateWeightBytes: Int? = null,
+    val lastTrainingMillis: Long? = null,
+    val inferenceMicros: Long? = null,
 )
 
 data class HealthUiState(
@@ -143,8 +167,10 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     )
     private val recommendationStore = RecommendationStore(MobileDatabase.get(application))
     private val personalModelArtifactStore = PersonalModelArtifactStore(MobileDatabase.get(application))
+    private val personalModelEvaluator = OfflinePersonalModelEvaluator()
     private val shadowMetrics = ShadowMetricsAccumulator()
     private var shadowPersistenceJob: Job? = null
+    private var lastModelTrainingMillis: Long? = null
     private val recommendationEngine: RecommendationEngine = ShadowingRecommendationEngine(
         primary = DeterministicRecommendationEngine(),
         onComparison = { comparison ->
@@ -381,6 +407,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         },
     ) {
         recommendationStore.saveSettings(settings)
+        if (!settings.personalizationEnabled) personalModelArtifactStore.rollbackToRules()
         recommendationStore.enforceRetention()
         refreshRecommendations()
     }
@@ -398,6 +425,38 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         shadowPersistenceJob?.cancelAndJoin()
         recommendationStore.clearHistory()
         shadowMetrics.clear()
+        refreshRecommendations()
+    }
+
+    fun trainPersonalModel() = execute(successMessage = "Modelo avaliado em modo de observação.") {
+        val samples = PersonalRankingSampleExtractor.fromObservations(recommendationStore.observations())
+        require(samples.size >= OfflinePersonalModelEvaluator.MINIMUM_DATASET_SAMPLES) {
+            "São necessários ${OfflinePersonalModelEvaluator.MINIMUM_DATASET_SAMPLES} adiamentos completos; existem ${samples.size}."
+        }
+        val (evaluated, elapsed) = withContext(Dispatchers.Default) {
+            lateinit var result: com.pessoal.agenda.mobile.recommendation.EvaluatedPersonalModel
+            val duration = measureNanoTime { result = personalModelEvaluator.evaluateWithModel(samples) }
+            result to duration
+        }
+        personalModelArtifactStore.stage(
+            modelVersion = "local-${Instant.now().toEpochMilli()}",
+            model = evaluated.model,
+            evaluation = evaluated.evaluation,
+        )
+        lastModelTrainingMillis = elapsed / 1_000_000
+        refreshRecommendations()
+    }
+
+    fun activatePersonalModel(version: String) = execute(successMessage = "Modelo pessoal ativado.") {
+        require(recommendationStore.settings().personalizationEnabled) {
+            "Ative a personalização local antes do modelo."
+        }
+        personalModelArtifactStore.activate(version)
+        refreshRecommendations()
+    }
+
+    fun rollbackPersonalModel() = execute(successMessage = "Regras padrão restauradas.") {
+        personalModelArtifactStore.rollbackToRules()
         refreshRecommendations()
     }
 
@@ -592,20 +651,63 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     private suspend fun refreshRecommendations() {
         val settings = recommendationStore.settings()
         val events = recommendationStore.events()
+        val observations = recommendationStore.observations()
         val activeContext = if (MobileDatabase.get(getApplication()).offline().activeRun() == null) {
             RecommendationActiveContext.NONE
         } else {
             RecommendationActiveContext.PROTOCOL
         }
-        val preview = recommendationEngine.recommend(
-            context = RecommendationContext(
+        val context = RecommendationContext(
                 purpose = RecommendationPurpose.SNOOZE_PRESET,
                 generatedAt = Instant.now(),
                 activeContext = activeContext,
                 capacityContext = settings.capacityContext,
-            ),
-            settings = settings,
-            observations = recommendationStore.observations(),
+            )
+        val activeModel = personalModelArtifactStore.active()
+        val effectiveEngine = activeModel?.let {
+            ActivePersonalModelRecommendationEngine(recommendationEngine, it)
+        } ?: recommendationEngine
+        val preview = withContext(Dispatchers.Default) {
+            effectiveEngine.recommend(
+                context = context,
+                settings = settings,
+                observations = observations,
+            )
+        }
+        val eligibleSamples = PersonalRankingSampleExtractor.fromObservations(observations)
+        val latestRow = personalModelArtifactStore.versions().firstOrNull()
+        val latestModel = latestRow?.let { personalModelArtifactStore.load(it.modelVersion) }
+        val modelState = latestModel?.let { stored ->
+            val sample = eligibleSamples.lastOrNull()
+            val inferenceMicros = sample?.let { benchmarkSample ->
+                withContext(Dispatchers.Default) {
+                    measureNanoTime {
+                        repeat(INFERENCE_BENCHMARK_RUNS) { stored.model.rank(benchmarkSample) }
+                    }
+                        .div(INFERENCE_BENCHMARK_RUNS)
+                        .div(1_000)
+                }
+            }
+            PersonalModelUiState(
+                eligibleEventCount = eligibleSamples.size,
+                version = stored.modelVersion,
+                status = stored.status,
+                activeVersion = activeModel?.modelVersion,
+                trainingSampleCount = stored.evaluation.trainingSampleCount,
+                evaluationSampleCount = stored.evaluation.evaluationSampleCount,
+                top1Accuracy = stored.evaluation.modelTop1Accuracy,
+                baselineTop1Accuracy = stored.evaluation.baselineTop1Accuracy,
+                eligibleForActivation = stored.status == PersonalModelStatus.SHADOW &&
+                    stored.evaluation.eligibleForPromotion,
+                artifactHashPrefix = stored.artifactSha256.take(HASH_PREFIX_LENGTH),
+                artifactSizeBytes = stored.artifactSizeBytes,
+                approximateWeightBytes = stored.model.approximateWeightBytes(),
+                lastTrainingMillis = lastModelTrainingMillis,
+                inferenceMicros = inferenceMicros,
+            )
+        } ?: PersonalModelUiState(
+            eligibleEventCount = eligibleSamples.size,
+            activeVersion = activeModel?.modelVersion,
         )
         recommendation.value = RecommendationUiState(
             settings = settings,
@@ -613,8 +715,12 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             statistics = RecommendationStatisticsCalculator.calculate(events),
             baselineOptions = preview?.options.orEmpty(),
             shadowMetrics = shadowMetrics.snapshot(),
+            model = modelState,
         )
     }
+
+    private fun AuditableLinearModel.approximateWeightBytes(): Int =
+        weights.values.sumOf { it.size } * Double.SIZE_BYTES
 
     private fun execute(
         successMessage: String,
@@ -638,6 +744,9 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
 
 private fun Throwable.safeMessage(fallback: String): String =
     if ((this is IllegalArgumentException || this is PairingException) && !message.isNullOrBlank()) message!! else fallback
+
+private const val INFERENCE_BENCHMARK_RUNS = 1_000
+private const val HASH_PREFIX_LENGTH = 12
 
 private data class OfflineContent(
     val tasks: List<TaskReplicaEntity>,

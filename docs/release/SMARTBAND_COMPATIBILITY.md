@@ -29,6 +29,7 @@ ações Android sejam exibidas ou retornem eventos à Agenda.
 | vibração no pulso | não ocorreu; o telefone vibrou, mas a pulseira somente tocou |
 | `Concluir` no pulso | indisponível; somente texto foi espelhado |
 | `Adiar` no pulso | indisponível; somente texto foi espelhado |
+| alerta criado durante desconexão | não foi reproduzido após reconectar; somente o estado `não conectado` apareceu |
 | operação offline própria | indisponível sem app executável no wearable |
 | dados de saúde | fora do escopo sem API oficial e consentimento novo |
 
@@ -42,6 +43,12 @@ que habilitar o alerta sensorial do companheiro também vibra o telefone. O efei
 final no pulso pertence ao Da Fit: neste ensaio ele produziu áudio e ignorou a
 vibração configurada na pulseira. A aplicação não deve prometer seleção de áudio
 ou vibração independente nesse hardware.
+
+O Da Fit também não funcionou como fila: o Bluetooth e o serviço retomaram a
+conexão, mas o alerta publicado durante a interrupção não foi reproduzido no
+pulso. A Agenda mantém o alerta no telefone e classifica o espelhamento dessa
+smartband como oportunista. Entrega posterior confiável permanece exclusiva do
+módulo Wear OS/Data Layer.
 
 ## Gate físico cauteloso
 

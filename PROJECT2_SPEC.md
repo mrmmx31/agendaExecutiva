@@ -78,7 +78,9 @@ Dados de saúde, medicamentos e substâncias são dados sensíveis. A coleta ser
   possivelmente único do identificador Bluetooth não é versionado. Para esse
   hardware, o ensaio por espelhamento entregou texto e alerta sonoro, mas não
   vibração nem ações. O telefone preserva `Concluir` e `Adiar`; o efeito sensorial
-  no pulso é decidido pelo Da Fit. O perfil e a
+  no pulso é decidido pelo Da Fit. Alertas publicados durante uma desconexão não
+  foram reproduzidos após reconectar, portanto esse espelhamento é oportunista e
+  não substitui uma fila Wear OS/Data Layer. O perfil e a
   matriz de compatibilidade ficam em `docs/release/SMARTBAND_COMPATIBILITY.md`.
 
 ### 5.3 Ambiente inicial

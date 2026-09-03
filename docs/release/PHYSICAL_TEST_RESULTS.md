@@ -52,7 +52,8 @@ observados no telefone e na pulseira.
 | alerta sonoro da ZL02CPRO | aprovado apenas no canal vibratório, embora a Agenda não tenha solicitado áudio |
 | vibração da ZL02CPRO | não suportada no ensaio; não ocorreu nem com o canal vibratório e a pulseira em `tocar e vibrar` |
 | ações exibidas pela pulseira | indisponíveis neste hardware; a pulseira exibiu somente o texto |
-| desconexão/reconexão Bluetooth | pendente |
+| desconexão/reconexão Bluetooth | aprovado; transporte e Da Fit retomaram, sem repetição agressiva |
+| alerta publicado durante desconexão | não reproduzido no pulso após reconectar; a pulseira mostrou somente `não conectado` |
 
 O fixture usado era exclusivamente visual: a Agenda não solicitou áudio nem
 vibração do telefone. No momento da observação, o Android estava com Não
@@ -65,6 +66,9 @@ pulseira não vibrou. Isso indica que o Da Fit trata a notificação vibratória
 alerta sensorial e escolhe o efeito no wearable. A Agenda não consegue selecionar
 separadamente esse efeito na smartband fechada. As ações continuam disponíveis
 na notificação do telefone; o espelhamento genérico do Da Fit não as transportou.
+No ensaio desconectado, o alerta permaneceu funcional no telefone, mas não foi
+enfileirado pelo Da Fit para o pulso. A aplicação deve considerar esse
+espelhamento como entrega oportunista, nunca como sincronização confiável.
 
 ## Gate 9
 
@@ -75,7 +79,9 @@ horas, bateria da pulseira e medição final continuam pendentes.
 
 ## Próxima interação mínima
 
-1. autorizar uma desconexão/reconexão curta da pulseira para concluir o gate 8;
-2. confirmar teste do áudio próprio da Agenda em volume baixo para o gate 7;
-3. retirar o cabo USB quando conveniente e manter telefone/computador na mesma
+1. testar `Concluir` e `Adiar` pelo telefone com a pulseira conectada;
+2. executar um passo fictício de `Vou sair` com a pulseira apagada e acesa;
+3. desligar os alertas no telefone e confirmar ausência de novo estímulo;
+4. confirmar teste do áudio próprio da Agenda em volume baixo para o gate 7;
+5. retirar o cabo USB quando conveniente e manter telefone/computador na mesma
    rede durante o restante da sessão.

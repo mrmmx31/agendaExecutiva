@@ -15,7 +15,7 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 | 5 | falhas virtuais: processo, rede, Data Layer, Doze e reinicio | aprovado | fixture duravel sobreviveu a rede desligada, processo, idle e reboot; API Wear possui retry limitado |
 | 6 | telefone fisico: instalacao, permissoes, Health Connect e exportacao | em execução | instalação isolada, permissão negada/concedida, captura e protocolo aprovados; Health Connect sintético e exportações SAF pendentes |
 | 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | em execução | rota automática inspecionada sem reprodução; ensaios sensoriais permanecem pendentes |
-| 8 | wearable fisico: entrega, acoes disponiveis e desconexao | em execução | texto e alerta sonoro espelhados; ações e vibração indisponíveis; reconexão pendente |
+| 8 | wearable fisico: entrega, acoes disponiveis e desconexao | em execução | texto e alerta sonoro espelhados; ações/vibração indisponíveis e alerta offline não repetido; ações no telefone e protocolo pendentes |
 | 9 | bateria, memoria e temperatura em uso prolongado | em execução | baseline inicial coletado; janela de 24 horas e medição final pendentes |
 | 10 | aceite final, artefato assinado e decisao de distribuicao | bloqueado pelos gates 4-9 | preencher lacunas legais/publicacao ou declarar release apenas pessoal |
 

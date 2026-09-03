@@ -56,8 +56,9 @@ ampliado ou leitura em background.
 - [ ] preencher controlador e contato no aviso de privacidade;
 - [ ] publicar aviso em URL HTTPS publica, nao geobloqueada e fora de PDF;
 - [ ] adicionar a mesma URL no app e no Play Console;
-- [ ] gerar e analisar AAB assinado de release;
-- [ ] revisar SDK Index e manifest final do AAB;
+- [x] gerar AAB assinado e verificar assinatura comum dos dois módulos;
+- [ ] analisar o manifest final do AAB para a submissao escolhida;
+- [ ] revisar SDK Index e bibliotecas finais da submissao;
 - [ ] preencher Data Safety conforme definicoes vigentes;
 - [ ] preencher Health apps declaration;
 - [ ] fornecer conta/instrucoes de revisao sem dados pessoais;
@@ -68,4 +69,3 @@ Referencias oficiais:
 - https://support.google.com/googleplay/android-developer/answer/10787469
 - https://support.google.com/googleplay/android-developer/answer/14738291
 - https://support.google.com/googleplay/android-developer/answer/16679511
-

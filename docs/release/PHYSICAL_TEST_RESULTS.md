@@ -103,8 +103,17 @@ aproximado de 190 MB e nenhum `FATAL EXCEPTION` retido. A variação de bateria
 não representa consumo porque houve carga durante a sessão. A janela de 24
 horas, bateria da pulseira e medição final continuam pendentes.
 
+O timeout temporário de tela do Moto foi restaurado de 30 para 5 minutos. A
+coleta final protegida foi agendada localmente para 04/09/2026 às 07:21
+(`America/Manaus`), um minuto após completar 24 horas. Ela recusa execução
+antecipada, emulador e modelo diferente do telefone autorizado; sucesso ou
+falha será mostrado em diálogo. A smartband fechada não expõe bateria por ADB,
+portanto esse valor continua dependendo de leitura manual no aplicativo
+companheiro ou será registrado como indisponível.
+
 ## Próxima interação mínima
 
-1. completar a janela e a medição final do gate 9;
-2. retirar o cabo USB quando conveniente e manter telefone/computador na mesma
-   rede durante o restante da sessão.
+1. manter telefone/computador na mesma rede até a coleta agendada; o telefone
+   pode ficar fora do cabo;
+2. informar a bateria da pulseira pelo aplicativo companheiro, se disponível;
+3. escolher armazenamento separado para o backup cifrado da chave definitiva.

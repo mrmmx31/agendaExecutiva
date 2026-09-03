@@ -143,6 +143,12 @@ periodico. Registrar agregados, nunca dump bruto versionado:
 Interromper em alerta repetido, aquecimento, perda rapida de bateria, audio que
 nao cancela ou comportamento que afete chamada/midia fora da Agenda.
 
+A coleta final pode ser repetida por `android/scripts/p2_10_gate9_snapshot.sh`.
+O script exige autorização, serial físico, modelo esperado e instante UTC do
+baseline; recusa execução antes de 24 horas e grava somente agregados em arquivo
+privado fora do repositório. As cinco amostras de PSS são obtidas após cinco
+reinicializações controladas da variante `fieldTest`.
+
 ## Encerramento
 
 Desinstalar apenas `com.pessoal.agenda.mobile.fieldtest` quando solicitado pelo

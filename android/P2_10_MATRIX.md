@@ -10,14 +10,14 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 |---:|---|---|---|
 | 1 | uso pretendido e enquadramento regulatorio | aprovado | `docs/release/REGULATORY_SCOPE.md`; limites nao clinicos e gatilhos de nova revisao |
 | 2 | privacidade, Data Safety e Health apps | aprovado para pre-release | aviso dentro do app, `PRIVACY_NOTICE.md` e rascunho `GOOGLE_PLAY_DECLARATIONS.md`; URL/controlador continuam gate de publicacao |
-| 3 | APK release, permissoes, backup, logs, SDKs e segredos | aprovado | APKs nao depuraveis e `scripts/p2_10_static_gate.sh` verde; release ainda nao assinado |
+| 3 | APK release, permissoes, backup, logs, SDKs e segredos | aprovado | APKs nao depuraveis, gate estatico verde e release definitivo assinado fora do repositorio |
 | 4 | regressao funcional ponta a ponta em telefone/Wear virtuais | aprovado | suites comuns verdes e 14 passos pareados orquestrados por `p2_10_emulator_gate.sh` |
 | 5 | falhas virtuais: processo, rede, Data Layer, Doze e reinicio | aprovado | fixture duravel sobreviveu a rede desligada, processo, idle e reboot; API Wear possui retry limitado |
 | 6 | telefone fisico: instalacao, permissoes, Health Connect e exportacao | aprovado | fluxo isolado completo; origem sintética restrita ao Toolbox, exportações SAF validadas, revogação real e limpeza aprovadas |
 | 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | aprovado com limites do ambiente | telefone, MOTO XT220, DND e mídia concorrente aprovados; smartband é intermitente, USB ausente e chamada real não foi provocada |
 | 8 | wearable fisico: entrega, acoes disponiveis e desconexao | aprovado com limites do hardware | texto/som e ações no telefone aprovados; ações/vibração/fila no pulso indisponíveis; alertas desligados não entregam |
 | 9 | bateria, memoria e temperatura em uso prolongado | em execução | baseline inicial coletado; janela de 24 horas e medição final pendentes |
-| 10 | aceite final, artefato assinado e decisao de distribuicao | preparado; bloqueado pelo gate 9 e chave definitiva | v0.1 definida como sideload pessoal; venda/loja fora do escopo; falta cerimonia da chave, artefato final e instalação |
+| 10 | aceite final, artefato assinado e decisao de distribuicao | preparado; bloqueado pelo gate 9 e backup da chave | v0.1 definida como sideload pessoal; chave e artefatos definitivos validados; faltam backup cifrado, instalação e percurso final |
 
 **Estado atual:** 80% do P2-10 (8 de 10); Projeto 2 em 98%.
 
@@ -151,3 +151,12 @@ sintética de um dia fora do projeto e a removeu ao terminar. APK e AAB dos dois
 módulos passaram na verificação de assinatura e certificado comum. Em seguida,
 o gate integral sem credenciais aprovou 377 tarefas Gradle e 365 casos unitários,
 e os APKs release voltaram a ser não assinados. O gate 10 permanece pendente.
+
+**Candidato definitivo:** em 03/09/2026, após autorização explícita, foi criada
+uma chave RSA de 4096 bits em armazenamento privado fora do projeto, com modo
+`600`. `p2_10_release_candidate.sh` gerou APK e AAB assinados dos módulos
+telefone e Wear, comprovou o certificado comum, repetiu o gate estático e
+terminou sem publicação. Certificado e checksums públicos estão em
+`docs/release/RELEASE_0.1.md`; senha e chave privada não são versionadas. O
+backup cifrado separado, a instalação final e o percurso de aceite permanecem
+pendentes, assim como a conclusão temporal do gate 9.

@@ -1465,4 +1465,4 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 **Documentos:** requisitos, arquitetura, fases e gates estão em `PROJECT2_SPEC.md`. O ponto de entrada para manutenção, catálogos, contratos e retomada de contexto está em `MAINTENANCE_MAP.md`.
 
-**Próxima ação:** completar a janela de estabilidade do gate 9 no Moto Edge 60 autorizado. Health Connect, exportações, revogação e áudio/rotas físicos foram aprovados com limites documentados da smartband e do ambiente. Depois faltam apenas aceite, assinatura e decisão de distribuição.
+**Próxima ação:** completar a janela de estabilidade do gate 9 no Moto Edge 60 autorizado; a coleta final está protegida e agendada para depois das 24 horas. Health Connect, exportações, revogação e áudio/rotas físicos foram aprovados com limites documentados da smartband e do ambiente. O candidato 0.1 já está assinado; depois faltam backup cifrado separado da chave, instalação e percurso final de aceite pessoal.

@@ -22,9 +22,10 @@ Health apps, suporte, controlador dos dados e estrategia de Play App Signing.
 |---|---|
 | gates funcionais 1 a 8 | aprovados, com limites fisicos catalogados |
 | janela passiva de 24 horas e medicao final | pendente no gate 9 |
-| APK/AAB e verificacao de certificado comum | automacao aprovada com chave sintetica descartavel |
-| chave pessoal definitiva e backup cifrado | exige decisao explicita do proprietario |
-| instalacao do APK release pessoal | pendente da chave definitiva e do gate 9 |
+| APK/AAB e verificacao de certificado comum | artefatos definitivos assinados e verificados |
+| chave pessoal definitiva | criada fora do repositorio, protegida por senha e modo `600` |
+| backup cifrado separado da chave | pendente de armazenamento escolhido pelo proprietario |
+| instalacao do APK release pessoal | pendente do backup da chave e do gate 9 |
 | publicacao ou venda | fora do escopo da versao 0.1 |
 
 ## Cerimonia minima da chave pessoal
@@ -38,9 +39,10 @@ Health apps, suporte, controlador dos dados e estrategia de Play App Signing.
 7. instalar apenas o APK do telefone no Moto; o APK Wear fica reservado a
    dispositivos Wear OS e nao deve ser instalado na ZL02CPRO.
 
-Perder a chave impede atualizacoes assinadas sobre a mesma instalacao. Por isso,
-a chave definitiva nao sera criada automaticamente nem antes da escolha de
-armazenamento e backup pelo proprietario.
+Perder a chave impede atualizacoes assinadas sobre a mesma instalacao. A chave
+definitiva foi criada em 03/09/2026 após autorização explícita, fora do
+repositorio e sem expor a senha. Ela não deve ser usada para instalação até
+existir uma cópia cifrada separada e sua restauração ter sido testada.
 
 ## Condicao de fechamento
 

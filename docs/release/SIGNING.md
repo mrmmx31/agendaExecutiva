@@ -28,3 +28,15 @@ jamais pode ser usada para distribuição.
 Antes de distribuição pública, decidir quem controla a chave, política de
 backup/rotação, Play App Signing e recuperação. Para uso pessoal, manter o
 keystore em armazenamento privado com cópia cifrada separada.
+
+## Cerimonia da versao 0.1
+
+Em 03/09/2026, com autorização explícita do proprietário, foi criada uma chave
+definitiva RSA de 4096 bits em armazenamento privado fora do repositório. O
+arquivo tem modo `600`; a senha não foi impressa nem registrada. APK e AAB de
+telefone e Wear foram gerados, tiveram assinatura verificada e apresentaram o
+mesmo certificado. O registro público está em `RELEASE_0.1.md`.
+
+A cópia cifrada em armazenamento separado e o ensaio de restauração ainda são
+obrigatórios antes da instalação. Não mover o keystore para o repositório, para
+o telefone ou para diretório sincronizado sem proteção explícita.

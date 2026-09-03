@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativos Android e Wear OS do Projeto 2 com `P2-01` a `P2-06` concluídas e `P2-07` em 3 de 6 itens. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline. Saúde possui contratos, persistência cifrada e UI local; coleta Health Connect e IA não estão ativas.
+Aplicativos Android e Wear OS do Projeto 2 com `P2-01` a `P2-07` concluídas e `P2-08` em 5 de 6 itens. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline. Saúde possui contratos, persistência cifrada, coleta Health Connect opt-in e relatório revisável; o ranking aprendido ainda não está ativo.
 
 ## Requisitos
 
@@ -61,6 +61,8 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - P2-08 possui contratos minimizados e Room v9 para eventos, decisões e configurações locais; personalização começa desligada e o histórico não entra no sync.
 - `rules-v1` oferece baseline e ranking local após 12 amostras do mesmo contexto, com razões e limites de domínio antes da saída.
 - Alertas e protocolos emitem eventos categóricos locais após sucesso; repetição idempotente, opt-out e falha de telemetria não alteram o fluxo operacional.
+- `Recomendações locais` controla opt-in, contexto explícito, preferências e retenção; mostra razões, métricas e histórico categórico corrigível e apagável, com retorno imediato ao baseline.
+- O tema controla explicitamente os ícones das barras do sistema; a tela de recomendações foi inspecionada em claro e escuro no Pixel virtual.
 
 ## Limites
 

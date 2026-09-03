@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -182,6 +183,10 @@ fun AgendaMobileApp(
                     HealthReportFormat.PDF -> pdfReportLauncher.launch(name)
                 }
             },
+            onRefreshRecommendations = viewModel::refreshRecommendationState,
+            onSaveRecommendationSettings = viewModel::saveRecommendationSettings,
+            onCorrectRecommendationEvent = viewModel::correctRecommendationEvent,
+            onClearRecommendationHistory = viewModel::clearRecommendationHistory,
             initialPairingInvitation = initialPairingInvitation,
         )
     }
@@ -216,11 +221,16 @@ internal fun AgendaMobileScreen(
     onHealthReportSubjectChanged: (String) -> Unit = {},
     onToggleHealthReportEntry: (String) -> Unit = {},
     onExportHealthReport: (HealthReportFormat) -> Unit = {},
+    onRefreshRecommendations: () -> Unit = {},
+    onSaveRecommendationSettings: (com.pessoal.agenda.mobile.recommendation.RecommendationSettings) -> Unit = {},
+    onCorrectRecommendationEvent: (String, com.pessoal.agenda.mobile.recommendation.RecommendationActiveContext, com.pessoal.agenda.mobile.recommendation.RecommendationCapacityContext) -> Unit = { _, _, _ -> },
+    onClearRecommendationHistory: () -> Unit = {},
 ) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var showPairing by rememberSaveable { mutableStateOf(false) }
     var showSensorySettings by rememberSaveable { mutableStateOf(false) }
     var showHealth by rememberSaveable { mutableStateOf(false) }
+    var showRecommendations by rememberSaveable { mutableStateOf(false) }
     var showLeavingChoices by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.feedback) {
@@ -237,6 +247,9 @@ internal fun AgendaMobileScreen(
     }
     LaunchedEffect(initialPairingInvitation) {
         if (!initialPairingInvitation.isNullOrBlank()) showPairing = true
+    }
+    LaunchedEffect(showRecommendations) {
+        if (showRecommendations) onRefreshRecommendations()
     }
     if (showPairing) {
         PairingDialog(
@@ -280,8 +293,13 @@ internal fun AgendaMobileScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(when { showHealth -> "Saúde e privacidade"; showSensorySettings -> "Configurações sensoriais"; else -> "Agenda" })
-                        if (!showSensorySettings && !showHealth) {
+                        Text(when {
+                            showHealth -> "Saúde e privacidade"
+                            showRecommendations -> "Recomendações locais"
+                            showSensorySettings -> "Configurações sensoriais"
+                            else -> "Agenda"
+                        })
+                        if (!showSensorySettings && !showHealth && !showRecommendations) {
                             Text(
                                 text = "Núcleo offline",
                                 style = MaterialTheme.typography.labelMedium,
@@ -291,18 +309,25 @@ internal fun AgendaMobileScreen(
                     }
                 },
                 navigationIcon = {
-                    if (showSensorySettings || showHealth) {
-                        IconButton(onClick = { showSensorySettings = false; showHealth = false }) {
+                    if (showSensorySettings || showHealth || showRecommendations) {
+                        IconButton(onClick = {
+                            showSensorySettings = false
+                            showHealth = false
+                            showRecommendations = false
+                        }) {
                             Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Voltar")
                         }
                     }
                 },
                 actions = {
-                    if (!showSensorySettings && !showHealth) {
-                        IconButton(onClick = { showHealth = true }) {
+                    if (!showSensorySettings && !showHealth && !showRecommendations) {
+                        IconButton(onClick = { showHealth = true; showRecommendations = false; showSensorySettings = false }) {
                             Icon(Icons.Outlined.FavoriteBorder, contentDescription = "Saúde e privacidade")
                         }
-                        IconButton(onClick = { showSensorySettings = true }) {
+                        IconButton(onClick = { showRecommendations = true; showHealth = false; showSensorySettings = false }) {
+                            Icon(Icons.Outlined.Insights, contentDescription = "Recomendações locais")
+                        }
+                        IconButton(onClick = { showSensorySettings = true; showHealth = false; showRecommendations = false }) {
                             Icon(Icons.Outlined.Settings, contentDescription = "Configurações sensoriais")
                         }
                     }
@@ -312,7 +337,7 @@ internal fun AgendaMobileScreen(
         },
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            if (!showSensorySettings && !showHealth) {
+            if (!showSensorySettings && !showHealth && !showRecommendations) {
                 NavigationBar {
                     MobileSection.entries.forEachIndexed { index, section ->
                         NavigationBarItem(
@@ -341,6 +366,14 @@ internal fun AgendaMobileScreen(
                     onReportSubjectChanged = onHealthReportSubjectChanged,
                     onToggleReportEntry = onToggleHealthReportEntry,
                     onExportReport = onExportHealthReport,
+                )
+            } else if (showRecommendations) {
+                RecommendationSettingsScreen(
+                    state = state.recommendation,
+                    busy = state.busy,
+                    onSaveSettings = onSaveRecommendationSettings,
+                    onCorrectEvent = onCorrectRecommendationEvent,
+                    onClearHistory = onClearRecommendationHistory,
                 )
             } else if (showSensorySettings) {
                 SensorySettingsScreen(

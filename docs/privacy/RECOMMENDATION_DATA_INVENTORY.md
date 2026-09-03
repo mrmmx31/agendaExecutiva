@@ -18,3 +18,5 @@ SDK de analytics, envio em nuvem ou integração com o sync desktop nesta fase.
 
 Métricas permitidas: quantidade por contexto, latência mediana, taxa de correção,
 adiamentos repetidos e alertas sem resposta. Engajamento isolado não é objetivo.
+Adiamento repetido é uma estimativa por adjacência temporal e contexto explícito,
+sem identificador de tarefa ou alerta.

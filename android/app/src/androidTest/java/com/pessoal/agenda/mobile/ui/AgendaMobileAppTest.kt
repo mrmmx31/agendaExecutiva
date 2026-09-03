@@ -7,9 +7,13 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.runtime.mutableStateOf
 import com.pessoal.agenda.mobile.alert.SensoryChannel
@@ -27,6 +31,14 @@ import com.pessoal.agenda.mobile.health.report.HealthReportFormat
 import com.pessoal.agenda.mobile.health.report.HealthReportPermission
 import com.pessoal.agenda.mobile.health.report.HealthReportReview
 import com.pessoal.agenda.mobile.health.report.HealthReportSnapshot
+import com.pessoal.agenda.mobile.data.local.RecommendationEventEntity
+import com.pessoal.agenda.mobile.recommendation.RecommendationActiveContext
+import com.pessoal.agenda.mobile.recommendation.RecommendationCapacityContext
+import com.pessoal.agenda.mobile.recommendation.RecommendationOption
+import com.pessoal.agenda.mobile.recommendation.RecommendationOptionCode
+import com.pessoal.agenda.mobile.recommendation.RecommendationReason
+import com.pessoal.agenda.mobile.recommendation.RecommendationSettings
+import com.pessoal.agenda.mobile.recommendation.RecommendationStatistics
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -362,6 +374,67 @@ class AgendaMobileAppTest {
     }
 
     @Test
+    fun recommendationScreenExposesOptInAndExplainableBaseline() {
+        var saved: RecommendationSettings? = null
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(recommendation = recommendationState()),
+                    onSaveCapture = { _, _ -> }, onStartProtocol = {}, onCompleteStep = { _, _ -> },
+                    onSync = {}, onPair = { _, _ -> }, onCancelPairing = {},
+                    onPairingCompletionShown = {}, onFeedbackShown = {},
+                    onSaveRecommendationSettings = { saved = it },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Recomendações locais").performClick()
+        compose.onNodeWithText("Recomendações locais").assertIsDisplayed()
+        compose.onNodeWithText("Regras padrão ativas").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Personalização local").performClick()
+        compose.onNodeWithTag("recommendation-list").performScrollToNode(hasText("Adiar 15 min"))
+        compose.onNodeWithText("Adiar 15 min").assertIsDisplayed()
+        compose.onNodeWithText("Padrão cauteloso").assertIsDisplayed()
+        assertEquals(true, saved?.personalizationEnabled)
+    }
+
+    @Test
+    fun recommendationHistoryCanBeCorrectedAndClearedExplicitly() {
+        var correction: Triple<String, RecommendationActiveContext, RecommendationCapacityContext>? = null
+        var cleared = false
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(recommendation = recommendationState()),
+                    onSaveCapture = { _, _ -> }, onStartProtocol = {}, onCompleteStep = { _, _ -> },
+                    onSync = {}, onPair = { _, _ -> }, onCancelPairing = {},
+                    onPairingCompletionShown = {}, onFeedbackShown = {},
+                    onCorrectRecommendationEvent = { id, active, capacity ->
+                        correction = Triple(id, active, capacity)
+                    },
+                    onClearRecommendationHistory = { cleared = true },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Recomendações locais").performClick()
+        compose.onNodeWithTag("recommendation-list").performScrollToNode(hasContentDescription("Corrigir contexto do evento"))
+        compose.onNodeWithContentDescription("Corrigir contexto do evento").performClick()
+        compose.onNodeWithText("Contexto paralelo").performClick()
+        compose.onNodeWithText("Foco ativo").performClick()
+        compose.onNodeWithText("Aplicar").performClick()
+        assertEquals(
+            Triple(RECOMMENDATION_EVENT_ID, RecommendationActiveContext.FOCUS, RecommendationCapacityContext.PARALLEL_EXPLICIT),
+            correction,
+        )
+        compose.onNodeWithTag("recommendation-list").performScrollToNode(hasText("Apagar histórico"))
+        compose.onNodeWithText("Apagar histórico").performClick()
+        compose.onNodeWithText("Apagar histórico local?").assertIsDisplayed()
+        compose.onNodeWithText("Apagar").performClick()
+        assertEquals(true, cleared)
+    }
+
+    @Test
     fun offlineStateOffersPairingFormAndCancelableWaitingState() {
         var invitation = ""
         var code = ""
@@ -421,5 +494,52 @@ class AgendaMobileAppTest {
 
         compose.onNodeWithText("Conectar ao desktop").assertIsDisplayed()
         compose.onNodeWithText(invitation).assertIsDisplayed()
+    }
+
+    private fun recommendationState() = RecommendationUiState(
+        settings = RecommendationSettings(
+            personalizationEnabled = false,
+            retentionDays = 90,
+            capacityContext = RecommendationCapacityContext.STANDARD,
+            preferredSnoozeMinutes = null,
+            preferredChannel = null,
+        ),
+        events = listOf(
+            RecommendationEventEntity(
+                id = RECOMMENDATION_EVENT_ID,
+                contractVersion = 1,
+                eventType = "ALERT_SNOOZED",
+                occurredAt = "2026-09-02T15:00:00Z",
+                localHour = 11,
+                dayOfWeek = 3,
+                sourceDevice = "PHONE",
+                activeContext = "NONE",
+                capacityContext = "STANDARD",
+                alertKind = "TASK",
+                deadlineBucket = "TODAY",
+                channel = "VISUAL",
+                responseLatencySeconds = 42,
+                snoozeMinutes = 15,
+                recommendationId = null,
+                optionCode = "SNOOZE_15",
+                correctedAt = null,
+            ),
+        ),
+        statistics = RecommendationStatistics(
+            totalEvents = 1,
+            medianResponseLatencySeconds = 42,
+            snoozeEvents = 1,
+        ),
+        baselineOptions = listOf(
+            RecommendationOption(
+                RecommendationOptionCode.SNOOZE_15,
+                rank = 1,
+                RecommendationReason.CAUTIOUS_DEFAULT,
+            ),
+        ),
+    )
+
+    private companion object {
+        const val RECOMMENDATION_EVENT_ID = "f1000000-0000-4000-8000-000000000001"
     }
 }

@@ -24,6 +24,7 @@ import com.pessoal.agenda.mobile.data.local.PendingOperationEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
 import com.pessoal.agenda.mobile.data.local.SyncConflictEntity
+import com.pessoal.agenda.mobile.data.local.RecommendationEventEntity
 import com.pessoal.agenda.mobile.pairing.DeviceCredentialStore
 import com.pessoal.agenda.mobile.pairing.HttpsPairingTransport
 import com.pessoal.agenda.mobile.pairing.PairingClient
@@ -36,6 +37,15 @@ import com.pessoal.agenda.mobile.health.AndroidKeystoreHealthDataCipher
 import com.pessoal.agenda.mobile.health.HealthCategory
 import com.pessoal.agenda.mobile.health.HealthStore
 import com.pessoal.agenda.mobile.recommendation.RecommendationStore
+import com.pessoal.agenda.mobile.recommendation.DeterministicRecommendationEngine
+import com.pessoal.agenda.mobile.recommendation.RecommendationActiveContext
+import com.pessoal.agenda.mobile.recommendation.RecommendationCapacityContext
+import com.pessoal.agenda.mobile.recommendation.RecommendationContext
+import com.pessoal.agenda.mobile.recommendation.RecommendationOption
+import com.pessoal.agenda.mobile.recommendation.RecommendationPurpose
+import com.pessoal.agenda.mobile.recommendation.RecommendationSettings
+import com.pessoal.agenda.mobile.recommendation.RecommendationStatistics
+import com.pessoal.agenda.mobile.recommendation.RecommendationStatisticsCalculator
 import com.pessoal.agenda.mobile.health.IntakeInput
 import com.pessoal.agenda.mobile.health.SymptomInput
 import com.pessoal.agenda.mobile.health.VersionedHealthRecord
@@ -75,6 +85,20 @@ data class MobileUiState(
     val visualAlertsEnabled: Boolean = false,
     val sensorySettings: SensorySettingsUiState = SensorySettingsUiState(),
     val health: HealthUiState = HealthUiState(),
+    val recommendation: RecommendationUiState = RecommendationUiState(),
+)
+
+data class RecommendationUiState(
+    val settings: RecommendationSettings = RecommendationSettings(
+        personalizationEnabled = false,
+        retentionDays = RecommendationStore.DEFAULT_RETENTION_DAYS,
+        capacityContext = RecommendationCapacityContext.STANDARD,
+        preferredSnoozeMinutes = null,
+        preferredChannel = null,
+    ),
+    val events: List<RecommendationEventEntity> = emptyList(),
+    val statistics: RecommendationStatistics = RecommendationStatistics(),
+    val baselineOptions: List<RecommendationOption> = emptyList(),
 )
 
 data class HealthUiState(
@@ -111,10 +135,13 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         AndroidKeystoreHealthDataCipher(),
     )
     private val recommendationStore = RecommendationStore(MobileDatabase.get(application))
+    private val recommendationEngine = DeterministicRecommendationEngine()
     private val healthConnect = AndroidHealthConnectGateway(application)
     private val healthImporter = HealthConnectImportCoordinator(healthConnect, healthStore)
     private val healthReportBuilder = HealthReportBuilder()
-    private val alertScheduling = AlertSchedulingCoordinator(application, alertStore)
+    private val alertScheduling by lazy(LazyThreadSafetyMode.NONE) {
+        AlertSchedulingCoordinator(application, alertStore)
+    }
     private val busy = MutableStateFlow(false)
     private val feedback = MutableStateFlow<String?>(null)
     private val canSync = MutableStateFlow(false)
@@ -123,6 +150,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     private val visualAlertsEnabled = MutableStateFlow(false)
     private val sensorySettings = MutableStateFlow(SensorySettingsUiState())
     private val health = MutableStateFlow(HealthUiState())
+    private val recommendation = MutableStateFlow(RecommendationUiState())
     private val sensoryOutput = AndroidSensoryOutput(application)
     private var audioTestJob: Job? = null
     private var pairingJob: Job? = null
@@ -142,14 +170,18 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         OfflineContent(tasks, captures, protocols, activeRunSteps, queue.first, queue.second)
     }
 
+    private val privateData = combine(health, recommendation) { healthState, recommendationState ->
+        healthState to recommendationState
+    }
+
     private val pairingState = combine(
         pairingInProgress,
         pairingCompletion,
         visualAlertsEnabled,
         sensorySettings,
-        health,
-    ) { inProgress, completion, alertsEnabled, settings, healthState ->
-        PairingUiState(inProgress, completion, alertsEnabled, settings, healthState)
+        privateData,
+    ) { inProgress, completion, alertsEnabled, settings, privateState ->
+        PairingUiState(inProgress, completion, alertsEnabled, settings, privateState.first, privateState.second)
     }
 
     val state: StateFlow<MobileUiState> = combine(
@@ -170,6 +202,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             visualAlertsEnabled = pairingState.visualAlertsEnabled,
             sensorySettings = pairingState.sensorySettings,
             health = pairingState.health,
+            recommendation = pairingState.recommendation,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MobileUiState())
 
@@ -185,11 +218,12 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
                 healthStore.enforceRetention()
                 recommendationStore.ensureSettings()
                 recommendationStore.enforceRetention()
+                refreshRecommendations()
                 refreshHealth()
                 val storedProfile = alertStore.ensureInstallationProfile()
                 visualAlertsEnabled.value = storedProfile.profile.globalEnabled && notificationsAllowed()
                 sensorySettings.value = storedProfile.settingsState()
-                alertScheduling.reconcile()
+                withContext(Dispatchers.IO) { alertScheduling.reconcile() }
             }
                 .onFailure { feedback.value = it.safeMessage("Não foi possível preparar os dados locais.") }
         }
@@ -312,6 +346,39 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             MobileDatabase.get(getApplication()),
             HttpsSyncTransport(credentialStore),
         ).syncOnce()
+    }
+
+    fun refreshRecommendationState() {
+        viewModelScope.launch {
+            runCatching { refreshRecommendations() }
+                .onFailure { feedback.value = it.safeMessage("Não foi possível ler o histórico local.") }
+        }
+    }
+
+    fun saveRecommendationSettings(settings: RecommendationSettings) = execute(
+        successMessage = if (settings.personalizationEnabled) {
+            "Personalização local ativada."
+        } else {
+            "Regras padrão restauradas."
+        },
+    ) {
+        recommendationStore.saveSettings(settings)
+        recommendationStore.enforceRetention()
+        refreshRecommendations()
+    }
+
+    fun correctRecommendationEvent(
+        id: String,
+        activeContext: RecommendationActiveContext,
+        capacityContext: RecommendationCapacityContext,
+    ) = execute(successMessage = "Contexto do evento corrigido.") {
+        recommendationStore.correctEventContext(id, activeContext, capacityContext)
+        refreshRecommendations()
+    }
+
+    fun clearRecommendationHistory() = execute(successMessage = "Histórico de recomendações apagado.") {
+        recommendationStore.clearHistory()
+        refreshRecommendations()
     }
 
     fun pairDesktop(invitation: String, code: String) {
@@ -502,6 +569,32 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         )
     }
 
+    private suspend fun refreshRecommendations() {
+        val settings = recommendationStore.settings()
+        val events = recommendationStore.events()
+        val activeContext = if (MobileDatabase.get(getApplication()).offline().activeRun() == null) {
+            RecommendationActiveContext.NONE
+        } else {
+            RecommendationActiveContext.PROTOCOL
+        }
+        val preview = recommendationEngine.recommend(
+            context = RecommendationContext(
+                purpose = RecommendationPurpose.SNOOZE_PRESET,
+                generatedAt = Instant.now(),
+                activeContext = activeContext,
+                capacityContext = settings.capacityContext,
+            ),
+            settings = settings,
+            observations = recommendationStore.observations(),
+        )
+        recommendation.value = RecommendationUiState(
+            settings = settings,
+            events = events,
+            statistics = RecommendationStatisticsCalculator.calculate(events),
+            baselineOptions = preview?.options.orEmpty(),
+        )
+    }
+
     private fun execute(
         successMessage: String,
         onSuccess: () -> Unit = {},
@@ -540,4 +633,5 @@ private data class PairingUiState(
     val visualAlertsEnabled: Boolean,
     val sensorySettings: SensorySettingsUiState,
     val health: HealthUiState,
+    val recommendation: RecommendationUiState,
 )

@@ -43,3 +43,11 @@ falha, distração ou recusa. Eventos ficam locais em P2-08 e não entram no syn
 - ação recebida pelo Data Layer usa `WATCH`; as demais operações locais usam
   `PHONE`;
 - alertas suprimidos ou com falha técnica não contam como apresentados.
+
+## Indicadores locais
+
+Os indicadores são descritivos e não diagnosticam distração, adesão ou estado
+clínico. `Sequências estimadas` conta apenas pares consecutivos de adiamentos no
+mesmo contexto categórico explícito, separados por no máximo uma hora. Como IDs
+operacionais são proibidos, o valor não afirma que os dois eventos pertencem ao
+mesmo alerta e é exibido como estimativa.

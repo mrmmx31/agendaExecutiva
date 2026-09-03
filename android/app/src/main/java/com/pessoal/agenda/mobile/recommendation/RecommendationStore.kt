@@ -125,6 +125,21 @@ class RecommendationStore(
         dao.upsertRecommendationEvent(corrected.toEntity(id, correctedAt = now()))
     }
 
+    suspend fun correctEventContext(
+        id: String,
+        activeContext: RecommendationActiveContext,
+        capacityContext: RecommendationCapacityContext,
+    ) = database.withTransaction {
+        UUID.fromString(id)
+        val current = requireNotNull(dao.recommendationEvent(id))
+        val corrected = current.toInput().copy(
+            activeContext = activeContext,
+            capacityContext = capacityContext,
+        )
+        validate(corrected)
+        dao.upsertRecommendationEvent(corrected.toEntity(id, correctedAt = now()))
+    }
+
     suspend fun events(): List<RecommendationEventEntity> = dao.recommendationEvents()
 
     suspend fun observations(): List<RecommendationObservation> = dao.recommendationEvents().map { row ->
@@ -183,6 +198,21 @@ class RecommendationStore(
             optionCode = optionCode?.name, correctedAt = correctedAt,
         )
     }
+
+    private fun RecommendationEventEntity.toInput() = RecommendationEventInput(
+        eventType = RecommendationEventType.valueOf(eventType),
+        occurredAt = Instant.parse(occurredAt),
+        sourceDevice = RecommendationSourceDevice.valueOf(sourceDevice),
+        activeContext = RecommendationActiveContext.valueOf(activeContext),
+        capacityContext = RecommendationCapacityContext.valueOf(capacityContext),
+        alertKind = alertKind?.let(RecommendationAlertKind::valueOf),
+        deadlineBucket = deadlineBucket?.let(RecommendationDeadlineBucket::valueOf),
+        channel = channel?.let(RecommendationChannel::valueOf),
+        responseLatencySeconds = responseLatencySeconds,
+        snoozeMinutes = snoozeMinutes,
+        recommendationId = recommendationId,
+        optionCode = optionCode?.let(RecommendationOptionCode::valueOf),
+    )
 
     private fun RecommendationDecision.toEntity() = RecommendationDecisionEntity(
         id = id, contractVersion = CONTRACT_VERSION, generatedAt = generatedAt.toString(),

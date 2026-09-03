@@ -22,7 +22,7 @@ Health apps, suporte, controlador dos dados e estrategia de Play App Signing.
 |---|---|
 | gates funcionais 1 a 8 | aprovados, com limites fisicos catalogados |
 | janela passiva de 24 horas e medicao final | pendente no gate 9 |
-| APK/AAB e verificacao de certificado comum | artefatos definitivos assinados e verificados |
+| APK/AAB e verificacao de certificado comum | candidato assinado verificado; regeneração final pendente após áudio/Drive |
 | chave pessoal definitiva | criada fora do repositorio, protegida por senha e modo `600` |
 | backup cifrado separado da chave | pendente de armazenamento escolhido pelo proprietario |
 | instalacao do APK release pessoal | pendente do backup da chave e do gate 9 |

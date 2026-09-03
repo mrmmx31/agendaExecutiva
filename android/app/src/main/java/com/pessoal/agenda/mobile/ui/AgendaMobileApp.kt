@@ -1,8 +1,10 @@
 package com.pessoal.agenda.mobile.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.health.connect.client.PermissionController
@@ -151,8 +153,8 @@ fun AgendaMobileApp(
                     viewModel.setVisualAlertsEnabled(true)
                 }
             },
-            onSaveSensorySettings = { profile, snooze ->
-                viewModel.saveSensorySettings(profile, snooze)
+            onSaveSensorySettings = { profile, snooze, selectedAudioDeviceKey ->
+                viewModel.saveSensorySettings(profile, snooze, selectedAudioDeviceKey)
                 if (
                     state.sensorySettings.profile.globalEnabled
                     && SensoryChannel.VISUAL in profile.enabledChannels
@@ -166,6 +168,9 @@ fun AgendaMobileApp(
             onPauseSensoryAlerts = viewModel::pauseSensoryAlerts,
             onTestAudio = viewModel::toggleAudioTest,
             onRefreshAudioRoute = viewModel::refreshAudioRoute,
+            onOpenSystemSoundSettings = {
+                context.startActivity(Intent(Settings.ACTION_SOUND_SETTINGS))
+            },
             onHealthConsentChanged = viewModel::setHealthConsent,
             onSaveIntake = viewModel::saveIntake,
             onDeleteIntake = viewModel::deleteIntake,
@@ -209,10 +214,11 @@ internal fun AgendaMobileScreen(
     onFeedbackShown: () -> Unit,
     initialPairingInvitation: String? = null,
     onVisualAlertsChanged: (Boolean) -> Unit = {},
-    onSaveSensorySettings: (com.pessoal.agenda.mobile.alert.SensoryProfile, com.pessoal.agenda.mobile.alert.SnoozePolicy) -> Unit = { _, _ -> },
+    onSaveSensorySettings: (com.pessoal.agenda.mobile.alert.SensoryProfile, com.pessoal.agenda.mobile.alert.SnoozePolicy, String?) -> Unit = { _, _, _ -> },
     onPauseSensoryAlerts: (Int?) -> Unit = {},
-    onTestAudio: (com.pessoal.agenda.mobile.alert.AudioRoutePolicy) -> Unit = {},
+    onTestAudio: (com.pessoal.agenda.mobile.alert.AudioRoutePolicy, String?) -> Unit = { _, _ -> },
     onRefreshAudioRoute: () -> Unit = {},
+    onOpenSystemSoundSettings: () -> Unit = {},
     onProposeProtocolStep: (String, String) -> Unit = { _, _ -> },
     onHealthConsentChanged: (com.pessoal.agenda.mobile.health.HealthCategory, Boolean) -> Unit = { _, _ -> },
     onSaveIntake: (String?, com.pessoal.agenda.mobile.health.IntakeInput) -> Unit = { _, _ -> },
@@ -395,6 +401,7 @@ internal fun AgendaMobileScreen(
                     onPause = onPauseSensoryAlerts,
                     onTestAudio = onTestAudio,
                     onRefreshRoute = onRefreshAudioRoute,
+                    onOpenSystemSoundSettings = onOpenSystemSoundSettings,
                 )
             } else {
                 OfflineStatusBand(

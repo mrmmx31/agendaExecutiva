@@ -23,3 +23,9 @@ artefato foi publicado ou enviado a terceiro.
 `android/scripts/p2_10_release_candidate.sh` verificou as quatro assinaturas,
 o certificado comum e o gate estático. A instalação final aguarda o backup da
 chave e o encerramento do gate 9.
+
+Este candidato foi sucedido por uma alteração ainda não empacotada na seleção
+individual de saída de áudio. Os hashes acima continuam identificando o
+candidato auditado, mas não devem ser instalados como fechamento final. Após o
+novo código passar pelos gates, os quatro artefatos serão regenerados com a
+mesma chave e este registro receberá os novos hashes.

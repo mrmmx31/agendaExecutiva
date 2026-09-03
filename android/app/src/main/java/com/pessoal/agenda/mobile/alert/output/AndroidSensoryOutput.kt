@@ -30,6 +30,12 @@ data class AudioRouteStatus(
     val phoneSpeakerAvailable: Boolean,
 )
 
+data class AudioOutputDevice(
+    val key: String,
+    val label: String,
+    val typeLabel: String,
+)
+
 data class SensoryOutputResult(
     val deliveredChannels: Set<SensoryChannel>,
     val reason: AlertDeliveryReason? = null,
@@ -50,6 +56,7 @@ internal class SensoryOutputGate {
 class AndroidSensoryOutput internal constructor(
     private val context: Context,
     private val outputGate: SensoryOutputGate = PROCESS_OUTPUT_GATE,
+    private val preferenceStore: AudioOutputPreferenceStore = AudioOutputPreferenceStore(context),
 ) : AlertSensoryOutput {
     private val audioManager = context.getSystemService(AudioManager::class.java)
     private val notificationManager = context.getSystemService(NotificationManager::class.java)
@@ -75,7 +82,7 @@ class AndroidSensoryOutput internal constructor(
                 }
             }
             if (SensoryChannel.AUDIO in requested) {
-                val result = playTone(resolveRoute(candidate.audioRoute))
+                val result = playTone(resolveRoute(candidate.audioRoute, preferenceStore.selectedDeviceKey()))
                 routeStatus = result.routeStatus
                 if (result.played) delivered += SensoryChannel.AUDIO
                 if (result.reason != null) reason = result.reason
@@ -89,7 +96,17 @@ class AndroidSensoryOutput internal constructor(
         }
     }
 
-    fun routeStatus(policy: AudioRoutePolicy): AudioRouteStatus = resolveRoute(policy).status
+    fun routeStatus(
+        policy: AudioRoutePolicy,
+        preferredDeviceKey: String? = preferenceStore.selectedDeviceKey(),
+    ): AudioRouteStatus = resolveRoute(policy, preferredDeviceKey).status
+
+    fun availableHeadphoneDevices(): List<AudioOutputDevice> =
+        audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            .filter { it.type in HEADPHONE_TYPES }
+            .map(::descriptor)
+            .distinctBy(AudioOutputDevice::key)
+            .sortedBy { it.label.lowercase() }
 
     private fun vibrateOnce() {
         val effect = VibrationEffect.createOneShot(VIBRATION_MILLIS, VibrationEffect.DEFAULT_AMPLITUDE)
@@ -104,8 +121,11 @@ class AndroidSensoryOutput internal constructor(
         }
     }
 
-    suspend fun testTone(policy: AudioRoutePolicy): SensoryOutputResult {
-        val route = resolveRoute(policy)
+    suspend fun testTone(
+        policy: AudioRoutePolicy,
+        preferredDeviceKey: String? = preferenceStore.selectedDeviceKey(),
+    ): SensoryOutputResult {
+        val route = resolveRoute(policy, preferredDeviceKey)
         if (route.deviceRequiredButUnavailable) {
             return SensoryOutputResult(emptySet(), AlertDeliveryReason.ROUTE_UNAVAILABLE, route.status)
         }
@@ -178,45 +198,53 @@ class AndroidSensoryOutput internal constructor(
         }
     }
 
-    private fun resolveRoute(policy: AudioRoutePolicy): ResolvedRoute {
+    private fun resolveRoute(policy: AudioRoutePolicy, preferredDeviceKey: String?): ResolvedRoute {
         val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).toList()
-        val headphones = devices.firstOrNull { it.type in HEADPHONE_TYPES }
+        val headphones = devices.filter { it.type in HEADPHONE_TYPES }
+        val selectedHeadphone = preferredDeviceKey?.let { key ->
+            headphones.firstOrNull { deviceKey(it) == key }
+        }
+        val preferredHeadphone = if (preferredDeviceKey == null) headphones.firstOrNull() else selectedHeadphone
         val speaker = devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
         val status = when (policy) {
             AudioRoutePolicy.SYSTEM_DEFAULT -> AudioRouteStatus(
-                policy, "Rota automática do sistema", null, headphones != null, speaker != null,
+                policy, "Rota automática do sistema", null, headphones.isNotEmpty(), speaker != null,
             )
-            AudioRoutePolicy.PREFER_HEADPHONES -> if (headphones != null) {
-                AudioRouteStatus(policy, headphones.productName.toString(), null, true, speaker != null)
+            AudioRoutePolicy.PREFER_HEADPHONES -> if (preferredHeadphone != null) {
+                AudioRouteStatus(policy, preferredHeadphone.productName.toString(), null, true, speaker != null)
             } else {
                 AudioRouteStatus(
                     policy,
                     speaker?.productName?.toString() ?: "Rota automática do sistema",
-                    "Fone indisponível; o áudio usará o telefone ou a rota do sistema.",
-                    false,
+                    if (preferredDeviceKey == null) {
+                        "Fone indisponível; o áudio usará o telefone ou a rota do sistema."
+                    } else {
+                        "Dispositivo escolhido indisponível; o áudio usará o telefone ou a rota do sistema."
+                    },
+                    headphones.isNotEmpty(),
                     speaker != null,
                 )
             }
             AudioRoutePolicy.PREFER_PHONE -> if (speaker != null) {
-                AudioRouteStatus(policy, speaker.productName.toString(), null, headphones != null, true)
+                AudioRouteStatus(policy, speaker.productName.toString(), null, headphones.isNotEmpty(), true)
             } else {
                 AudioRouteStatus(
                     policy,
                     "Rota automática do sistema",
                     "Alto-falante não identificado; o Android escolherá a saída.",
-                    headphones != null,
+                    headphones.isNotEmpty(),
                     false,
                 )
             }
             AudioRoutePolicy.VIBRATION_ONLY -> AudioRouteStatus(
-                policy, "Som desativado; somente vibração", null, headphones != null, speaker != null,
+                policy, "Som desativado; somente vibração", null, headphones.isNotEmpty(), speaker != null,
             )
             AudioRoutePolicy.NONE -> AudioRouteStatus(
-                policy, "Sem saída sonora", null, headphones != null, speaker != null,
+                policy, "Sem saída sonora", null, headphones.isNotEmpty(), speaker != null,
             )
         }
         val preferred = when (policy) {
-            AudioRoutePolicy.PREFER_HEADPHONES -> headphones ?: speaker
+            AudioRoutePolicy.PREFER_HEADPHONES -> preferredHeadphone ?: speaker
             AudioRoutePolicy.PREFER_PHONE -> speaker
             else -> null
         }
@@ -226,6 +254,21 @@ class AndroidSensoryOutput internal constructor(
             deviceRequiredButUnavailable = policy in setOf(AudioRoutePolicy.VIBRATION_ONLY, AudioRoutePolicy.NONE),
         )
     }
+
+    private fun descriptor(device: AudioDeviceInfo) = AudioOutputDevice(
+        key = deviceKey(device),
+        label = device.productName.toString().ifBlank { "Saída de áudio" },
+        typeLabel = when (device.type) {
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> "Bluetooth"
+            AudioDeviceInfo.TYPE_BLE_HEADSET -> "Bluetooth LE"
+            AudioDeviceInfo.TYPE_WIRED_HEADPHONES, AudioDeviceInfo.TYPE_WIRED_HEADSET -> "Com fio"
+            AudioDeviceInfo.TYPE_USB_HEADSET -> "USB"
+            else -> "Áudio externo"
+        },
+    )
+
+    private fun deviceKey(device: AudioDeviceInfo): String =
+        "${device.type}:${device.productName.toString().trim()}"
 
     private fun toneSamples(): ShortArray {
         val count = SAMPLE_RATE * TONE_MILLIS / 1_000

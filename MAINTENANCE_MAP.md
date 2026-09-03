@@ -12,6 +12,7 @@ Este documento é o ponto de entrada para manutenção. Ele reduz a necessidade 
 | IA ou personalização | `PROJECT2_SPEC.md` seções 14, 15, 20 e 21 → `docs/adr/0003-personal-ranking-runtime.md` → model card correspondente |
 | Saúde ou relatório médico | `PROJECT2_SPEC.md` seções 2, 12, 13, 15 e 21 |
 | Google Tasks | `SPEC.md` seções 9.9 e 26 → classes `Google*` → testes correspondentes |
+| Backup Google Drive | `docs/integrations/GOOGLE_DRIVE_SETUP.md` → `GoogleAuthService` → cliente `appDataFolder` ainda pendente |
 | Tema/janelas | `DEVELOPMENT.md` → `ThemeManager`, `WindowManager`, CSS e testes JavaFX |
 | Ver estado recente | `LAST_CHANGES.md` → `git log` → `git status` |
 
@@ -107,8 +108,8 @@ Implementado até a conclusão de `P2-09`:
 | Persistência de alertas | `AlertStore.kt`, `AlertEntities.kt`, `OfflineDao.kt` e `MobileDatabase.MIGRATION_3_4` |
 | Agendamento de alertas | `alert/scheduling/AlertWorkScheduler.kt`; nome único `agenda-alert-<uuid>` e tag `agenda-alert-evaluation` |
 | Notificação e ações Android | `alert/notification/`; canal visual v1, publisher, processor e receiver interno |
-| Saída sensorial Android | `alert/output/AndroidSensoryOutput.kt`; tom curto, vibração, foco transitório, rota por faixa e bloqueio de sobreposição |
-| Configuração sensorial | `ui/SensorySettingsScreen.kt` + `AgendaMobileViewModel.kt`; presets explícitos, pausa, silêncio, cooldown, prévia isolada com rota do rascunho restaurável e fallback |
+| Saída sensorial Android | `alert/output/AndroidSensoryOutput.kt` + `AudioOutputPreferenceStore.kt`; tom curto, vibração, foco transitório, catálogo de rotas, preferência local sem MAC e bloqueio de sobreposição |
+| Configuração sensorial | `ui/SensorySettingsScreen.kt` + `AgendaMobileViewModel.kt`; presets explícitos, pausa, silêncio, cooldown, seleção da saída conectada, prévia isolada e fallback |
 | Matriz P2-04 | `android/P2_04_MATRIX.md`; cenários, gates, resultados e limites do AVD |
 | Contrato Wear v1 | `android/wear-contract/`, `contracts/WEAR_V1.md` e `wear-alert-state.schema.json` |
 | Aplicativo Wear | `android/wear/`; mesmo `applicationId` e assinatura do telefone, sem segredo mestre |
@@ -280,9 +281,11 @@ Sem model card e teste de fallback, o modelo não entra em release.
 
 1. Limitar escopo à Agenda.
 2. Inventariar destinos disponíveis pela API.
-3. Testar fone Bluetooth, com fio, speaker e remoção durante playback.
-4. Testar silencioso, DND, chamada e mídia concorrente.
-5. Não alterar rota global permanentemente.
+3. Distinguir acessório Bluetooth conectado de rota realmente exposta ao áudio.
+4. Testar fone Bluetooth, com fio, speaker e remoção durante playback.
+5. Testar silencioso, DND, chamada e mídia concorrente.
+6. Não alterar rota global permanentemente; abrir o painel Android quando a
+   intenção envolver outros aplicativos.
 
 ## 13. Quality gates
 

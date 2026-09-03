@@ -17,6 +17,8 @@ import com.pessoal.agenda.mobile.alert.SnoozePolicy
 import com.pessoal.agenda.mobile.alert.notification.AndroidAlertNotificationPublisher
 import com.pessoal.agenda.mobile.alert.output.AndroidSensoryOutput
 import com.pessoal.agenda.mobile.alert.output.AudioRouteStatus
+import com.pessoal.agenda.mobile.alert.output.AudioOutputDevice
+import com.pessoal.agenda.mobile.alert.output.AudioOutputPreferenceStore
 import com.pessoal.agenda.mobile.data.local.ActiveRunStepRow
 import com.pessoal.agenda.mobile.data.local.CaptureEntity
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
@@ -151,6 +153,8 @@ data class SensorySettingsUiState(
         headphonesAvailable = false,
         phoneSpeakerAvailable = true,
     ),
+    val availableAudioDevices: List<AudioOutputDevice> = emptyList(),
+    val selectedAudioDeviceKey: String? = null,
     val audioTestRunning: Boolean = false,
 )
 
@@ -196,6 +200,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     private val health = MutableStateFlow(HealthUiState())
     private val recommendation = MutableStateFlow(RecommendationUiState())
     private val sensoryOutput = AndroidSensoryOutput(application)
+    private val audioOutputPreferenceStore = AudioOutputPreferenceStore(application)
     private var audioTestJob: Job? = null
     private var pairingJob: Job? = null
     private var pairingClient: PairingClient? = null
@@ -542,16 +547,23 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         feedback.value = "Permissão não concedida; notificações visuais continuam indisponíveis."
     }
 
-    fun saveSensorySettings(profile: SensoryProfile, snoozePolicy: SnoozePolicy) = execute(
+    fun saveSensorySettings(
+        profile: SensoryProfile,
+        snoozePolicy: SnoozePolicy,
+        selectedAudioDeviceKey: String?,
+    ) = execute(
         successMessage = "Perfil sensorial salvo.",
     ) {
         val current = alertStore.ensureInstallationProfile()
         val effective = profile.copy(globalEnabled = current.profile.globalEnabled)
         alertStore.saveProfile(effective, snoozePolicy)
+        audioOutputPreferenceStore.saveSelectedDeviceKey(selectedAudioDeviceKey)
         sensorySettings.value = SensorySettingsUiState(
             profile = effective,
             snoozePolicy = snoozePolicy,
-            routeStatus = sensoryOutput.routeStatus(effective.audioRoute),
+            routeStatus = sensoryOutput.routeStatus(effective.audioRoute, selectedAudioDeviceKey),
+            availableAudioDevices = sensoryOutput.availableHeadphoneDevices(),
+            selectedAudioDeviceKey = selectedAudioDeviceKey,
         )
         val now = Instant.now()
         val temporarilySilent = effective.pausedUntil?.let(Instant::parse)?.isAfter(now) == true ||
@@ -579,16 +591,26 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             profile = profile,
             snoozePolicy = stored.snoozePolicy,
             routeStatus = sensoryOutput.routeStatus(profile.audioRoute),
+            availableAudioDevices = sensoryOutput.availableHeadphoneDevices(),
+            selectedAudioDeviceKey = audioOutputPreferenceStore.selectedDeviceKey(),
         )
         if (profile.globalEnabled) alertScheduling.reactivate()
     }
 
     fun refreshAudioRoute() {
         val current = sensorySettings.value
-        sensorySettings.value = current.copy(routeStatus = sensoryOutput.routeStatus(current.profile.audioRoute))
+        val selectedKey = audioOutputPreferenceStore.selectedDeviceKey()
+        sensorySettings.value = current.copy(
+            routeStatus = sensoryOutput.routeStatus(current.profile.audioRoute, selectedKey),
+            availableAudioDevices = sensoryOutput.availableHeadphoneDevices(),
+            selectedAudioDeviceKey = selectedKey,
+        )
     }
 
-    fun toggleAudioTest(routePolicy: com.pessoal.agenda.mobile.alert.AudioRoutePolicy) {
+    fun toggleAudioTest(
+        routePolicy: com.pessoal.agenda.mobile.alert.AudioRoutePolicy,
+        selectedAudioDeviceKey: String?,
+    ) {
         audioTestJob?.let {
             it.cancel()
             audioTestJob = null
@@ -617,7 +639,9 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         audioTestJob = viewModelScope.launch {
             sensorySettings.value = sensorySettings.value.copy(audioTestRunning = true)
             try {
-                val result = withContext(Dispatchers.IO) { sensoryOutput.testTone(routePolicy) }
+                val result = withContext(Dispatchers.IO) {
+                    sensoryOutput.testTone(routePolicy, selectedAudioDeviceKey)
+                }
                 result.routeStatus?.let { status ->
                     sensorySettings.value = sensorySettings.value.copy(routeStatus = status)
                 }
@@ -639,7 +663,9 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     private fun com.pessoal.agenda.mobile.data.StoredSensoryProfile.settingsState() = SensorySettingsUiState(
         profile = profile,
         snoozePolicy = snoozePolicy,
-        routeStatus = sensoryOutput.routeStatus(profile.audioRoute),
+        routeStatus = sensoryOutput.routeStatus(profile.audioRoute, audioOutputPreferenceStore.selectedDeviceKey()),
+        availableAudioDevices = sensoryOutput.availableHeadphoneDevices(),
+        selectedAudioDeviceKey = audioOutputPreferenceStore.selectedDeviceKey(),
     )
 
     private fun notificationsAllowed(): Boolean {

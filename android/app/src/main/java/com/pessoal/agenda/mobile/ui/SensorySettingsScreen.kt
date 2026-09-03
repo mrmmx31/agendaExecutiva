@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -60,10 +62,11 @@ internal fun SensorySettingsScreen(
     visualNotificationsAvailable: Boolean,
     busy: Boolean,
     onGlobalChanged: (Boolean) -> Unit,
-    onSave: (SensoryProfile, SnoozePolicy) -> Unit,
+    onSave: (SensoryProfile, SnoozePolicy, String?) -> Unit,
     onPause: (Int?) -> Unit,
-    onTestAudio: (AudioRoutePolicy) -> Unit,
+    onTestAudio: (AudioRoutePolicy, String?) -> Unit,
     onRefreshRoute: () -> Unit,
+    onOpenSystemSoundSettings: () -> Unit,
 ) {
     var draft by rememberSaveable(state.profile, stateSaver = SensoryProfileSaver) {
         mutableStateOf(state.profile)
@@ -75,6 +78,11 @@ internal fun SensorySettingsScreen(
         mutableStateOf(state.snoozePolicy.presetMinutes.joinToString(", "))
     }
     var routeMenuOpen by remember { mutableStateOf(false) }
+    var deviceMenuOpen by remember { mutableStateOf(false) }
+    var selectedAudioDeviceKey by rememberSaveable {
+        mutableStateOf(state.selectedAudioDeviceKey)
+    }
+    val selectedDeviceForActions = selectedAudioDeviceKey
     LaunchedEffect(Unit) { onRefreshRoute() }
 
     val snoozePresets = parseSnoozePresets(snoozeText)
@@ -208,6 +216,44 @@ internal fun SensorySettingsScreen(
                         }
                     }
                 }
+                if (draft.audioRoute == AudioRoutePolicy.PREFER_HEADPHONES) {
+                    Column {
+                        Text("Dispositivo preferido", style = MaterialTheme.typography.labelLarge)
+                        OutlinedButton(
+                            onClick = { deviceMenuOpen = true },
+                            enabled = SensoryChannel.AUDIO in draft.enabledChannels,
+                            modifier = Modifier.fillMaxWidth().testTag("audio-device-selector"),
+                        ) {
+                            Text(
+                                state.availableAudioDevices
+                                    .firstOrNull { it.key == selectedAudioDeviceKey }
+                                    ?.let { "${it.label} · ${it.typeLabel}" }
+                                    ?: "Qualquer fone disponível",
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = deviceMenuOpen,
+                            onDismissRequest = { deviceMenuOpen = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Qualquer fone disponível") },
+                                onClick = {
+                                    selectedAudioDeviceKey = null
+                                    deviceMenuOpen = false
+                                },
+                            )
+                            state.availableAudioDevices.forEach { device ->
+                                DropdownMenuItem(
+                                    text = { Text("${device.label} · ${device.typeLabel}") },
+                                    onClick = {
+                                        selectedAudioDeviceKey = device.key
+                                        deviceMenuOpen = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
                 Surface(
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -221,7 +267,7 @@ internal fun SensorySettingsScreen(
                     }
                 }
                 Button(
-                    onClick = { onTestAudio(draft.audioRoute) },
+                    onClick = { onTestAudio(draft.audioRoute, selectedDeviceForActions) },
                     enabled = SensoryChannel.AUDIO in draft.enabledChannels && !busy,
                 ) {
                     Icon(
@@ -229,6 +275,14 @@ internal fun SensorySettingsScreen(
                         contentDescription = null,
                     )
                     Text(if (state.audioTestRunning) "Interromper teste" else "Testar áudio")
+                }
+                OutlinedButton(onClick = onRefreshRoute, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Outlined.Refresh, contentDescription = null)
+                    Text("Atualizar saídas")
+                }
+                OutlinedButton(onClick = onOpenSystemSoundSettings, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Outlined.Settings, contentDescription = null)
+                    Text("Som do Android")
                 }
             }
         }
@@ -280,6 +334,7 @@ internal fun SensorySettingsScreen(
                     onSave(
                         candidate,
                         state.snoozePolicy.copy(presetMinutes = requireNotNull(snoozePresets)),
+                        selectedDeviceForActions,
                     )
                 },
                 enabled = valid && !busy,

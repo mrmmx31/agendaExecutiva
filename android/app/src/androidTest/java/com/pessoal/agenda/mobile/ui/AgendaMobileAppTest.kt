@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import com.pessoal.agenda.mobile.alert.SensoryChannel
 import com.pessoal.agenda.mobile.alert.SensoryProfile
 import com.pessoal.agenda.mobile.alert.AudioRoutePolicy
+import com.pessoal.agenda.mobile.alert.output.AudioOutputDevice
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
@@ -361,7 +362,7 @@ class AgendaMobileAppTest {
                     onCancelPairing = {},
                     onPairingCompletionShown = {},
                     onFeedbackShown = {},
-                    onSaveSensorySettings = { profile, _ -> saved = profile },
+                    onSaveSensorySettings = { profile, _, _ -> saved = profile },
                     onPauseSensoryAlerts = { pausedFor = it },
                 )
             }
@@ -397,7 +398,7 @@ class AgendaMobileAppTest {
                     onSaveCapture = { _, _ -> }, onStartProtocol = {}, onCompleteStep = { _, _ -> },
                     onSync = {}, onPair = { _, _ -> }, onCancelPairing = {},
                     onPairingCompletionShown = {}, onFeedbackShown = {},
-                    onTestAudio = { testedRoute = it },
+                    onTestAudio = { route, _ -> testedRoute = route },
                 )
             }
         }
@@ -409,6 +410,46 @@ class AgendaMobileAppTest {
         compose.onNodeWithText("Testar áudio").assertIsEnabled().performClick()
 
         assertEquals(AudioRoutePolicy.PREFER_HEADPHONES, testedRoute)
+    }
+
+    @Test
+    fun audioPreviewUsesExplicitConnectedDevice() {
+        var testedDeviceKey: String? = null
+        val device = AudioOutputDevice("8:MOTO XT220", "MOTO XT220", "Bluetooth")
+        compose.setContent {
+            AgendaMobileTheme {
+                SensorySettingsScreen(
+                    state = SensorySettingsUiState(
+                        profile = SensoryProfile.installationDefault().copy(
+                            enabledChannels = setOf(SensoryChannel.VISUAL, SensoryChannel.AUDIO),
+                            audioRoute = AudioRoutePolicy.PREFER_HEADPHONES,
+                        ),
+                        availableAudioDevices = listOf(
+                            device,
+                            AudioOutputDevice("8:ZL02CPRO", "ZL02CPRO", "Bluetooth"),
+                        ),
+                    ),
+                    alertsEnabled = false,
+                    visualNotificationsAvailable = false,
+                    busy = false,
+                    onGlobalChanged = {},
+                    onSave = { _, _, _ -> },
+                    onPause = {},
+                    onTestAudio = { _, key -> testedDeviceKey = key },
+                    onRefreshRoute = {},
+                    onOpenSystemSoundSettings = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("audio-device-selector").performClick()
+        compose.onNodeWithText("MOTO XT220 · Bluetooth").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("MOTO XT220 · Bluetooth").assertIsDisplayed()
+        compose.onNodeWithTag("sensory-settings-list").performScrollToNode(hasText("Testar áudio"))
+        compose.onNodeWithText("Testar áudio").assertIsDisplayed().performClick()
+
+        assertEquals(device.key, testedDeviceKey)
     }
 
     @Test

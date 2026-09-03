@@ -254,6 +254,17 @@ O Data Layer não será a fonte de verdade. Android e Wear mantêm cópias locai
 
 **AUD-06:** a escolha não deve alterar permanentemente a rota global do sistema.
 
+**AUD-07:** quando o Android expuser mais de uma saída externa, a Agenda deve
+listar nome e tecnologia de cada rota e permitir escolher uma delas. A
+preferência é local, não usa endereço Bluetooth e volta ao telefone/sistema se
+o destino escolhido desaparecer.
+
+**AUD-08:** conexão Bluetooth não implica rota de áudio disponível. Uma
+smartband pode continuar conectada ao aplicativo companheiro para notificações
+sem aparecer no `AudioManager`; nesse estado ela não deve ser oferecida como
+destino. A tela permite abrir as configurações de som do Android, mas não simula
+controle global sobre outros aplicativos.
+
 Android restringe seleção direta de dispositivo a casos e APIs específicos; `setCommunicationDevice` é destinado a comunicação, enquanto outras rotas dependem do sistema/MediaRouter. A implementação deve testar capacidades e não alegar controle universal: [AudioManager](https://developer.android.com/reference/android/media/AudioManager).
 
 ## 10. Fluxo “Vou sair”
@@ -450,6 +461,14 @@ Cada versão deve registrar:
 **SEC-09:** toda dependência que acessa rede, saúde, áudio ou sensores entra no catálogo de recursos e na revisão de permissões.
 
 **SEC-10:** a aplicação segue APIs de segurança da plataforma e Android Keystore: [Android Security](https://developer.android.com/security).
+
+**SEC-11:** o backup remoto da chave de assinatura pode usar a mesma conta
+Google, mas exige Google Drive API e consentimento incremental separado para
+`drive.appdata`. O arquivo deve ser cifrado localmente com segredo de recuperação
+independente antes do envio; token, senha e chave aberta nunca entram no Drive.
+A restauração deve funcionar por ferramenta separada mesmo após perda da
+instalação original. A pasta de dados da aplicação é o destino de menor
+privilégio: [Application Data folder](https://developers.google.com/drive/api/guides/appdata).
 
 ## 16. Modelo de dados inicial
 

@@ -101,11 +101,19 @@ Baseline inicial às 11:20 UTC: telefone em carga, bateria 48%, temperatura
 às 16:20 UTC, depois dos gates 6 e 7: bateria 52%, temperatura 33,9 °C, PSS
 aproximado de 190 MB e nenhum `FATAL EXCEPTION` retido. A variação de bateria
 não representa consumo porque houve carga durante a sessão. A janela de 24
-horas, bateria da pulseira e medição final continuam pendentes.
+horas, bateria da pulseira e medição final continuam pendentes. Esse baseline
+foi encerrado sem aceite porque uma nova variante `fieldTest` foi instalada
+durante a janela.
+
+Novo baseline do binário com seleção individual de áudio, às 20:13 UTC:
+telefone fora de carga, bateria 28%, temperatura 31,9 °C, PSS aproximado de
+129 MB e zero referências ao pacote no buffer de crash. O timeout permaneceu em
+5 minutos. A coleta final foi reagendada para 04/09/2026 às 16:14
+(`America/Manaus`), após completar 24 horas desse mesmo binário.
 
 O timeout temporário de tela do Moto foi restaurado de 30 para 5 minutos. A
-coleta final protegida foi agendada localmente para 04/09/2026 às 07:21
-(`America/Manaus`), um minuto após completar 24 horas. Ela recusa execução
+coleta final protegida foi reagendada localmente para 04/09/2026 às 16:14
+(`America/Manaus`), após completar 24 horas. Ela recusa execução
 antecipada, emulador e modelo diferente do telefone autorizado; sucesso ou
 falha será mostrado em diálogo. A smartband fechada não expõe bateria por ADB,
 portanto esse valor continua dependendo de leitura manual no aplicativo
@@ -117,3 +125,14 @@ companheiro ou será registrado como indisponível.
    pode ficar fora do cabo;
 2. informar a bateria da pulseira pelo aplicativo companheiro, se disponível;
 3. escolher armazenamento separado para o backup cifrado da chave definitiva.
+
+## Seleção individual de áudio
+
+A variante atual lista separadamente as saídas externas que o `AudioManager`
+expõe e permite manter uma preferência local por nome e tipo, sem endereço
+Bluetooth. No Moto, com fone e smartband conectados, somente `MOTO XT220`
+apareceu como rota de áudio; a ZL02CPRO permaneceu conectada ao Da Fit, mas não
+foi exposta simultaneamente como saída. A interface selecionou o fone sem salvar
+o rascunho nem reproduzir som. Se o Android expuser os dois perfis de áudio, os
+dois serão listados; a Agenda não consegue ativar por API pública um perfil
+A2DP que o sistema não ofereceu.

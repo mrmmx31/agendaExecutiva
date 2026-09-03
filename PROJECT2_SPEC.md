@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 75% do Projeto 2 |
+| Status | Implementação em andamento; 76,7% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-07` estão concluídas e `P2-08` tem 3 de 6 itens. O avanço geral é 75% e restam 25%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-07` estão concluídas e `P2-08` tem 4 de 6 itens. O avanço geral é 76,7% e restam 23,3%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -711,14 +711,14 @@ Consentimentos, Health Connect, entradas manuais, retenção, relatório com pro
 
 Eventos sem texto sensível, regras explicáveis, catálogo, baseline e painel de correção/limpeza.
 
-**Status:** Em andamento, 50% (3 de 6 itens concluídos).
+**Status:** Em andamento, 66,7% (4 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
 - [x] fechar contratos de evento e decisão, códigos de razão, inventário de dados, model card e decisão arquitetural;
 - [x] evoluir o Room para v9 com eventos, decisões e configurações locais, migração e retenção testadas;
 - [x] implementar `RecommendationEngine` determinístico, baseline cauteloso e mínimo por contexto;
-- [ ] instrumentar alertas e protocolos sem texto, identificador operacional ou inferência de distração;
+- [x] instrumentar alertas e protocolos sem texto, identificador operacional ou inferência de distração;
 - [ ] entregar personalização opt-in, estatísticas locais, inspeção, correção, limpeza e retorno ao baseline;
 - [ ] aprovar matriz de privacidade, regras, retenção, temas, desempenho e documentação final.
 
@@ -757,6 +757,18 @@ dispositivo indisponível, protocolo, preferência, opt-out com histórico e
 determinismo. O model card
 documenta algoritmo e SHA-256 do fonte; nenhum método do motor recebe callback,
 store operacional, saúde ou texto.
+
+**Evidência do quarto item:** `RecommendationTelemetry` aceita somente os tipos
+fechados do contrato e consulta a capacidade escolhida explicitamente. Entrega,
+conclusão, adiamento e expiração de alerta, início de protocolo e conclusão de
+passo são registrados após a mutação durável; falha da telemetria não desfaz a
+ação principal. Repetições idempotentes não duplicam eventos. O Data Layer marca
+ações do relógio como `WATCH`; nenhum `alert_id`, `run_id`, `step_id`, título,
+rótulo ou texto atravessa a fronteira. Prazo é derivado do fim da janela válida,
+latência é limitada a 24 horas e adiamentos conhecidos viram códigos fechados.
+As suítes `AlertStoreTest` e `OfflineRepositoryTest` passaram com 15 testes,
+incluindo opt-out sem coleta, entrega, concluir, adiar, expirar, origem Wear,
+protocolo e isolamento de identidades.
 
 ### P2-09 — Personalização por modelo
 
@@ -809,4 +821,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Continuar `P2-08`: instrumentar alertas e protocolos com eventos minimizados, sem texto ou identificador operacional.
+Continuar `P2-08`: entregar configurações, estatísticas, inspeção, correção, limpeza e retorno ao baseline.

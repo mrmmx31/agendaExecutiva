@@ -60,6 +60,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - `Saúde e privacidade` oferece oito opt-ins e formulários locais para medicação, substância, sintoma/evento e nota de rotina, com correção e exclusão explícita.
 - P2-08 possui contratos minimizados e Room v9 para eventos, decisões e configurações locais; personalização começa desligada e o histórico não entra no sync.
 - `rules-v1` oferece baseline e ranking local após 12 amostras do mesmo contexto, com razões e limites de domínio antes da saída.
+- Alertas e protocolos emitem eventos categóricos locais após sucesso; repetição idempotente, opt-out e falha de telemetria não alteram o fluxo operacional.
 
 ## Limites
 

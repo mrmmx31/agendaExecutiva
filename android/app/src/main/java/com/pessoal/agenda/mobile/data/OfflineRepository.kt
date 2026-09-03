@@ -11,6 +11,11 @@ import com.pessoal.agenda.mobile.data.local.ProtocolRunStepEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolStepEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
+import com.pessoal.agenda.mobile.recommendation.RecommendationActiveContext
+import com.pessoal.agenda.mobile.recommendation.RecommendationEventType
+import com.pessoal.agenda.mobile.recommendation.RecommendationSourceDevice
+import com.pessoal.agenda.mobile.recommendation.RecommendationStore
+import com.pessoal.agenda.mobile.recommendation.RecommendationTelemetry
 import com.pessoal.agenda.wear.contract.WearProtocolStatus
 import com.pessoal.agenda.wear.contract.WearProtocolStepState
 import java.security.MessageDigest
@@ -30,6 +35,9 @@ class OfflineRepository(
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val newId: () -> String = { UUID.randomUUID().toString() },
     private val deviceIdProvider: (() -> String)? = null,
+    private val recommendationTelemetry: RecommendationTelemetry = RecommendationTelemetry(
+        RecommendationStore(database, clock, zoneId),
+    ),
 ) {
     private val dao = database.offline()
 
@@ -109,56 +117,81 @@ class OfflineRepository(
         return captureId
     }
 
-    suspend fun startProtocol(protocolId: String): String = database.withTransaction {
-        dao.activeRun()?.id?.let { return@withTransaction it }
-        val protocol = requireNotNull(dao.protocol(protocolId)) { "Protocolo inexistente." }
-        val steps = dao.protocolSteps(protocolId)
-        require(steps.isNotEmpty()) { "O protocolo nao possui passos." }
-        val runId = validId()
-        val occurredAt = instant()
-        dao.insertProtocolRun(
-            ProtocolRunEntity(
-                id = runId,
-                protocolId = protocol.id,
-                protocolRevision = protocol.revision,
-                startedAt = occurredAt,
-            ),
-        )
-        dao.insertProtocolRunSteps(steps.map { ProtocolRunStepEntity(runId, it.id) })
-        enqueue(
-            operationId = validId(),
-            entityType = "protocol_run",
-            entityId = runId,
-            commandType = "PROTOCOL_RUN_STARTED",
-            occurredAt = occurredAt,
-            payloadJson = Json.encodeToString(
-                ProtocolRunStartedPayload(runId, protocol.id, protocol.revision, occurredAt),
-            ),
-        )
-        runId
+    suspend fun startProtocol(protocolId: String): String {
+        var createdAt: Instant? = null
+        val runId = database.withTransaction {
+            dao.activeRun()?.id?.let { return@withTransaction it }
+            val protocol = requireNotNull(dao.protocol(protocolId)) { "Protocolo inexistente." }
+            val steps = dao.protocolSteps(protocolId)
+            require(steps.isNotEmpty()) { "O protocolo nao possui passos." }
+            val id = validId()
+            val occurredAt = Instant.now(clock).also { createdAt = it }.toString()
+            dao.insertProtocolRun(
+                ProtocolRunEntity(
+                    id = id,
+                    protocolId = protocol.id,
+                    protocolRevision = protocol.revision,
+                    startedAt = occurredAt,
+                ),
+            )
+            dao.insertProtocolRunSteps(steps.map { ProtocolRunStepEntity(id, it.id) })
+            enqueue(
+                operationId = validId(),
+                entityType = "protocol_run",
+                entityId = id,
+                commandType = "PROTOCOL_RUN_STARTED",
+                occurredAt = occurredAt,
+                payloadJson = Json.encodeToString(
+                    ProtocolRunStartedPayload(id, protocol.id, protocol.revision, occurredAt),
+                ),
+            )
+            id
+        }
+        createdAt?.let {
+            recommendationTelemetry.record(
+                RecommendationEventType.PROTOCOL_STARTED,
+                it,
+                RecommendationSourceDevice.PHONE,
+                RecommendationActiveContext.PROTOCOL,
+            )
+        }
+        return runId
     }
 
     suspend fun completeProtocolStep(
         runId: String,
         stepId: String,
         operationId: String = validId(),
-    ): Boolean = database.withTransaction {
-        UUID.fromString(operationId)
-        val existing = requireNotNull(dao.runStep(runId, stepId)) { "Passo da execucao inexistente." }
-        if (existing.completedAt != null) return@withTransaction false
-        val occurredAt = instant()
-        if (dao.completeRunStep(runId, stepId, occurredAt) != 1) return@withTransaction false
-        enqueue(
-            operationId = operationId,
-            entityType = "protocol_run_step",
-            entityId = stepId,
-            commandType = "PROTOCOL_STEP_COMPLETED",
-            occurredAt = occurredAt,
-            payloadJson = Json.encodeToString(ProtocolStepCompletedPayload(runId, stepId, occurredAt)),
-        )
-        check(dao.acknowledgeWearProtocolAction(runId, operationId) == 1)
-        if (dao.incompleteRunStepCount(runId) == 0) dao.completeRun(runId, occurredAt)
-        true
+        sourceDevice: RecommendationSourceDevice = RecommendationSourceDevice.PHONE,
+    ): Boolean {
+        var completedAt: Instant? = null
+        val completed = database.withTransaction {
+            UUID.fromString(operationId)
+            val existing = requireNotNull(dao.runStep(runId, stepId)) { "Passo da execucao inexistente." }
+            if (existing.completedAt != null) return@withTransaction false
+            val occurredAt = Instant.now(clock).also { completedAt = it }.toString()
+            if (dao.completeRunStep(runId, stepId, occurredAt) != 1) return@withTransaction false
+            enqueue(
+                operationId = operationId,
+                entityType = "protocol_run_step",
+                entityId = stepId,
+                commandType = "PROTOCOL_STEP_COMPLETED",
+                occurredAt = occurredAt,
+                payloadJson = Json.encodeToString(ProtocolStepCompletedPayload(runId, stepId, occurredAt)),
+            )
+            check(dao.acknowledgeWearProtocolAction(runId, operationId) == 1)
+            if (dao.incompleteRunStepCount(runId) == 0) dao.completeRun(runId, occurredAt)
+            true
+        }
+        if (completed) {
+            recommendationTelemetry.record(
+                RecommendationEventType.PROTOCOL_STEP_COMPLETED,
+                requireNotNull(completedAt),
+                sourceDevice,
+                RecommendationActiveContext.PROTOCOL,
+            )
+        }
+        return completed
     }
 
     suspend fun protocolWearState(runId: String): WearProtocolStepState? = database.withTransaction {

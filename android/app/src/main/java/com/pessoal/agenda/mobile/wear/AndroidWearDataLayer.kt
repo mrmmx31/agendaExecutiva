@@ -26,6 +26,7 @@ import com.pessoal.agenda.mobile.data.AlertStore
 import com.pessoal.agenda.mobile.data.OfflineRepository
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
 import com.pessoal.agenda.mobile.pairing.DeviceCredentialStore
+import com.pessoal.agenda.mobile.recommendation.RecommendationSourceDevice
 import com.pessoal.agenda.wear.contract.WearActionType
 import com.pessoal.agenda.wear.contract.WearAlertAction
 import com.pessoal.agenda.wear.contract.WearContractCodec
@@ -223,7 +224,12 @@ class PhoneWearProtocolActionWorker(
                 MobileDatabase.get(applicationContext),
                 deviceIdProvider = { credentials.deviceId },
             )
-            repository.completeProtocolStep(action.runId, action.stepId, action.operationId)
+            repository.completeProtocolStep(
+                action.runId,
+                action.stepId,
+                action.operationId,
+                RecommendationSourceDevice.WATCH,
+            )
             if (AndroidWearProtocolPublisher(applicationContext, repository).publish(action.runId) !=
                 WearStatePublishResult.STORED
             ) {

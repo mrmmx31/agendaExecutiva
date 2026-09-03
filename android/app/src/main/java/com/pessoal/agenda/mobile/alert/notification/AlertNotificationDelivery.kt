@@ -25,6 +25,7 @@ import com.pessoal.agenda.mobile.data.AlertDeliveryOutcome
 import com.pessoal.agenda.mobile.data.AlertDeliveryReason
 import com.pessoal.agenda.mobile.data.AlertDeliveryRecord
 import com.pessoal.agenda.mobile.data.AlertStore
+import com.pessoal.agenda.mobile.recommendation.RecommendationSourceDevice
 import com.pessoal.agenda.mobile.data.AlertWorkEvaluation
 import java.nio.charset.StandardCharsets
 import java.time.Clock
@@ -147,7 +148,12 @@ class AlertActionProcessor(
             occurredAt = payload.occurredAt.toString(),
             snoozeUntil = payload.snoozeUntil?.toString(),
         )
-        val inserted = store.recordAction(command, profile.snoozePolicy)
+        val source = if (payload.sourceDeviceId == null) {
+            RecommendationSourceDevice.PHONE
+        } else {
+            RecommendationSourceDevice.WATCH
+        }
+        val inserted = store.recordAction(command, profile.snoozePolicy, source)
         when (payload.action) {
             AlertActionType.COMPLETE -> scheduling.cancel(payload.alertId)
             AlertActionType.SNOOZE -> scheduling.schedule(payload.alertId, requireNotNull(payload.snoozeUntil))

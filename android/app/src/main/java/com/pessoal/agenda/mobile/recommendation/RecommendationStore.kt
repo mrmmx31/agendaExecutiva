@@ -103,6 +103,8 @@ class RecommendationStore(
         }
     }
 
+    suspend fun settings(): RecommendationSettings = ensureSettings()
+
     suspend fun saveSettings(settings: RecommendationSettings) = database.withTransaction {
         validate(settings)
         dao.upsertRecommendationSettings(settings.toEntity(now()))

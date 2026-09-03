@@ -12,6 +12,11 @@ import com.pessoal.agenda.mobile.alert.FunctionalCriticality
 import com.pessoal.agenda.mobile.alert.SensoryChannel
 import com.pessoal.agenda.mobile.alert.SnoozePolicy
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
+import com.pessoal.agenda.mobile.recommendation.RecommendationCapacityContext
+import com.pessoal.agenda.mobile.recommendation.RecommendationChannel
+import com.pessoal.agenda.mobile.recommendation.RecommendationSettings
+import com.pessoal.agenda.mobile.recommendation.RecommendationSourceDevice
+import com.pessoal.agenda.mobile.recommendation.RecommendationStore
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -115,6 +120,7 @@ class AlertStoreTest {
         assertEquals(1, materialized.snoozeCount)
         assertEquals(now.toString(), materialized.completedAt)
         assertEquals(2, database.offline().alertActionCount())
+        assertEquals(0, database.offline().recommendationEventCount())
     }
 
     @Test
@@ -135,6 +141,81 @@ class AlertStoreTest {
         val persisted = requireNotNull(database.offline().alertDelivery(DELIVERY_ONE))
         assertEquals("GLOBAL_DISABLED", persisted.technicalReason)
         assertNull(database.offline().alertMaterialization(ALERT_ID)?.lastDeliveryAt)
+    }
+
+    @Test
+    fun deliveredAndWearActionProduceMinimizedEventsOnlyOnce() = runBlocking {
+        enableRecommendationCollection()
+        store.materialize(alert())
+        val deliveredAt = Instant.parse("2026-09-01T14:00:00Z")
+        val record = delivery(DELIVERY_ONE, deliveredAt.toString())
+        assertTrue(store.recordDelivery(record))
+        assertFalse(store.recordDelivery(record))
+        assertTrue(store.recordAction(
+            AlertActionCommand(
+                contractVersion = 1,
+                operationId = ACTION_ONE,
+                alertId = ALERT_ID,
+                sourceDeviceId = DEVICE_ID,
+                action = AlertActionType.SNOOZE,
+                occurredAt = deliveredAt.plusSeconds(42).toString(),
+                snoozeUntil = deliveredAt.plusSeconds(42 + 15 * 60).toString(),
+            ),
+            SnoozePolicy(listOf(15), 5, 60, 2),
+            RecommendationSourceDevice.WATCH,
+        ))
+        assertTrue(store.recordAction(
+            AlertActionCommand(
+                contractVersion = 1,
+                operationId = ACTION_TWO,
+                alertId = ALERT_ID,
+                sourceDeviceId = DEVICE_ID,
+                action = AlertActionType.COMPLETE,
+                occurredAt = deliveredAt.plusSeconds(60).toString(),
+                snoozeUntil = null,
+            ),
+            SnoozePolicy(listOf(15), 5, 60, 2),
+            RecommendationSourceDevice.PHONE,
+        ))
+
+        val events = database.offline().recommendationEvents().associateBy { it.eventType }
+        assertEquals(3, events.size)
+        assertEquals("PHONE", events.getValue("ALERT_PRESENTED").sourceDevice)
+        assertEquals("VISUAL", events.getValue("ALERT_PRESENTED").channel)
+        assertEquals("WATCH", events.getValue("ALERT_SNOOZED").sourceDevice)
+        assertEquals(42, events.getValue("ALERT_SNOOZED").responseLatencySeconds)
+        assertEquals(15, events.getValue("ALERT_SNOOZED").snoozeMinutes)
+        assertEquals("SNOOZE_15", events.getValue("ALERT_SNOOZED").optionCode)
+        assertEquals("PHONE", events.getValue("ALERT_COMPLETED").sourceDevice)
+        assertTrue(events.values.all { it.recommendationId == null && it.id != ALERT_ID })
+    }
+
+    @Test
+    fun expirationProducesOneMinimizedMissedAlertEvent() = runBlocking {
+        enableRecommendationCollection()
+        store.ensureInstallationProfile()
+        store.materialize(alert().copy(validUntil = "2026-09-01T13:59:00Z"))
+
+        assertEquals(AlertWorkEvaluation.Stop, store.evaluateForWork(ALERT_ID, now))
+        assertEquals(AlertWorkEvaluation.Stop, store.evaluateForWork(ALERT_ID, now))
+
+        val event = database.offline().recommendationEvents().single()
+        assertEquals("ALERT_EXPIRED", event.eventType)
+        assertEquals("OVERDUE", event.deadlineBucket)
+        assertEquals("TASK", event.alertKind)
+        assertNull(event.recommendationId)
+    }
+
+    private suspend fun enableRecommendationCollection() {
+        RecommendationStore(database).saveSettings(
+            RecommendationSettings(
+                personalizationEnabled = true,
+                retentionDays = 90,
+                capacityContext = RecommendationCapacityContext.STANDARD,
+                preferredSnoozeMinutes = null,
+                preferredChannel = RecommendationChannel.VISUAL,
+            ),
+        )
     }
 
     private fun alert() = AlertDefinition(

@@ -7,8 +7,8 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | feat(recommendation): implementar regras explicaveis |
-| Data | 2026-09-02 21:37:30 -0400 |
+| Mensagem | feat(recommendation): instrumentar eventos operacionais |
+| Data | 2026-09-02 21:50:52 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
@@ -18,24 +18,34 @@ MAINTENANCE_MAP.md
 PROJECT2_SPEC.md
 SPEC.md
 android/README.md
-android/app/src/main/java/com/pessoal/agenda/mobile/recommendation/RecommendationEngine.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/alert/notification/AlertNotificationDelivery.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/AlertStore.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/OfflineRepository.kt
 android/app/src/main/java/com/pessoal/agenda/mobile/recommendation/RecommendationStore.kt
-android/app/src/test/java/com/pessoal/agenda/mobile/recommendation/RecommendationEngineTest.kt
-docs/models/rules-v1.md
+android/app/src/main/java/com/pessoal/agenda/mobile/recommendation/RecommendationTelemetry.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/wear/AndroidWearDataLayer.kt
+android/app/src/test/java/com/pessoal/agenda/mobile/data/AlertStoreTest.kt
+android/app/src/test/java/com/pessoal/agenda/mobile/data/OfflineRepositoryTest.kt
+android/contracts/RECOMMENDATION_V1.md
 ```
 
 ## Diff Resumido
 
 ```diff
  MAINTENANCE_MAP.md                                 |   5 +-
- PROJECT2_SPEC.md                                   |  24 +-
+ PROJECT2_SPEC.md                                   |  22 +-
  SPEC.md                                            |   4 +-
  android/README.md                                  |   1 +
- .../mobile/recommendation/RecommendationEngine.kt  | 248 +++++++++++++++++++++
- .../mobile/recommendation/RecommendationStore.kt   |  14 +-
- .../recommendation/RecommendationEngineTest.kt     | 210 +++++++++++++++++
- docs/models/rules-v1.md                            |  22 +-
- 8 files changed, 517 insertions(+), 11 deletions(-)
+ .../notification/AlertNotificationDelivery.kt      |   8 +-
+ .../com/pessoal/agenda/mobile/data/AlertStore.kt   | 364 +++++++++++++++------
+ .../agenda/mobile/data/OfflineRepository.kt        | 121 ++++---
+ .../mobile/recommendation/RecommendationStore.kt   |   2 +
+ .../recommendation/RecommendationTelemetry.kt      |  39 +++
+ .../agenda/mobile/wear/AndroidWearDataLayer.kt     |   8 +-
+ .../pessoal/agenda/mobile/data/AlertStoreTest.kt   |  81 +++++
+ .../agenda/mobile/data/OfflineRepositoryTest.kt    |  44 +++
+ android/contracts/RECOMMENDATION_V1.md             |  14 +
+ 13 files changed, 552 insertions(+), 161 deletions(-)
 ```
 
 ---

@@ -3,6 +3,11 @@ package com.pessoal.agenda.mobile.data
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
+import com.pessoal.agenda.mobile.recommendation.RecommendationCapacityContext
+import com.pessoal.agenda.mobile.recommendation.RecommendationChannel
+import com.pessoal.agenda.mobile.recommendation.RecommendationSettings
+import com.pessoal.agenda.mobile.recommendation.RecommendationSourceDevice
+import com.pessoal.agenda.mobile.recommendation.RecommendationStore
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -85,6 +90,7 @@ class OfflineRepositoryTest {
         val operations = repository.operations.first()
         assertEquals(5, operations.size)
         assertEquals((1L..5L).toList(), operations.sortedBy { it.sequence }.map { it.sequence })
+        assertEquals(0, database.offline().recommendationEventCount())
     }
 
     @Test
@@ -104,6 +110,44 @@ class OfflineRepositoryTest {
         assertEquals(operationId, next.acknowledgedOperationId)
         assertEquals("Carteira", next.stepLabel)
         assertEquals(2, next.stepPosition)
+    }
+
+    @Test
+    fun protocolEventsDoNotContainRunStepOrTemplateIdentity() = runBlocking {
+        RecommendationStore(database).saveSettings(
+            RecommendationSettings(
+                personalizationEnabled = true,
+                retentionDays = 90,
+                capacityContext = RecommendationCapacityContext.PARALLEL_EXPLICIT,
+                preferredSnoozeMinutes = null,
+                preferredChannel = RecommendationChannel.VISUAL,
+            ),
+        )
+        repository.initializeFictitiousData()
+        val runId = repository.startProtocol(OfflineRepository.FIXTURE_PROTOCOL)
+        val firstStep = repository.activeRunSteps.first { it.isNotEmpty() }.first()
+
+        assertTrue(repository.completeProtocolStep(
+            runId,
+            firstStep.stepId,
+            "30000000-0000-4000-8000-000000000009",
+            RecommendationSourceDevice.WATCH,
+        ))
+        assertFalse(repository.completeProtocolStep(
+            runId,
+            firstStep.stepId,
+            "30000000-0000-4000-8000-000000000009",
+            RecommendationSourceDevice.WATCH,
+        ))
+
+        val events = database.offline().recommendationEvents().associateBy { it.eventType }
+        assertEquals(setOf("PROTOCOL_STARTED", "PROTOCOL_STEP_COMPLETED"), events.keys)
+        assertEquals("PHONE", events.getValue("PROTOCOL_STARTED").sourceDevice)
+        assertEquals("WATCH", events.getValue("PROTOCOL_STEP_COMPLETED").sourceDevice)
+        assertTrue(events.values.all {
+            it.alertKind == null && it.recommendationId == null &&
+                it.id !in setOf(runId, firstStep.stepId, OfflineRepository.FIXTURE_PROTOCOL)
+        })
     }
 
     @Test

@@ -29,3 +29,17 @@ Uma recomendação ordena opções; nunca executa ação.
 
 `capacity_context` só muda por escolha explícita. Ausência de evento não significa
 falha, distração ou recusa. Eventos ficam locais em P2-08 e não entram no sync.
+
+## Instrumentação v1
+
+- eventos são tentados somente após a mutação operacional durável e falha de
+  telemetria não desfaz alerta, ação ou protocolo;
+- repetição idempotente de uma entrega/ação/passo não cria novo evento;
+- `deadline_bucket` usa o fim da janela válida do alerta, nunca texto da tarefa;
+- entrega multicanal registra um canal primário na ordem relógio, áudio,
+  vibração do telefone e visual;
+- `active_context` é `PROTOCOL` somente quando existe execução explicitamente
+  ativa; não há inferência de foco por tela, janela ou uso de dispositivo;
+- ação recebida pelo Data Layer usa `WATCH`; as demais operações locais usam
+  `PHONE`;
+- alertas suprimidos ou com falha técnica não contam como apresentados.

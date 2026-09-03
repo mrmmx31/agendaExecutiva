@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 73,3% do Projeto 2 |
+| Status | Implementação em andamento; 75% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-07` estão concluídas e `P2-08` tem 2 de 6 itens. O avanço geral é 73,3% e restam 26,7%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-07` estão concluídas e `P2-08` tem 3 de 6 itens. O avanço geral é 75% e restam 25%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -711,13 +711,13 @@ Consentimentos, Health Connect, entradas manuais, retenção, relatório com pro
 
 Eventos sem texto sensível, regras explicáveis, catálogo, baseline e painel de correção/limpeza.
 
-**Status:** Em andamento, 33,3% (2 de 6 itens concluídos).
+**Status:** Em andamento, 50% (3 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
 - [x] fechar contratos de evento e decisão, códigos de razão, inventário de dados, model card e decisão arquitetural;
 - [x] evoluir o Room para v9 com eventos, decisões e configurações locais, migração e retenção testadas;
-- [ ] implementar `RecommendationEngine` determinístico, baseline cauteloso e mínimo por contexto;
+- [x] implementar `RecommendationEngine` determinístico, baseline cauteloso e mínimo por contexto;
 - [ ] instrumentar alertas e protocolos sem texto, identificador operacional ou inferência de distração;
 - [ ] entregar personalização opt-in, estatísticas locais, inspeção, correção, limpeza e retorno ao baseline;
 - [ ] aprovar matriz de privacidade, regras, retenção, temas, desempenho e documentação final.
@@ -743,6 +743,20 @@ instrumentados passaram no `Agenda_Phone_API_34`, incluindo migração `8 -> 9` 
 caminhos históricos até v9. Inicialização e retenção rodam no startup; nenhum
 dispositivo físico ou dado pessoal foi usado. O gate completo `test lint
 assembleDebug` concluiu 178 tarefas sem falha.
+
+**Evidência do terceiro item:** `RecommendationEngine` é uma interface pura e
+`DeterministicRecommendationEngine` implementa `rules-v1` sem runtime de ML ou
+efeito colateral. O motor separa finalidades de adiamento, canal e protocolo,
+aplica disponibilidade e silêncio antes do ranking e limita a saída a três
+opções. Personalização só ordena por frequência após 12 eventos elegíveis do
+mesmo período do dia, grupo de dia, contexto ativo, capacidade explícita e tipo
+de alerta; abaixo disso usa baseline cauteloso. Preferência manual permanece
+explícita, empate é estável e toda opção traz código de razão. Dez testes puros
+cobrem baseline, urgência, mínimo, isolamento entre contextos, silêncio,
+dispositivo indisponível, protocolo, preferência, opt-out com histórico e
+determinismo. O model card
+documenta algoritmo e SHA-256 do fonte; nenhum método do motor recebe callback,
+store operacional, saúde ou texto.
 
 ### P2-09 — Personalização por modelo
 
@@ -795,4 +809,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Continuar `P2-08`: implementar o motor determinístico `rules-v1`, baseline cauteloso e mínimo por contexto.
+Continuar `P2-08`: instrumentar alertas e protocolos com eventos minimizados, sem texto ou identificador operacional.

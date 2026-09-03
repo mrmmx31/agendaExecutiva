@@ -125,6 +125,18 @@ class RecommendationStore(
 
     suspend fun events(): List<RecommendationEventEntity> = dao.recommendationEvents()
 
+    suspend fun observations(): List<RecommendationObservation> = dao.recommendationEvents().map { row ->
+        RecommendationObservation(
+            eventType = RecommendationEventType.valueOf(row.eventType),
+            localHour = row.localHour,
+            dayOfWeek = row.dayOfWeek,
+            activeContext = RecommendationActiveContext.valueOf(row.activeContext),
+            capacityContext = RecommendationCapacityContext.valueOf(row.capacityContext),
+            alertKind = row.alertKind?.let(RecommendationAlertKind::valueOf),
+            optionCode = row.optionCode?.let(RecommendationOptionCode::valueOf),
+        )
+    }
+
     suspend fun recordDecision(decision: RecommendationDecision): Boolean = database.withTransaction {
         validate(decision)
         if (!currentSettings().personalizationEnabled) return@withTransaction false
@@ -208,7 +220,7 @@ class RecommendationStore(
         require(decision.engineId == RecommendationDecision.ENGINE_ID)
         require(decision.ruleVersion == RecommendationDecision.RULE_VERSION)
         require(decision.sampleCount >= 0 && decision.minimumSamples > 0)
-        require(decision.fallback == (decision.sampleCount < decision.minimumSamples))
+        require(decision.fallback || decision.sampleCount >= decision.minimumSamples)
         require(decision.options.size in 1..3)
         require(decision.options.map { it.rank } == (1..decision.options.size).toList())
         require(decision.options.map { it.optionCode }.distinct().size == decision.options.size)

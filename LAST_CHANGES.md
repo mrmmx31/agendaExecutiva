@@ -7,8 +7,8 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | feat(recommendation): persistir telemetria local |
-| Data | 2026-09-02 21:29:16 -0400 |
+| Mensagem | feat(recommendation): implementar regras explicaveis |
+| Data | 2026-09-02 21:37:30 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
@@ -18,32 +18,24 @@ MAINTENANCE_MAP.md
 PROJECT2_SPEC.md
 SPEC.md
 android/README.md
-android/app/schemas/com.pessoal.agenda.mobile.data.local.MobileDatabase/9.json
-android/app/src/androidTest/java/com/pessoal/agenda/mobile/data/local/MobileDatabaseMigrationTest.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/data/local/MobileDatabase.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/data/local/OfflineDao.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/data/local/RecommendationEntities.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/recommendation/RecommendationEngine.kt
 android/app/src/main/java/com/pessoal/agenda/mobile/recommendation/RecommendationStore.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileViewModel.kt
-android/app/src/test/java/com/pessoal/agenda/mobile/recommendation/RecommendationStoreTest.kt
+android/app/src/test/java/com/pessoal/agenda/mobile/recommendation/RecommendationEngineTest.kt
+docs/models/rules-v1.md
 ```
 
 ## Diff Resumido
 
 ```diff
- MAINTENANCE_MAP.md                                 |    8 +-
- PROJECT2_SPEC.md                                   |   23 +-
- SPEC.md                                            |    4 +-
- android/README.md                                  |    5 +-
- .../9.json                                         | 1808 ++++++++++++++++++++
- .../data/local/MobileDatabaseMigrationTest.kt      |   44 +-
- .../agenda/mobile/data/local/MobileDatabase.kt     |   43 +-
- .../pessoal/agenda/mobile/data/local/OfflineDao.kt |   45 +
- .../mobile/data/local/RecommendationEntities.kt    |   57 +
- .../mobile/recommendation/RecommendationStore.kt   |  235 +++
- .../agenda/mobile/ui/AgendaMobileViewModel.kt      |    4 +
- .../recommendation/RecommendationStoreTest.kt      |  181 ++
- 12 files changed, 2441 insertions(+), 16 deletions(-)
+ MAINTENANCE_MAP.md                                 |   5 +-
+ PROJECT2_SPEC.md                                   |  24 +-
+ SPEC.md                                            |   4 +-
+ android/README.md                                  |   1 +
+ .../mobile/recommendation/RecommendationEngine.kt  | 248 +++++++++++++++++++++
+ .../mobile/recommendation/RecommendationStore.kt   |  14 +-
+ .../recommendation/RecommendationEngineTest.kt     | 210 +++++++++++++++++
+ docs/models/rules-v1.md                            |  22 +-
+ 8 files changed, 517 insertions(+), 11 deletions(-)
 ```
 
 ---

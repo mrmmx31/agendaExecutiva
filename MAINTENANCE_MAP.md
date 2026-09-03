@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 81,7%, restando 18,3%; `P2-01` a `P2-08` concluídas e `P2-09` em 1 de 6 itens.
+- Projeto 2: implementação em 83,3%, restando 16,7%; `P2-01` a `P2-08` concluídas e `P2-09` em 2 de 6 itens.
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -84,7 +84,7 @@ Não criar um módulo Java/Kotlin compartilhado entre Maven desktop e Android an
 
 ## 6. Componentes móveis planejados
 
-Implementado até o primeiro marco de `P2-09`:
+Implementado até o segundo marco de `P2-09`:
 
 | Área | Local |
 |---|---|
@@ -123,6 +123,7 @@ Implementado até o primeiro marco de `P2-09`:
 | Controle e inspeção local | `ui/RecommendationSettingsScreen.kt`, `RecommendationStatistics.kt` e estado no `AgendaMobileViewModel.kt`; opt-in, preferências, métricas, correção, limpeza e baseline |
 | Matriz P2-08 | `android/P2_08_MATRIX.md`; privacidade, regras, rollback, retenção, temas, custo e limites para P2-09 |
 | Contratos do modelo pessoal | `contracts/PERSONAL_MODEL_V1.md`, schemas de dataset/manifesto, ADR `0003`, inventário e model card `personal-snooze-ranker/v1` |
+| Treino e avaliação offline | `recommendation/PersonalRankingModel.kt`; linear auditável, split temporal, baseline e gate de promoção |
 | Matriz P2-05 | `android/P2_05_MATRIX.md`; conexão, ações conectadas, reconciliação offline, UI e limites |
 
 | Domínio | Android | Wear | Desktop |

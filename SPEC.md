@@ -1455,7 +1455,7 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 ## 32. Projeto 2 — Extensão móvel e sensorial
 
-**Status:** Especificado em 31/08/2026; implementação 81,7%, com 18,3% restantes. `P2-01` a `P2-08` estão concluídas e `P2-09` tem 1 de 6 itens.
+**Status:** Especificado em 31/08/2026; implementação 83,3%, com 16,7% restantes. `P2-01` a `P2-08` estão concluídas e `P2-09` tem 2 de 6 itens.
 
 **Visão:** estender a Agenda para Android e Wear OS, mantendo o desktop como superfície de organização, o smartphone como nó móvel offline e o smartwatch como superfície curta de percepção e resposta. Alertas devem oferecer `Concluir` e `Adiar`; capturas e protocolos devem funcionar fora do notebook e convergir depois.
 
@@ -1465,4 +1465,4 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 **Documentos:** requisitos, arquitetura, fases e gates estão em `PROJECT2_SPEC.md`. O ponto de entrada para manutenção, catálogos, contratos e retomada de contexto está em `MAINTENANCE_MAP.md`.
 
-**Próxima ação:** implementar treino e avaliação offline reproduzíveis do classificador linear contra o `rules-v1`, mantendo saúde fora das features e sem ativar sua saída.
+**Próxima ação:** integrar shadow mode local do classificador, mantendo o `rules-v1` como única saída visível e saúde fora das features.

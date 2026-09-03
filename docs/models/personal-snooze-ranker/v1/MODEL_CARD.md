@@ -5,7 +5,7 @@
 | Finalidade | ordenar presets de adiamento |
 | Tipo | classificador linear multiclasse auditável |
 | Runtime inicial | Kotlin local, sem dependência nativa |
-| Entrada | oito features categóricas do contrato v1 |
+| Entrada | sete features categóricas do contrato v1 |
 | Saída | pontuação para cinco presets permitidos |
 | Estado inicial | `SHADOW` |
 | Fallback | `rules-v1` |

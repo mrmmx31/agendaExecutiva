@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 68,3% do Projeto 2 |
+| Status | Implementação em andamento; 70% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-06` estão concluídas e cinco dos seis itens de `P2-07` também. O avanço geral é 68,3% e restam 31,7%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-07` estão concluídas. O avanço geral é 70% e restam 30%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -684,7 +684,7 @@ Room v6 no telefone mantém revisão e ack da execução; Room v2 no relógio pe
 
 Consentimentos, Health Connect, entradas manuais, retenção, relatório com proveniência e exportação revisável. Sem recomendação clínica.
 
-**Status:** Em andamento, 83,3% (5 de 6 itens concluídos).
+**Status:** Concluído em 2026-09-02, 100% (6 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
@@ -693,7 +693,7 @@ Consentimentos, Health Connect, entradas manuais, retenção, relatório com pro
 - [x] entregar `Saúde e privacidade` com opt-in granular, registro manual, histórico, correção, exclusão e nenhuma permissão antecipada;
 - [x] integrar resumos autorizados do Health Connect em foreground, com origem, cobertura, lacunas e revogação por categoria;
 - [x] gerar snapshot reproduzível, prévia revisável e exportação explícita em JSON, CSV e PDF, sem inferência clínica;
-- [ ] aprovar matriz de negação, revogação, retenção, migração, exportação, temas e ausência de vazamento em log/sync.
+- [x] aprovar matriz de negação, revogação, retenção, migração, exportação, temas e ausência de vazamento em log/sync.
 
 **Evidência do primeiro item:** `docs/privacy/HEALTH_DATA_INVENTORY.md` delimita oito categorias opt-in, finalidade exclusiva de relatório revisável, retenção, minimização, exclusão e usos proibidos. O ADR `0001` separa consentimento do produto e permissão da plataforma, fixa AES-256-GCM com chave não exportável no Android Keystore e mantém Health Connect fora deste incremento. Três schemas fechados e fixtures fictícias cobrem consentimento, ingestão manual e sintoma; `jq empty`, o teste de contrato Java e o teste Kotlin passaram. Nenhuma permissão, dependência de saúde, dado pessoal ou estímulo foi adicionado.
 
@@ -704,6 +704,8 @@ Consentimentos, Health Connect, entradas manuais, retenção, relatório com pro
 **Evidência do quarto item:** o cliente estável Health Connect `1.1.0` lê somente em foreground e somente as categorias com consentimento local ativo: frequência cardíaca, frequência em repouso, sono e passos. O pedido de permissões ocorre no botão `Importar resumos`, nunca ao abrir a tela ou ligar o consentimento. A janela fica limitada aos sete dias anteriores; o Room v8 guarda apenas resumos cifrados, origem, cobertura e contagem, mantendo `NO_DATA` em vez de fabricar zero. Não são pedidas permissões de escrita, histórico ampliado ou background. Contratos JSON compartilhados, teste unitário com gateway falso, migrações v8 e cifra Keystore passaram; quatro testes instrumentados foram aprovados no `emulator-5554`. A interface clara mostrou disponibilidade, botão contextual e abriu o onboarding oficial do Health Connect sem concessão nem dado real. A cadeia foi atualizada para AGP 8.9.1, Gradle 8.11.1 e `compileSdk 36`, preservando `targetSdk 34`; `test lint assembleDebug` passou com 178 tarefas para app e Wear.
 
 **Evidência do quinto item:** `HealthReportBuilder` cria um snapshot v1 imutável com UUID, período escolhido de 7/30/90 dias, fuso, categorias, estado dos consentimentos, fontes e limitações fixas. Linhas de sensor, fatos manuais e observações do usuário permanecem tipadas separadamente; a prévia permite corrigir a identificação, retirar linhas e regenerar com categorias ocultas. JSON, CSV e PDF recebem o mesmo snapshot revisado. Todos incluem schema, período, fuso, fontes, permissões e limitações; o CSV neutraliza células iniciadas por fórmula e o PDF pagina e quebra conteúdo longo. A exportação usa o seletor de documentos do Android e só grava após escolha explícita, sem arquivo temporário, envio ou compartilhamento automático. O contrato e fixture fictícia são compartilhados com Java/Kotlin. Testes locais cobriram filtragem, separação, revisão, JSON e CSV; no `emulator-5554`, um teste Compose percorreu geração/prévia/exportação e a API Android produziu PDF válido. `test lint assembleDebug` passou com 178 tarefas. O companion Pixel Watch apresentou um ANR externo durante inspeção manual; foi escolhido `Wait` e ele não foi fechado.
+
+**Evidência do sexto item:** a matriz rastreável está em [`android/P2_07_MATRIX.md`](android/P2_07_MATRIX.md). Retenção é aplicada no startup: conteúdo manual vencido perde ciphertext/IV e recebe tombstone/auditoria `EXPIRED`; resumo vencido é removido com auditoria técnica. Testes determinísticos provaram permissão negada sem leitura, revogação bloqueando nova gravação, lacuna `NO_DATA`, retenção e fila de sync vazia após escrita sensível. Migrações Room v8 e AES-GCM do Keystore já haviam passado no mesmo AVD; PDF e fluxo Compose foram repetidos com o código final. O teste da tela passou em modo escuro a 360 dp e o emulador foi restaurado ao modo claro. Busca estática confirmou ausência de `Log` nos pacotes de saúde. O gate final `test lint assembleDebug` concluiu 178 tarefas sem falha. Nenhum dado pessoal, permissão física, telefone físico ou banco desktop foi usado.
 
 ### P2-08 — Telemetria local de recomendação
 
@@ -760,4 +762,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Executar o sexto item de `P2-07`: matriz de negação, revogação, retenção, migração, exportação, temas e ausência de vazamento em log/sync.
+Iniciar `P2-08`: eventos locais sem texto sensível, regras explicáveis, catálogo, baseline e controles de correção/limpeza.

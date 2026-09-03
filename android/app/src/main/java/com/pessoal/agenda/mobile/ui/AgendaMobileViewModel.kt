@@ -180,6 +180,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
                 repository.alignDeviceIdentity()
                 repository.initializeFictitiousData()
                 healthStore.initializeConsentCatalog()
+                healthStore.enforceRetention()
                 refreshHealth()
                 val storedProfile = alertStore.ensureInstallationProfile()
                 visualAlertsEnabled.value = storedProfile.profile.globalEnabled && notificationsAllowed()

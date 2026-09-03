@@ -20,6 +20,10 @@ desligada, pode ser revogada isoladamente e permanece fora de recomendacoes.
 Retencao e uma preferencia por categoria, entre 1 e 3650 dias. Expirar ou excluir
 gera tombstone sincronizavel; nao apaga tarefas, protocolos ou alertas.
 
+No Android atual, a retenção é aplicada no startup. Ingestões e observações
+vencidas têm ciphertext e IV limpos e mantêm tombstone/auditoria. Resumos do
+Health Connect vencidos são removidos e deixam somente auditoria técnica.
+
 ## Metadados minimos
 
 - UUID, versao, instante e fuso;

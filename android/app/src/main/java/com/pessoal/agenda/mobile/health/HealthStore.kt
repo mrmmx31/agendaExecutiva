@@ -206,6 +206,38 @@ class HealthStore(
         decrypt<HealthSummaryPayload>(row.id, row.revision, row.ciphertext, row.iv).toSummary()
     }
 
+    suspend fun enforceRetention() = database.withTransaction {
+        val instant = Instant.now(clock)
+        val now = instant.toString()
+        val retention = dao.healthConsents().associate { HealthCategory.valueOf(it.category) to it.retentionDays }
+        dao.healthIntakes().forEach { row ->
+            val input = decrypt<IntakePayload>(row.id, row.revision, row.ciphertext, row.iv).toInput()
+            val category = if (input.kind == IntakeKind.MEDICATION) HealthCategory.MEDICATION else HealthCategory.SUBSTANCE
+            if (Instant.parse(input.occurredAt) < instant.minusSeconds(requireNotNull(retention[category]) * 86_400L)) {
+                val revision = row.revision + 1
+                check(dao.tombstoneHealthIntake(row.id, revision, now) == 1)
+                audit("INTAKE", row.id, revision, "EXPIRED", now)
+            }
+        }
+        dao.healthSymptoms().forEach { row ->
+            val input = decrypt<SymptomPayload>(row.id, row.revision, row.ciphertext, row.iv).toInput()
+            val category = if (input.kind == SubjectiveKind.ROUTINE_NOTE) HealthCategory.ROUTINE_NOTE else HealthCategory.SYMPTOM
+            if (Instant.parse(input.occurredAt) < instant.minusSeconds(requireNotNull(retention[category]) * 86_400L)) {
+                val revision = row.revision + 1
+                check(dao.tombstoneHealthSymptom(row.id, revision, now) == 1)
+                audit("SYMPTOM", row.id, revision, "EXPIRED", now)
+            }
+        }
+        dao.healthSummaries().forEach { row ->
+            val summary = decrypt<HealthSummaryPayload>(row.id, row.revision, row.ciphertext, row.iv).toSummary()
+            val cutoff = instant.minusSeconds(requireNotNull(retention[summary.category]) * 86_400L)
+            if (Instant.parse(summary.periodEnd) < cutoff) {
+                check(dao.deleteHealthSummary(row.id) == 1)
+                audit("SUMMARY", row.id, row.revision, "EXPIRED", now)
+            }
+        }
+    }
+
     suspend fun deleteSymptom(id: String) = database.withTransaction {
         val current = requireNotNull(dao.healthSymptom(id))
         if (current.tombstone) return@withTransaction

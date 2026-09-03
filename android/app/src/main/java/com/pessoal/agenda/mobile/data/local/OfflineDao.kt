@@ -60,6 +60,9 @@ interface OfflineDao {
     @Query("DELETE FROM health_summaries WHERE category=:category")
     suspend fun deleteHealthSummaries(category: String): Int
 
+    @Query("DELETE FROM health_summaries WHERE id=:id")
+    suspend fun deleteHealthSummary(id: String): Int
+
     @Query("SELECT * FROM alert_definitions WHERE id=:id")
     suspend fun alertDefinition(id: String): AlertDefinitionEntity?
 

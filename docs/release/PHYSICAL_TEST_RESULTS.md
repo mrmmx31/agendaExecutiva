@@ -48,15 +48,18 @@ ativo para confirmação visual no pulso.
 | fixture publicada sem desktop e sem áudio | aprovado |
 | ações Android presentes e não `localOnly` | aprovado |
 | texto recebido na ZL02CPRO | aprovado após habilitar `Outras notificações` no Da Fit |
-| vibração da ZL02CPRO | não percebida; revisar DND/vibração no Da Fit e na pulseira |
-| ações exibidas pela pulseira | aguardando observação |
+| vibração da ZL02CPRO | não percebida no canal visual; pulseira configurada para tocar e vibrar, sem DND ou silencioso |
+| ações exibidas pela pulseira | indisponíveis neste hardware; a pulseira exibiu somente o texto |
 | desconexão/reconexão Bluetooth | pendente |
 
 O fixture usado era exclusivamente visual: a Agenda não solicitou áudio nem
 vibração do telefone. No momento da observação, o Android estava com Não
 Perturbe desligado e sem fluxos relevantes silenciados. Assim, ausência de áudio
 nesse ensaio é esperada; ausência de vibração no pulso pertence à configuração
-ou capacidade do Da Fit/ZL02CPRO e precisa de nova tentativa controlada.
+ou capacidade do Da Fit/ZL02CPRO. Um segundo fixture exclusivo do APK
+`fieldTest`, com vibração Android e sem áudio, discrimina se o Da Fit exige um
+canal vibratório para também vibrar a pulseira. As ações continuam disponíveis
+na notificação do telefone; o espelhamento genérico do Da Fit não as transportou.
 
 ## Gate 9
 
@@ -67,7 +70,7 @@ horas, bateria da pulseira e medição final continuam pendentes.
 
 ## Próxima interação mínima
 
-1. informar se o alerta fictício apareceu e vibrou na pulseira;
+1. informar se o teste sem áudio vibrou no telefone e na pulseira;
 2. informar se a pulseira mostrou algum botão/ação ou somente texto;
 3. confirmar teste de áudio em volume baixo;
 4. retirar o cabo USB quando conveniente e manter telefone/computador na mesma

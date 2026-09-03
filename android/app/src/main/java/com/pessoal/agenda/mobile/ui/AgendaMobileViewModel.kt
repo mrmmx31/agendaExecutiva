@@ -430,6 +430,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
 
     fun trainPersonalModel() = execute(successMessage = "Modelo avaliado em modo de observação.") {
         val samples = PersonalRankingSampleExtractor.fromObservations(recommendationStore.observations())
+            .takeLast(ShadowingRecommendationEngine.MAXIMUM_TRAINING_SAMPLES)
         require(samples.size >= OfflinePersonalModelEvaluator.MINIMUM_DATASET_SAMPLES) {
             "São necessários ${OfflinePersonalModelEvaluator.MINIMUM_DATASET_SAMPLES} adiamentos completos; existem ${samples.size}."
         }

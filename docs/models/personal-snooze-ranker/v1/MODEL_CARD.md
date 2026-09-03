@@ -28,6 +28,13 @@ respeitar orçamento de latência/memória/bateria, passar verificação de SHA-
 receber opt-in explícito. Empate, regressão, artefato incompatível, hash inválido
 ou limpeza do histórico mantêm/restauram `rules-v1`.
 
+## Orçamento medido
+
+Com dados sintéticos no gate P2-09, 2.000 amostras treinaram em no máximo 602 ms,
+10.000 inferências levaram no máximo 98 ms e o artefato ocupou 4.431 bytes no host. Os limites de
+regressão são 2 s, 1 s e 64 KiB, respectivamente. O aplicativo mede novamente o
+artefato e a inferência no aparelho; bateria física pertence ao P2-10.
+
 ## Limites e usos proibidos
 
 O modelo não diagnostica TDAH, saúde, distração, adesão ou capacidade. Não decide

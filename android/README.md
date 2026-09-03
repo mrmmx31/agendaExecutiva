@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativos Android e Wear OS do Projeto 2 com `P2-01` a `P2-08` concluídas e `P2-09` em 5 de 6 itens. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline. Saúde possui contratos, persistência cifrada, coleta Health Connect opt-in e relatório revisável; o ranking aprendido tem treino, shadow, ativação confirmada, inspeção e rollback locais.
+Aplicativos Android e Wear OS do Projeto 2 com `P2-01` a `P2-09` concluídas. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline. Saúde possui contratos, persistência cifrada, coleta Health Connect opt-in e relatório revisável; o ranking aprendido tem treino, shadow, ativação confirmada, inspeção e rollback locais.
 
 ## Requisitos
 
@@ -69,6 +69,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - O wrapper de shadow mode retorna a decisão `rules-v1` intacta, limita o treino às 2.000 amostras recentes e mantém somente contagem/concordância em memória nesta etapa.
 - Room v10 persiste artefatos canônicos com SHA-256 e métricas shadow agregadas; ativação é transacional e hash/contrato inválido volta ao `rules-v1`.
 - A tela separa coleta, treino, ativação e rollback; mostra qualidade e custo local. Modelo ativo só reordena presets autorizados e essa ordem chega ao Wear.
+- A matriz final [`P2_09_MATRIX.md`](P2_09_MATRIX.md) fecha o modelo local no escopo de emulador; o benchmark de candidatos e os custos medidos estão em [`P2_09_RUNTIME_BENCHMARK.md`](P2_09_RUNTIME_BENCHMARK.md).
 
 ## Limites
 

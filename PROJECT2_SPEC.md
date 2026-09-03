@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 88,3% do Projeto 2 |
+| Status | Implementação em andamento; 90% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-08` estão concluídas e `P2-09` tem 5 de 6 itens. O avanço geral é 88,3% e restam 11,7%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-09` estão concluídas. O avanço geral é 90% e restam 10%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -810,7 +810,7 @@ pessoal ou estímulo sensorial foi usado.
 
 Somente após volume mínimo: benchmark LiteRT/ONNX, avaliação offline, shadow mode, ativação opt-in e rollback.
 
-**Status:** Em andamento, 83,3% (5 de 6 itens concluídos).
+**Status:** Concluído em 2026-09-03, 100% (6 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
@@ -819,7 +819,7 @@ Somente após volume mínimo: benchmark LiteRT/ONNX, avaliação offline, shadow
 - [x] executar o modelo em shadow mode sem alterar opções exibidas;
 - [x] persistir artefato com integridade, compatibilidade e rollback atômico;
 - [x] entregar opt-in de ativação, inspeção e métricas de recursos;
-- [ ] aprovar matriz final de privacidade, qualidade, falha, bateria, temas e documentação.
+- [x] aprovar matriz final de privacidade, qualidade, falha, bateria, temas e documentação.
 
 **Evidência do primeiro item:** o ADR 0003 escolhe para o primeiro candidato um
 classificador linear multiclasse auditável em Kotlin, atrás de interface de
@@ -888,6 +888,24 @@ inspecionada em 360 dp nos temas claro e escuro, com texto e barras legíveis. O
 gate local aprovou testes, lint e APKs em 87 tarefas, e o contrato Java também
 passou. O telefone físico não recebeu comando.
 
+**Evidência do sexto item:** `P2_09_MATRIX.md` aprovou os limites de dados,
+qualidade, integridade, falha, domínio, Wear, temas e recursos no escopo local e
+emulador. O treino manual e o shadow usam no máximo as 2.000 amostras completas
+mais recentes. No gate final, o teste de orçamento mediu no máximo 602 ms para
+treinar 2.000 amostras, 98 ms para 10.000 inferências e artefato de 4.431 bytes. A comparação
+documentada manteve o runtime Kotlin sem dependência adicional; LiteRT Play
+Services exige revisão de sua telemetria técnica e o AAR ONNX completo não se
+justifica para este classificador.
+
+O gate final `test lint assembleDebug assembleDebugAndroidTest` aprovou 232
+tarefas, com 111 testes do app por variante, oito do Wear por variante e oito do
+contrato puro, sem falhas. Cinco migrações Room e 16 testes Compose relevantes
+já haviam passado no `emulator-5554`; Maven aprovou 156 testes desktop/contrato.
+Schemas passaram em `jq`, e buscas fechadas não encontraram dados sensíveis,
+runtime externo ou trabalho periódico no pipeline do modelo. Bateria física
+permanece corretamente reservada ao P2-10. Nenhum telefone físico recebeu
+comando.
+
 ### P2-10 — Dispositivos reais e revisão regulatória
 
 Telefone e relógio físicos, bateria, permissões, áudio, perda de conexão, exportação para médico e revisão do enquadramento antes de qualquer alegação clínica.
@@ -935,5 +953,6 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Concluir a matriz P2-09 de privacidade, qualidade, integridade, desempenho,
-temas, fallback e ausência de regressão antes de iniciar P2-10.
+Executar P2-10: fechar primeiro as revisões e testes reproduzíveis sem dispositivo
+real; depois validar telefone e relógio físicos, bateria, áudio, perda de conexão,
+permissões e exportação mediante autorização explícita.

@@ -32,6 +32,17 @@ qualquer um exige benchmark reproduzível de tamanho, latência, memória, bater
 disponibilidade offline e manutenção. Nenhuma dependência é adicionada nesta
 decisão.
 
+A API LiteRT Play Services mantém a entrada no aparelho, mas sua documentação
+declara envio de métricas técnicas, informações do aparelho/aplicativo e um
+identificador para diagnóstico e analytics. Portanto ela exige consentimento e
+revisão de privacidade antes de qualquer adapter. O runtime Kotlin atual não
+possui esse tráfego. Fontes consultadas em 2026-09-03:
+
+- [LiteRT em Google Play services](https://developers.google.com/edge/litert/android/play_services);
+- [API Java/Kotlin LiteRT 16.5.0](https://developers.google.com/edge/litert/android/java);
+- [ONNX Runtime Mobile](https://onnxruntime.ai/docs/get-started/with-mobile.html);
+- [ONNX Runtime Android 1.29.0](https://central.sonatype.com/artifact/com.microsoft.onnxruntime/onnxruntime-android).
+
 ## Consequências
 
 - o primeiro modelo é pequeno, auditável e reversível sem download ou serviço;
@@ -40,4 +51,3 @@ decisão.
 - modelos mais complexos só entram após demonstrarem ganho material no mesmo
   conjunto de avaliação;
 - o rollback imediato é remover o artefato ativo e voltar ao `rules-v1`.
-

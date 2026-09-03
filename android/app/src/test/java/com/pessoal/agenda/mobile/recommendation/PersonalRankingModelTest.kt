@@ -1,10 +1,12 @@
 package com.pessoal.agenda.mobile.recommendation
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.system.measureTimeMillis
 
 class PersonalRankingModelTest {
     @Test
@@ -80,6 +82,27 @@ class PersonalRankingModelTest {
             val decision = requireNotNull(engine.recommend(context, settings, emptyList()))
             assertEquals(RulesV1SnoozeBaseline.predict(sample), decision.options.first().optionCode)
         }
+    }
+
+    @Test
+    fun modelArtifactTrainingAndInferenceStayWithinLocalBudget() {
+        val samples = List(167) { fixture().samples }.flatten()
+            .take(ShadowingRecommendationEngine.MAXIMUM_TRAINING_SAMPLES)
+        lateinit var model: AuditableLinearModel
+        val trainingMillis = measureTimeMillis { model = AuditableLinearTrainer().train(samples) }
+        val artifactBytes = Json.encodeToString(model.toArtifactPayload()).toByteArray().size
+        val inferenceMillis = measureTimeMillis {
+            repeat(10_000) { model.rank(samples.first()) }
+        }
+
+        assertEquals(2_000, samples.size)
+        println(
+            "P2_09_BENCHMARK training_2000_ms=$trainingMillis " +
+                "inference_10000_ms=$inferenceMillis artifact_bytes=$artifactBytes",
+        )
+        assertTrue("Treino levou ${trainingMillis}ms", trainingMillis < 2_000)
+        assertTrue("Inferência levou ${inferenceMillis}ms", inferenceMillis < 1_000)
+        assertTrue("Artefato possui $artifactBytes bytes", artifactBytes < 64 * 1_024)
     }
 
     private fun repeatedFixture(times: Int) = List(times) { fixture().samples }.flatten()

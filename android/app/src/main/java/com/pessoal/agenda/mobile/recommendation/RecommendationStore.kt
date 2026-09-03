@@ -151,6 +151,9 @@ class RecommendationStore(
             capacityContext = RecommendationCapacityContext.valueOf(row.capacityContext),
             alertKind = row.alertKind?.let(RecommendationAlertKind::valueOf),
             optionCode = row.optionCode?.let(RecommendationOptionCode::valueOf),
+            sourceDevice = RecommendationSourceDevice.valueOf(row.sourceDevice),
+            deadlineBucket = row.deadlineBucket?.let(RecommendationDeadlineBucket::valueOf),
+            occurredAt = Instant.parse(row.occurredAt),
         )
     }
 

@@ -38,6 +38,7 @@ import com.pessoal.agenda.mobile.health.HealthCategory
 import com.pessoal.agenda.mobile.health.HealthStore
 import com.pessoal.agenda.mobile.recommendation.RecommendationStore
 import com.pessoal.agenda.mobile.recommendation.DeterministicRecommendationEngine
+import com.pessoal.agenda.mobile.recommendation.RecommendationEngine
 import com.pessoal.agenda.mobile.recommendation.RecommendationActiveContext
 import com.pessoal.agenda.mobile.recommendation.RecommendationCapacityContext
 import com.pessoal.agenda.mobile.recommendation.RecommendationContext
@@ -46,6 +47,9 @@ import com.pessoal.agenda.mobile.recommendation.RecommendationPurpose
 import com.pessoal.agenda.mobile.recommendation.RecommendationSettings
 import com.pessoal.agenda.mobile.recommendation.RecommendationStatistics
 import com.pessoal.agenda.mobile.recommendation.RecommendationStatisticsCalculator
+import com.pessoal.agenda.mobile.recommendation.ShadowMetrics
+import com.pessoal.agenda.mobile.recommendation.ShadowMetricsAccumulator
+import com.pessoal.agenda.mobile.recommendation.ShadowingRecommendationEngine
 import com.pessoal.agenda.mobile.health.IntakeInput
 import com.pessoal.agenda.mobile.health.SymptomInput
 import com.pessoal.agenda.mobile.health.VersionedHealthRecord
@@ -99,6 +103,7 @@ data class RecommendationUiState(
     val events: List<RecommendationEventEntity> = emptyList(),
     val statistics: RecommendationStatistics = RecommendationStatistics(),
     val baselineOptions: List<RecommendationOption> = emptyList(),
+    val shadowMetrics: ShadowMetrics = ShadowMetrics(0, 0),
 )
 
 data class HealthUiState(
@@ -135,7 +140,11 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         AndroidKeystoreHealthDataCipher(),
     )
     private val recommendationStore = RecommendationStore(MobileDatabase.get(application))
-    private val recommendationEngine = DeterministicRecommendationEngine()
+    private val shadowMetrics = ShadowMetricsAccumulator()
+    private val recommendationEngine: RecommendationEngine = ShadowingRecommendationEngine(
+        primary = DeterministicRecommendationEngine(),
+        onComparison = shadowMetrics::record,
+    )
     private val healthConnect = AndroidHealthConnectGateway(application)
     private val healthImporter = HealthConnectImportCoordinator(healthConnect, healthStore)
     private val healthReportBuilder = HealthReportBuilder()
@@ -592,6 +601,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             events = events,
             statistics = RecommendationStatisticsCalculator.calculate(events),
             baselineOptions = preview?.options.orEmpty(),
+            shadowMetrics = shadowMetrics.snapshot(),
         )
     }
 

@@ -14,6 +14,7 @@ data class RecommendationContext(
     val availableChannels: Set<RecommendationChannel> = setOf(RecommendationChannel.VISUAL),
     val quietHours: Boolean = false,
     val protocolAvailable: Boolean = false,
+    val sourceDevice: RecommendationSourceDevice = RecommendationSourceDevice.PHONE,
 )
 
 data class RecommendationObservation(
@@ -24,6 +25,9 @@ data class RecommendationObservation(
     val capacityContext: RecommendationCapacityContext,
     val alertKind: RecommendationAlertKind?,
     val optionCode: RecommendationOptionCode?,
+    val sourceDevice: RecommendationSourceDevice = RecommendationSourceDevice.PHONE,
+    val deadlineBucket: RecommendationDeadlineBucket? = null,
+    val occurredAt: Instant = Instant.EPOCH,
 )
 
 interface RecommendationEngine {

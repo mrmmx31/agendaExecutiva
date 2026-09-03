@@ -1,7 +1,9 @@
 package com.pessoal.agenda.mobile.recommendation
 
 import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -198,4 +200,116 @@ object RulesV1SnoozeBaseline {
         RecommendationDeadlineBucket.OVERDUE,
         RecommendationDeadlineBucket.UNDER_15_MIN,
     )
+}
+
+data class ShadowComparison(
+    val trainingSampleCount: Int,
+    val ruleTopOption: RecommendationOptionCode,
+    val modelTopOption: RecommendationOptionCode,
+    val agreesWithRule: Boolean,
+)
+
+data class ShadowMetrics(
+    val evaluatedCount: Int,
+    val agreementCount: Int,
+) {
+    val agreementRate: Double
+        get() = if (evaluatedCount == 0) 0.0 else agreementCount.toDouble() / evaluatedCount
+}
+
+class ShadowMetricsAccumulator {
+    private val evaluated = AtomicInteger()
+    private val agreements = AtomicInteger()
+
+    fun record(comparison: ShadowComparison) {
+        evaluated.incrementAndGet()
+        if (comparison.agreesWithRule) agreements.incrementAndGet()
+    }
+
+    fun snapshot() = ShadowMetrics(evaluated.get(), agreements.get())
+}
+
+class ShadowingRecommendationEngine(
+    private val primary: RecommendationEngine,
+    private val trainer: AuditableLinearTrainer = AuditableLinearTrainer(),
+    private val zoneId: ZoneId = ZoneId.systemDefault(),
+    private val onComparison: (ShadowComparison) -> Unit = {},
+) : RecommendationEngine {
+    override fun recommend(
+        context: RecommendationContext,
+        settings: RecommendationSettings,
+        observations: List<RecommendationObservation>,
+    ): RecommendationDecision? {
+        val visibleDecision = primary.recommend(context, settings, observations)
+        runCatching { compare(context, settings, observations, visibleDecision) }
+            .getOrNull()
+            ?.let { comparison -> runCatching { onComparison(comparison) } }
+        return visibleDecision
+    }
+
+    private fun compare(
+        context: RecommendationContext,
+        settings: RecommendationSettings,
+        observations: List<RecommendationObservation>,
+        visibleDecision: RecommendationDecision?,
+    ): ShadowComparison? {
+        if (!settings.personalizationEnabled || context.purpose != RecommendationPurpose.SNOOZE_PRESET) return null
+        val ruleTop = visibleDecision?.options?.firstOrNull()?.optionCode ?: return null
+        val training = observations
+            .sortedBy { it.occurredAt }
+            .mapNotNull(::trainingSample)
+            .takeLast(MAXIMUM_TRAINING_SAMPLES)
+        if (training.size < AuditableLinearTrainer.MINIMUM_TRAINING_SAMPLES) return null
+        val current = PersonalRankingSample(
+            dayPart = dayPart(context.generatedAt.atZone(zoneId).hour),
+            dayGroup = dayGroup(context.generatedAt.atZone(zoneId).dayOfWeek.value),
+            sourceDevice = context.sourceDevice,
+            activeContext = context.activeContext,
+            capacityContext = context.capacityContext,
+            alertKind = context.alertKind ?: RecommendationAlertKind.OTHER,
+            deadlineBucket = context.deadlineBucket ?: RecommendationDeadlineBucket.NONE,
+            chosenOption = ruleTop.takeIf { it in AuditableLinearModel.SNOOZE_OPTIONS }
+                ?: return null,
+        )
+        if (training.count { it.matchesContext(current) } < DeterministicRecommendationEngine.MINIMUM_SAMPLES) {
+            return null
+        }
+        val modelTop = trainer.train(training).rank(current).first()
+        return ShadowComparison(training.size, ruleTop, modelTop, ruleTop == modelTop)
+    }
+
+    private fun trainingSample(observation: RecommendationObservation): PersonalRankingSample? {
+        if (observation.eventType != RecommendationEventType.ALERT_SNOOZED) return null
+        val chosen = observation.optionCode?.takeIf { it in AuditableLinearModel.SNOOZE_OPTIONS } ?: return null
+        return PersonalRankingSample(
+            dayPart = dayPart(observation.localHour),
+            dayGroup = dayGroup(observation.dayOfWeek),
+            sourceDevice = observation.sourceDevice,
+            activeContext = observation.activeContext,
+            capacityContext = observation.capacityContext,
+            alertKind = observation.alertKind ?: return null,
+            deadlineBucket = observation.deadlineBucket ?: return null,
+            chosenOption = chosen,
+        )
+    }
+
+    private fun dayGroup(day: Int) = if (day in 1..5) PersonalDayGroup.WEEKDAY else PersonalDayGroup.WEEKEND
+
+    private fun dayPart(hour: Int) = when (hour) {
+        in 5..11 -> PersonalDayPart.MORNING
+        in 12..17 -> PersonalDayPart.AFTERNOON
+        in 18..22 -> PersonalDayPart.EVENING
+        else -> PersonalDayPart.NIGHT
+    }
+
+    private fun PersonalRankingSample.matchesContext(other: PersonalRankingSample): Boolean =
+        dayPart == other.dayPart &&
+            dayGroup == other.dayGroup &&
+            activeContext == other.activeContext &&
+            capacityContext == other.capacityContext &&
+            alertKind == other.alertKind
+
+    companion object {
+        const val MAXIMUM_TRAINING_SAMPLES = 2_000
+    }
 }

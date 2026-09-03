@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 83,3% do Projeto 2 |
+| Status | Implementação em andamento; 85% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-08` estão concluídas e `P2-09` tem 2 de 6 itens. O avanço geral é 83,3% e restam 16,7%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-08` estão concluídas e `P2-09` tem 3 de 6 itens. O avanço geral é 85% e restam 15%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -810,13 +810,13 @@ pessoal ou estímulo sensorial foi usado.
 
 Somente após volume mínimo: benchmark LiteRT/ONNX, avaliação offline, shadow mode, ativação opt-in e rollback.
 
-**Status:** Em andamento, 33,3% (2 de 6 itens concluídos).
+**Status:** Em andamento, 50% (3 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
 - [x] fechar runtime inicial, contrato de features/artefato, inventário de dados e dataset sintético;
 - [x] implementar treino e avaliação offline reproduzíveis contra o `rules-v1`;
-- [ ] executar o modelo em shadow mode sem alterar opções exibidas;
+- [x] executar o modelo em shadow mode sem alterar opções exibidas;
 - [ ] persistir artefato com integridade, compatibilidade e rollback atômico;
 - [ ] entregar opt-in de ativação, inspeção e métricas de recursos;
 - [ ] aprovar matriz final de privacidade, qualidade, falha, bateria, temas e documentação.
@@ -844,6 +844,17 @@ compartilhado, recusam versão e volume inválidos, verificam determinismo,
 explicações, split, bloqueio por avaliação curta e equivalência do baseline com
 o motor existente. A suíte local, lint e APK passaram em 59 tarefas. O código
 ainda não é chamado pela UI, não persiste artefato e não altera recomendações.
+
+**Evidência do terceiro item:** `ShadowingRecommendationEngine` envolve o motor
+existente e devolve a mesma instância da decisão `rules-v1`; treino, pontuação ou
+observador com falha são isolados por fallback. Somente `ALERT_SNOOZED` completo
+vira amostra, personalização desligada e outras finalidades não executam shadow,
+e o contexto consultado ainda exige 12 exemplos correspondentes. O custo é
+limitado às 2.000 observações elegíveis mais recentes. Um acumulador thread-safe
+mantém apenas contagem e concordância em memória, já ligado ao ViewModel e ainda
+sem elemento visual ou persistência. Seis testes cobrem identidade da saída,
+opt-out, volume, minimização, falhas e teto do histórico. A varredura não achou
+termos sensíveis no fonte; testes locais, lint e APK passaram em 59 tarefas.
 
 ### P2-10 — Dispositivos reais e revisão regulatória
 
@@ -892,5 +903,5 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Executar o classificador em shadow mode local, registrando comparação agregada
-com o `rules-v1` sem alterar as opções mostradas na interface.
+Persistir artefato e métricas agregadas com SHA-256, compatibilidade, substituição
+atômica e rollback para `rules-v1`.

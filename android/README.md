@@ -1,6 +1,6 @@
 # Agenda Mobile
 
-Aplicativos Android e Wear OS do Projeto 2 com `P2-01` a `P2-08` concluídas e `P2-09` em 3 de 6 itens. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline. Saúde possui contratos, persistência cifrada, coleta Health Connect opt-in e relatório revisável; o ranking aprendido executa em shadow mode, mas `rules-v1` ainda controla toda saída visível.
+Aplicativos Android e Wear OS do Projeto 2 com `P2-01` a `P2-08` concluídas e `P2-09` em 4 de 6 itens. Existem captura livre, réplica de tarefas, execução de protocolo, fila durável, pareamento por QR/deep link ou colagem, Keystore, HTTPS fixado, snapshot, conflitos, alertas sensoriais configuráveis e ações Wear offline. Saúde possui contratos, persistência cifrada, coleta Health Connect opt-in e relatório revisável; o ranking aprendido executa em shadow mode e possui artefato íntegro/rollback, mas `rules-v1` ainda controla toda saída visível.
 
 ## Requisitos
 
@@ -67,12 +67,13 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - P2-09 usa inicialmente um classificador linear auditável em Kotlin; contrato, inventário, model card e dataset sintético fecham as features e mantêm saúde fora do modelo.
 - O avaliador P2-09 usa partição temporal 80/20, compara top-1 com `rules-v1` e não permite promoção com menos de 30 exemplos reservados ou ganho inferior a 5 pontos percentuais.
 - O wrapper de shadow mode retorna a decisão `rules-v1` intacta, limita o treino às 2.000 amostras recentes e mantém somente contagem/concordância em memória nesta etapa.
+- Room v10 persiste artefatos canônicos com SHA-256 e métricas shadow agregadas; ativação é transacional e hash/contrato inválido volta ao `rules-v1`.
 
 ## Limites
 
 - Package: `com.pessoal.agenda.mobile`.
 - Banco: `agenda-mobile.db`, separado do SQLite desktop.
-- Banco atual: Room v9 no telefone e v2 no relógio, com schemas exportados e migrações explícitas.
+- Banco atual: Room v10 no telefone e v2 no relógio, com schemas exportados e migrações explícitas.
 - Contrato atual: v1, catalogado em `contracts/README.md`.
 - O Data Layer transporta somente estados e ações mínimas v1 de alertas e do passo atual do protocolo; dados sensíveis não fazem parte desses payloads.
 - Backup e transferência de dados Android estão desativados.

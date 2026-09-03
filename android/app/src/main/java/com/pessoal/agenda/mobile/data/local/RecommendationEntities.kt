@@ -55,3 +55,39 @@ data class RecommendationSettingsEntity(
     val preferredChannel: String?,
     val updatedAt: String,
 )
+
+@Entity(
+    tableName = "personal_model_artifacts",
+    primaryKeys = ["modelId", "modelVersion"],
+    indices = [Index("status"), Index("updatedAt")],
+)
+data class PersonalModelArtifactEntity(
+    val modelId: String,
+    val modelVersion: String,
+    val contractVersion: Int,
+    val purpose: String,
+    val runtime: String,
+    val featureContractVersion: Int,
+    val artifactFormat: String,
+    val artifactJson: String,
+    val artifactSha256: String,
+    val trainedAt: String,
+    val trainingSampleCount: Int,
+    val status: String,
+    val evaluationSampleCount: Int,
+    val top1Accuracy: Double,
+    val baselineTop1Accuracy: Double,
+    val rollbackModelId: String?,
+    val activatedAt: String?,
+    val updatedAt: String,
+)
+
+@Entity(tableName = "personal_model_shadow_metrics")
+data class PersonalModelShadowMetricsEntity(
+    @PrimaryKey val modelId: String,
+    val evaluatedCount: Int,
+    val agreementCount: Int,
+    val lastRuleOption: String?,
+    val lastModelOption: String?,
+    val updatedAt: String,
+)

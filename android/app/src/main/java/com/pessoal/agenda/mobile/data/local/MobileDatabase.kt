@@ -31,8 +31,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RecommendationEventEntity::class,
         RecommendationDecisionEntity::class,
         RecommendationSettingsEntity::class,
+        PersonalModelArtifactEntity::class,
+        PersonalModelShadowMetricsEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 abstract class MobileDatabase : RoomDatabase() {
@@ -53,6 +55,7 @@ abstract class MobileDatabase : RoomDatabase() {
                 MIGRATION_6_7,
                 MIGRATION_7_8,
                 MIGRATION_8_9,
+                MIGRATION_9_10,
             ).build().also { instance = it }
         }
 
@@ -313,6 +316,34 @@ abstract class MobileDatabase : RoomDatabase() {
                         retentionDays INTEGER NOT NULL, capacityContext TEXT NOT NULL,
                         preferredSnoozeMinutes INTEGER, preferredChannel TEXT,
                         updatedAt TEXT NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS personal_model_artifacts (
+                        modelId TEXT NOT NULL, modelVersion TEXT NOT NULL,
+                        contractVersion INTEGER NOT NULL, purpose TEXT NOT NULL,
+                        runtime TEXT NOT NULL, featureContractVersion INTEGER NOT NULL,
+                        artifactFormat TEXT NOT NULL, artifactJson TEXT NOT NULL,
+                        artifactSha256 TEXT NOT NULL, trainedAt TEXT NOT NULL,
+                        trainingSampleCount INTEGER NOT NULL, status TEXT NOT NULL,
+                        evaluationSampleCount INTEGER NOT NULL,
+                        top1Accuracy REAL NOT NULL, baselineTop1Accuracy REAL NOT NULL,
+                        rollbackModelId TEXT, activatedAt TEXT, updatedAt TEXT NOT NULL,
+                        PRIMARY KEY(modelId, modelVersion)
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_personal_model_artifacts_status ON personal_model_artifacts(status)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_personal_model_artifacts_updatedAt ON personal_model_artifacts(updatedAt)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS personal_model_shadow_metrics (
+                        modelId TEXT NOT NULL PRIMARY KEY, evaluatedCount INTEGER NOT NULL,
+                        agreementCount INTEGER NOT NULL, lastRuleOption TEXT,
+                        lastModelOption TEXT, updatedAt TEXT NOT NULL
                     )
                 """.trimIndent())
             }

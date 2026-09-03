@@ -9,6 +9,36 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface OfflineDao {
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertPersonalModelArtifact(value: PersonalModelArtifactEntity)
+
+    @Query("SELECT * FROM personal_model_artifacts WHERE modelId=:modelId AND modelVersion=:modelVersion")
+    suspend fun personalModelArtifact(modelId: String, modelVersion: String): PersonalModelArtifactEntity?
+
+    @Query("SELECT * FROM personal_model_artifacts WHERE modelId=:modelId AND status='ACTIVE' LIMIT 1")
+    suspend fun activePersonalModelArtifact(modelId: String): PersonalModelArtifactEntity?
+
+    @Query("SELECT * FROM personal_model_artifacts WHERE modelId=:modelId ORDER BY updatedAt DESC")
+    suspend fun personalModelArtifacts(modelId: String): List<PersonalModelArtifactEntity>
+
+    @Query("UPDATE personal_model_artifacts SET status='ROLLED_BACK', updatedAt=:updatedAt WHERE modelId=:modelId AND status='ACTIVE'")
+    suspend fun rollbackActivePersonalModel(modelId: String, updatedAt: String): Int
+
+    @Query("UPDATE personal_model_artifacts SET status='ACTIVE', activatedAt=:activatedAt, updatedAt=:activatedAt WHERE modelId=:modelId AND modelVersion=:modelVersion AND status='SHADOW'")
+    suspend fun activatePersonalModel(modelId: String, modelVersion: String, activatedAt: String): Int
+
+    @Query("DELETE FROM personal_model_artifacts")
+    suspend fun deletePersonalModelArtifacts(): Int
+
+    @Upsert
+    suspend fun upsertPersonalModelShadowMetrics(value: PersonalModelShadowMetricsEntity)
+
+    @Query("SELECT * FROM personal_model_shadow_metrics WHERE modelId=:modelId")
+    suspend fun personalModelShadowMetrics(modelId: String): PersonalModelShadowMetricsEntity?
+
+    @Query("DELETE FROM personal_model_shadow_metrics")
+    suspend fun deletePersonalModelShadowMetrics(): Int
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertRecommendationSettings(value: RecommendationSettingsEntity): Long
 

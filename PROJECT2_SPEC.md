@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 85% do Projeto 2 |
+| Status | Implementação em andamento; 86,7% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-08` estão concluídas e `P2-09` tem 3 de 6 itens. O avanço geral é 85% e restam 15%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-08` estão concluídas e `P2-09` tem 4 de 6 itens. O avanço geral é 86,7% e restam 13,3%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -810,14 +810,14 @@ pessoal ou estímulo sensorial foi usado.
 
 Somente após volume mínimo: benchmark LiteRT/ONNX, avaliação offline, shadow mode, ativação opt-in e rollback.
 
-**Status:** Em andamento, 50% (3 de 6 itens concluídos).
+**Status:** Em andamento, 66,7% (4 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
 - [x] fechar runtime inicial, contrato de features/artefato, inventário de dados e dataset sintético;
 - [x] implementar treino e avaliação offline reproduzíveis contra o `rules-v1`;
 - [x] executar o modelo em shadow mode sem alterar opções exibidas;
-- [ ] persistir artefato com integridade, compatibilidade e rollback atômico;
+- [x] persistir artefato com integridade, compatibilidade e rollback atômico;
 - [ ] entregar opt-in de ativação, inspeção e métricas de recursos;
 - [ ] aprovar matriz final de privacidade, qualidade, falha, bateria, temas e documentação.
 
@@ -855,6 +855,19 @@ mantém apenas contagem e concordância em memória, já ligado ao ViewModel e a
 sem elemento visual ou persistência. Seis testes cobrem identidade da saída,
 opt-out, volume, minimização, falhas e teto do histórico. A varredura não achou
 termos sensíveis no fonte; testes locais, lint e APK passaram em 59 tarefas.
+
+**Evidência do quarto item:** Room v10 acrescenta versões imutáveis de artefato
+e uma linha de métricas shadow agregadas. `PersonalModelArtifactStore` serializa
+pesos em ordem canônica, calcula SHA-256, valida contrato/runtime/features antes
+da leitura e só ativa candidato que passou o gate offline. A troca rebaixa a
+versão ativa e promove a nova na mesma transação; corrupção de payload/hash faz
+rollback automático para `rules-v1`, também disponível por comando explícito.
+Limpar o histórico remove eventos, decisões, artefatos e métricas, inclusive o
+acumulador em memória; nada entra na fila de sync. Sete testes Robolectric cobrem
+integridade, substituição, modelo fraco, corrupção, rollback, agregação e limpeza.
+Cinco testes instrumentados validaram migrações históricas e `9 -> 10` no
+`emulator-5554`; o APK final abriu em fullscreen no mesmo AVD. O Samsung físico
+visível no ADB não recebeu comando.
 
 ### P2-10 — Dispositivos reais e revisão regulatória
 
@@ -903,5 +916,5 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Persistir artefato e métricas agregadas com SHA-256, compatibilidade, substituição
-atômica e rollback para `rules-v1`.
+Entregar opt-in separado para ativar o modelo, inspeção de versão/métricas e
+medição local de latência, memória aproximada e tamanho do artefato.

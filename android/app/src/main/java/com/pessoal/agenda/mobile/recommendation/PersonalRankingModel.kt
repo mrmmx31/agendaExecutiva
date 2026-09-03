@@ -133,7 +133,7 @@ class AuditableLinearTrainer(
     }
 }
 
-private object PersonalFeatureVocabulary {
+internal object PersonalFeatureVocabulary {
     val ALL = buildList {
         PersonalDayPart.entries.forEach { add("day_part=${it.name}") }
         PersonalDayGroup.entries.forEach { add("day_group=${it.name}") }
@@ -144,6 +144,37 @@ private object PersonalFeatureVocabulary {
         RecommendationDeadlineBucket.entries.forEach { add("deadline_bucket=${it.name}") }
     }.sorted()
 }
+
+@Serializable
+data class LinearArtifactPayload(
+    @SerialName("contract_version") val contractVersion: Int = 1,
+    @SerialName("feature_contract_version") val featureContractVersion: Int = 1,
+    @SerialName("feature_names") val featureNames: List<String>,
+    val weights: List<LinearOptionWeights>,
+) {
+    fun toModel(): AuditableLinearModel {
+        require(contractVersion == 1 && featureContractVersion == 1)
+        require(featureNames == PersonalFeatureVocabulary.ALL)
+        require(weights.map { it.optionCode } == AuditableLinearModel.SNOOZE_OPTIONS)
+        val expectedKeys = (listOf(AuditableLinearModel.INTERCEPT) + featureNames).toSet()
+        require(weights.all { it.values.keys == expectedKeys })
+        require(weights.flatMap { it.values.values }.all(Double::isFinite))
+        return AuditableLinearModel(featureNames, weights.associate { it.optionCode to it.values })
+    }
+}
+
+@Serializable
+data class LinearOptionWeights(
+    @SerialName("option_code") val optionCode: RecommendationOptionCode,
+    val values: Map<String, Double>,
+)
+
+fun AuditableLinearModel.toArtifactPayload() = LinearArtifactPayload(
+    featureNames = featureNames,
+    weights = AuditableLinearModel.SNOOZE_OPTIONS.map { option ->
+        LinearOptionWeights(option, weights.getValue(option).toSortedMap())
+    },
+)
 
 data class PersonalModelEvaluation(
     val trainingSampleCount: Int,
@@ -227,6 +258,11 @@ class ShadowMetricsAccumulator {
     }
 
     fun snapshot() = ShadowMetrics(evaluated.get(), agreements.get())
+
+    fun clear() {
+        evaluated.set(0)
+        agreements.set(0)
+    }
 }
 
 class ShadowingRecommendationEngine(

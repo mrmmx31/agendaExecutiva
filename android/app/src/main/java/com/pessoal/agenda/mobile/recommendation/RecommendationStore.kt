@@ -176,10 +176,13 @@ class RecommendationStore(
     }
 
     suspend fun clearHistory(): RetentionResult = database.withTransaction {
-        RetentionResult(
+        val result = RetentionResult(
             deletedEvents = dao.deleteRecommendationEvents(),
             deletedDecisions = dao.deleteRecommendationDecisions(),
         )
+        dao.deletePersonalModelArtifacts()
+        dao.deletePersonalModelShadowMetrics()
+        result
     }
 
     private suspend fun currentSettings(): RecommendationSettings =

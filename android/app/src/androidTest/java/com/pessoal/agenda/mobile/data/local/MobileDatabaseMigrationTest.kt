@@ -34,7 +34,7 @@ class MobileDatabaseMigrationTest {
 
         helper.runMigrationsAndValidate(
             TEST_DATABASE,
-            9,
+            10,
             true,
             MobileDatabase.MIGRATION_1_2,
             MobileDatabase.MIGRATION_2_3,
@@ -44,6 +44,7 @@ class MobileDatabaseMigrationTest {
             MobileDatabase.MIGRATION_6_7,
             MobileDatabase.MIGRATION_7_8,
             MobileDatabase.MIGRATION_8_9,
+            MobileDatabase.MIGRATION_9_10,
         ).use { database ->
             database.query("SELECT value FROM mobile_metadata WHERE `key`='contract_version'").use { cursor ->
                 cursor.moveToFirst()
@@ -79,11 +80,12 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            QUEUE_DATABASE, 9, true, MobileDatabase.MIGRATION_2_3,
+            QUEUE_DATABASE, 10, true, MobileDatabase.MIGRATION_2_3,
             MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5, MobileDatabase.MIGRATION_5_6,
             MobileDatabase.MIGRATION_6_7,
             MobileDatabase.MIGRATION_7_8,
             MobileDatabase.MIGRATION_8_9,
+            MobileDatabase.MIGRATION_9_10,
         ).use { database ->
             database.query("SELECT status, attemptCount, updatedAt FROM pending_operations").use { cursor ->
                 cursor.moveToFirst()
@@ -99,9 +101,10 @@ class MobileDatabaseMigrationTest {
         helper.createDatabase(ALERT_DATABASE, 3).close()
 
         helper.runMigrationsAndValidate(
-            ALERT_DATABASE, 9, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
+            ALERT_DATABASE, 10, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
             MobileDatabase.MIGRATION_5_6, MobileDatabase.MIGRATION_6_7, MobileDatabase.MIGRATION_7_8,
             MobileDatabase.MIGRATION_8_9,
+            MobileDatabase.MIGRATION_9_10,
         ).use { database ->
             database.query("SELECT COUNT(*) FROM alert_definitions").use { cursor ->
                 cursor.moveToFirst()
@@ -140,7 +143,8 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            RECOMMENDATION_DATABASE, 9, true, MobileDatabase.MIGRATION_8_9,
+            RECOMMENDATION_DATABASE, 10, true, MobileDatabase.MIGRATION_8_9,
+            MobileDatabase.MIGRATION_9_10,
         ).use { database ->
             database.query("SELECT value FROM mobile_metadata WHERE `key`='fixture'").use { cursor ->
                 cursor.moveToFirst()
@@ -158,6 +162,35 @@ class MobileDatabaseMigrationTest {
                 cursor.moveToFirst()
                 assertEquals(0, cursor.getInt(0))
             }
+            database.query("SELECT COUNT(*) FROM personal_model_artifacts").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+            database.query("SELECT COUNT(*) FROM personal_model_shadow_metrics").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun migrateRecommendationStorageToModelArtifacts() {
+        helper.createDatabase(MODEL_DATABASE, 9).use { database ->
+            database.execSQL(
+                "INSERT INTO recommendation_settings(id, personalizationEnabled, retentionDays, capacityContext, preferredSnoozeMinutes, preferredChannel, updatedAt) VALUES(?,?,?,?,?,?,?)",
+                arrayOf("installation", 1, 90, "STANDARD", null, null, "2026-09-03T12:00:00Z"),
+            )
+        }
+
+        helper.runMigrationsAndValidate(
+            MODEL_DATABASE, 10, true, MobileDatabase.MIGRATION_9_10,
+        ).use { database ->
+            database.query("SELECT personalizationEnabled FROM recommendation_settings WHERE id='installation'").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(1, cursor.getInt(0))
+            }
+            database.query("SELECT artifactJson, artifactSha256, status FROM personal_model_artifacts LIMIT 0").close()
+            database.query("SELECT evaluatedCount, agreementCount FROM personal_model_shadow_metrics LIMIT 0").close()
         }
     }
 
@@ -166,5 +199,6 @@ class MobileDatabaseMigrationTest {
         const val QUEUE_DATABASE = "agenda-mobile-queue-migration-test.db"
         const val ALERT_DATABASE = "agenda-mobile-alert-migration-test.db"
         const val RECOMMENDATION_DATABASE = "agenda-mobile-recommendation-migration-test.db"
+        const val MODEL_DATABASE = "agenda-mobile-model-migration-test.db"
     }
 }

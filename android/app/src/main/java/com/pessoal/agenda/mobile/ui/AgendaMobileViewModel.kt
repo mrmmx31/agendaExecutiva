@@ -50,6 +50,7 @@ import com.pessoal.agenda.mobile.recommendation.RecommendationStatisticsCalculat
 import com.pessoal.agenda.mobile.recommendation.ShadowMetrics
 import com.pessoal.agenda.mobile.recommendation.ShadowMetricsAccumulator
 import com.pessoal.agenda.mobile.recommendation.ShadowingRecommendationEngine
+import com.pessoal.agenda.mobile.recommendation.PersonalModelArtifactStore
 import com.pessoal.agenda.mobile.health.IntakeInput
 import com.pessoal.agenda.mobile.health.SymptomInput
 import com.pessoal.agenda.mobile.health.VersionedHealthRecord
@@ -71,6 +72,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.cancelAndJoin
 import java.time.Instant
 import java.time.ZoneId
 
@@ -140,10 +142,17 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         AndroidKeystoreHealthDataCipher(),
     )
     private val recommendationStore = RecommendationStore(MobileDatabase.get(application))
+    private val personalModelArtifactStore = PersonalModelArtifactStore(MobileDatabase.get(application))
     private val shadowMetrics = ShadowMetricsAccumulator()
+    private var shadowPersistenceJob: Job? = null
     private val recommendationEngine: RecommendationEngine = ShadowingRecommendationEngine(
         primary = DeterministicRecommendationEngine(),
-        onComparison = shadowMetrics::record,
+        onComparison = { comparison ->
+            shadowMetrics.record(comparison)
+            shadowPersistenceJob = viewModelScope.launch(Dispatchers.IO) {
+                personalModelArtifactStore.recordShadow(comparison)
+            }
+        },
     )
     private val healthConnect = AndroidHealthConnectGateway(application)
     private val healthImporter = HealthConnectImportCoordinator(healthConnect, healthStore)
@@ -386,7 +395,9 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     }
 
     fun clearRecommendationHistory() = execute(successMessage = "Histórico de recomendações apagado.") {
+        shadowPersistenceJob?.cancelAndJoin()
         recommendationStore.clearHistory()
+        shadowMetrics.clear()
         refreshRecommendations()
     }
 

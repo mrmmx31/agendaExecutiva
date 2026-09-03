@@ -297,9 +297,18 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     ) { repository.proposeProtocolStep(protocolId, label) }
 
     fun setHealthConsent(category: HealthCategory, enabled: Boolean) = execute(
-        successMessage = if (enabled) "Categoria ativada." else "Categoria revogada.",
+        successMessage = when {
+            enabled -> "Categoria ativada."
+            category in AndroidHealthConnectGateway.IMPORTABLE -> "Permissões do Health Connect revogadas."
+            else -> "Categoria revogada."
+        },
     ) {
-        healthStore.setConsent(category, enabled)
+        if (!enabled && category in AndroidHealthConnectGateway.IMPORTABLE) {
+            healthConnect.revokeAllPermissions()
+            healthStore.revokeImportableConsents(AndroidHealthConnectGateway.IMPORTABLE)
+        } else {
+            healthStore.setConsent(category, enabled)
+        }
         refreshHealth()
     }
 

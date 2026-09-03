@@ -119,6 +119,20 @@ class HealthStore(
         )
     }
 
+    suspend fun revokeImportableConsents(categories: Set<HealthCategory>) = database.withTransaction {
+        val now = now()
+        categories.forEach { category ->
+            val current = dao.healthConsent(category.name) ?: return@forEach
+            dao.upsertHealthConsent(
+                current.copy(
+                    enabled = false,
+                    revokedAt = if (current.enabled) now else current.revokedAt,
+                    updatedAt = now,
+                ),
+            )
+        }
+    }
+
     suspend fun consents(): List<HealthConsentEntity> = dao.healthConsents()
 
     suspend fun createIntake(input: IntakeInput): String = database.withTransaction {

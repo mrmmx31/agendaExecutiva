@@ -25,9 +25,11 @@ fora do Git.
 | protocolo offline | aprovado | quatro passos fictícios concluídos; fila avançou sem crash |
 | Health Connect negado | aprovado | leitura cardíaca permaneceu `granted=false` |
 | registro sensível local | aprovado | fixture criada, corrigida, confirmada e excluída |
-| isolamento Health sintético | preparado | `fieldTest` filtra leituras e agregações exclusivamente para o pacote oficial Health Connect Toolbox; produção mantém origens consentidas |
-| concessão Health com dado sintético | pendente | instalar Toolbox oficial, inserir fixture e conceder somente as permissões necessárias |
-| prévia e exportação JSON/CSV/PDF | pendente | exige seleção visual de destino temporário |
+| isolamento Health sintético | aprovado | `fieldTest` leu exclusivamente a origem oficial Health Connect Toolbox; produção mantém origens consentidas |
+| concessão Health com dado sintético | aprovado | Toolbox recebeu somente escrita cardíaca; a Agenda importou em foreground uma série sintética de 10 amostras e preservou origem/cobertura |
+| prévia e exportação JSON/CSV/PDF | aprovado | mesmo snapshot de quatro linhas; JSON e CSV preservaram categoria/origem e PDF A4 abriu com uma página |
+| revogação Health Connect | aprovado após correção | ensaio encontrou permissão Android remanescente; desligar um sensor agora revoga todo o Health Connect, desliga os quatro consentimentos de sensor e preserva categorias manuais |
+| limpeza do ensaio | aprovado | registro sintético, arquivos temporários e Toolbox removidos; Agenda terminou sem permissão Health concedida |
 
 ## Gate 7
 
@@ -94,7 +96,6 @@ horas, bateria da pulseira e medição final continuam pendentes.
 ## Próxima interação mínima
 
 1. confirmar teste do áudio próprio da Agenda em volume baixo para o gate 7;
-2. concluir fonte sintética Health Connect e exportações temporárias do gate 6;
-3. completar a janela e a medição final do gate 9;
-4. retirar o cabo USB quando conveniente e manter telefone/computador na mesma
+2. completar a janela e a medição final do gate 9;
+3. retirar o cabo USB quando conveniente e manter telefone/computador na mesma
    rede durante o restante da sessão.

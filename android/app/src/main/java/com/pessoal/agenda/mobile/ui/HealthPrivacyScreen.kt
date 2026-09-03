@@ -137,6 +137,13 @@ internal fun HealthPrivacyScreen(
                     },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (importableEnabled) {
+                    Text(
+                        "Desligar uma categoria de sensor revoga todo o acesso ao Health Connect.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Button(
                     onClick = onImportHealth,
                     enabled = !busy && importableEnabled && state.connectStatus == HealthConnectStatus.AVAILABLE,

@@ -36,6 +36,7 @@ interface HealthConnectGateway {
     fun status(): HealthConnectStatus
     fun permissionsFor(categories: Set<HealthCategory>): Set<String>
     suspend fun grantedPermissions(): Set<String>
+    suspend fun revokeAllPermissions()
     suspend fun readSummaries(
         categories: Set<HealthCategory>,
         start: Instant,
@@ -63,6 +64,12 @@ class AndroidHealthConnectGateway(
         client.permissionController.getGrantedPermissions()
     } else {
         emptySet()
+    }
+
+    override suspend fun revokeAllPermissions() {
+        if (status() == HealthConnectStatus.AVAILABLE) {
+            client.permissionController.revokeAllPermissions()
+        }
     }
 
     override suspend fun readSummaries(

@@ -116,7 +116,7 @@ Implementado até a conclusão de `P2-09`:
 | Contratos e privacidade de saúde | `android/contracts/v1/health-consent.schema.json`, `intake-log.schema.json`, `symptom-log.schema.json`, `docs/privacy/HEALTH_DATA_INVENTORY.md` e ADR `0001` |
 | Persistência sensível Android | `health/HealthStore.kt`, `HealthDataCipher.kt`, `data/local/HealthEntities.kt` e Room v7; AES-GCM/Keystore, revisão, tombstone e auditoria sem texto |
 | UI de saúde e privacidade | `ui/HealthPrivacyScreen.kt` e estado/ações em `AgendaMobileViewModel.kt`; oito opt-ins e gestão local de entradas cifradas |
-| Importação Health Connect | `health/connect/HealthConnectGateway.kt`; produção aceita origens consentidas e `fieldTest` restringe leituras ao Health Connect Toolbox por `BuildConfig.HEALTH_DATA_ORIGIN_FILTER` |
+| Importação Health Connect | `health/connect/HealthConnectGateway.kt`; produção aceita origens consentidas e `fieldTest` restringe leituras ao Health Connect Toolbox por `BuildConfig.HEALTH_DATA_ORIGIN_FILTER`; desligar um sensor chama `revokeAllPermissions()`, desliga todos os consentimentos importáveis e preserva os manuais |
 | Contratos e governança de recomendação | `android/contracts/RECOMMENDATION_V1.md`, `docs/privacy/RECOMMENDATION_DATA_INVENTORY.md`, ADR `0002` e `docs/models/rules-v1.md` |
 | Persistência de recomendação | `recommendation/RecommendationStore.kt`, `data/local/RecommendationEntities.kt` e Room v9; opt-in, retenção, correção e limpeza locais |
 | Motor determinístico | `recommendation/RecommendationEngine.kt` e `docs/models/rules-v1.md`; interface pura, baseline, mínimo por contexto e razões explicáveis |

@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.sqlite.db.SimpleSQLiteQuery
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
+import com.pessoal.agenda.mobile.health.connect.AndroidHealthConnectGateway
 import com.pessoal.agenda.mobile.health.connect.HealthConnectGateway
 import com.pessoal.agenda.mobile.health.connect.HealthConnectImportCoordinator
 import com.pessoal.agenda.mobile.health.connect.HealthConnectStatus
@@ -229,6 +230,20 @@ class HealthStoreTest {
     }
 
     @Test
+    fun healthConnectRevocationDisablesSensorsButPreservesManualConsent() = runBlocking {
+        store.initializeConsentCatalog()
+        AndroidHealthConnectGateway.IMPORTABLE.forEach { store.setConsent(it, true) }
+        store.setConsent(HealthCategory.MEDICATION, true)
+
+        store.revokeImportableConsents(AndroidHealthConnectGateway.IMPORTABLE)
+
+        val consents = store.consents().associateBy { HealthCategory.valueOf(it.category) }
+        assertTrue(AndroidHealthConnectGateway.IMPORTABLE.none { consents.getValue(it).enabled })
+        assertTrue(AndroidHealthConnectGateway.IMPORTABLE.all { consents.getValue(it).revokedAt != null })
+        assertTrue(consents.getValue(HealthCategory.MEDICATION).enabled)
+    }
+
+    @Test
     fun healthWritesNeverEnterTheDesktopSyncQueue() = runBlocking {
         store.initializeConsentCatalog()
         store.setConsent(HealthCategory.MEDICATION, true)
@@ -253,6 +268,7 @@ private class FakeHealthConnectGateway(private val granted: Set<String> = setOf(
     override fun status() = HealthConnectStatus.AVAILABLE
     override fun permissionsFor(categories: Set<HealthCategory>) = categories.mapTo(linkedSetOf()) { "read:${it.name}" }
     override suspend fun grantedPermissions() = granted
+    override suspend fun revokeAllPermissions() = Unit
     override suspend fun readSummaries(categories: Set<HealthCategory>, start: Instant, end: Instant): List<ImportedHealthSummary> {
         readCalls++
         requested = categories

@@ -37,7 +37,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 98%, restando 2%; `P2-01` a `P2-09` concluídas e `P2-10` em 8 de 10 gates.
+- Projeto 2: implementação em 97%, restando 3%; `P2-03` reaberta pelo ciclo de vida efêmero do servidor de sync e `P2-10` em 8 de 10 gates.
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -54,6 +54,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 | Alertas | preferências/contagens | Preferences | `PendencyNotificationService` | Config/Dashboard/status | service e FX |
 | Protocolos | `Protocol*` | `ProtocolRepository` | serviços/controllers atuais | Checklist e execução | repository/FX |
 | Google Tasks | mappings/snapshots | repositories Google | auth, gateway e sync services | Config e sync window | transport, sync e FX |
+| Sync móvel local | réplicas/fila Room | `DesktopSyncRepository` | `LocalPairingServer`, `SyncBatchProcessor`, transporte HTTPS | status no Android e pareamento desktop | protocolo aprovado; servidor persistente pendente em P2-03 |
 | Janelas | estado JavaFX | Preferences quando aplicável | `WindowManager` | views | `WindowManagerFxTest`, responsive tests |
 | Tema | tokens CSS | preferência visual | `ThemeManager` | todas as scenes | testes FX de contraste/tema |
 

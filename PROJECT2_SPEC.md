@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 98% do Projeto 2 |
+| Status | Implementação em andamento; 97% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -596,7 +596,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-09` estão concluídas e `P2-10` tem 8 de 10 gates. O avanço geral é 98% e restam 2%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-03` foi reaberta com 6 de 7 itens após o teste real revelar que o servidor não sobrevive à sessão de pareamento; `P2-01`, `P2-02` e `P2-04` a `P2-09` estão concluídas, e `P2-10` tem 8 de 10 gates. O avanço geral arredondado é 97% e restam 3%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -621,7 +621,7 @@ Captura, réplica mínima, protocolos, fila de operações, schemas e dados fict
 
 Servidor desktop, QR, TLS fixado, Keystore, cursores, snapshots, idempotência, conflitos e revogação.
 
-**Status:** Concluído em 2026-09-01, 100% (6 de 6 itens concluídos).
+**Status:** Reaberto em 2026-09-03, 86% (6 de 7 itens concluídos).
 
 **Checklist de avanço:**
 
@@ -631,6 +631,7 @@ Servidor desktop, QR, TLS fixado, Keystore, cursores, snapshots, idempotência, 
 - [x] implementar servidor HTTPS efêmero, aprovação/revogação no desktop e credencial protegida no Android Keystore;
 - [x] implementar push/pull idempotente, snapshot paginado, estados da fila e revisão de conflitos;
 - [x] aprovar matriz integrada em banco temporário e AVD, incluindo repetição, expiração, certificado incorreto e reconexão.
+- [ ] manter endpoint HTTPS e identidade TLS estáveis durante a vida da Agenda desktop, permitindo reconexão e sync sem novo pareamento a cada sessão.
 
 **Decisão inicial:** diferentemente da ativação direta usada como referência mecânica no Motoclube, a Agenda não emite credencial após apenas ler QR e código. A solicitação fica pendente até o usuário conferir nome e papéis no desktop. A permissão Android de rede foi adicionada somente junto do cliente HTTPS local fixado e não autoriza integrações externas.
 
@@ -643,6 +644,14 @@ Servidor desktop, QR, TLS fixado, Keystore, cursores, snapshots, idempotência, 
 **Evidência de sync:** o desktop recebe lotes de até 100 operações/256 KiB autenticados pela credencial pareada no canal TLS fixado. Capturas possuem efeito e resultado terminal idempotentes; eventos de protocolo ficam duráveis e revisão divergente gera conflito com as duas versões. O diário de mudanças atribui UUID no momento do snapshot, mantém revisão e cursor monotônicos e pagina em 200 tarefas/50 protocolos com token opaco. No Android, Room v3 mantém `PENDING`, `IN_FLIGHT`, `APPLIED`, `CONFLICT`, `REJECTED` e `RETRYABLE`, restaura envios interrompidos, só confirma o cursor após a última página e oferece revisão local/desktop na fila. O transporte HTTPS limita resposta a 1 MiB, fixa o certificado e usa a identidade do Keystore também nas operações offline.
 
 **Evidência da matriz final:** o Android abre `agenda://pair` por leitor de QR ou colagem, mostra convite/código, permite cancelar a espera e grava conexão/credencial atomicamente fora da thread principal. Sete testes do servidor real cobrem repetição, rejeição, código incorreto, expiração, certificado incorreto, nova sessão, lote idempotente e snapshot. Doze testes instrumentados cobrem UI, Room, Keystore e HTTPS Android real com certificado correto/incorreto e reconexão. O gate `LocalPairingAndroidGate` conectou o APK no `emulator-5556` ao servidor desktop real por `adb reverse`, aprovou em SQLite temporário e recebeu uma captura móvel, encerrando com `PAIRING_GATE_SYNCED`. O gate encontrou e corrigiu omissão de `contract_version`, acesso ao Keystore antes do primeiro frame e fechamento indevido de convites de reconexão. `./mvnw test` passou com 155 testes e `./gradlew test lint assembleDebug assembleDebugAndroidTest` passou. O telefone físico, a Agenda desktop aberta e os bancos pessoais permaneceram fora do gate.
+
+**Falha encontrada no aceite real:** em 03/09/2026, o Moto exibiu `Somente
+neste telefone` e seis operações locais. A implementação encerra o servidor e
+o certificado efêmero ao fechar ou expirar a janela de pareamento; o endpoint
+salvo deixa de aceitar reconexão cotidiana. O protocolo e a fila permanecem
+válidos, mas sincronização operacional recorrente não está disponível até o
+servidor ter ciclo de vida da aplicação, porta/identidade recuperáveis e teste
+de reinício real. Não tratar novo pareamento manual como solução definitiva.
 
 ### P2-04 — Alertas e áudio no smartphone
 

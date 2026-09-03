@@ -16,6 +16,7 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.runtime.mutableStateOf
+import androidx.test.espresso.Espresso.pressBack
 import com.pessoal.agenda.mobile.alert.SensoryChannel
 import com.pessoal.agenda.mobile.alert.SensoryProfile
 import com.pessoal.agenda.mobile.alert.AudioRoutePolicy
@@ -81,6 +82,48 @@ class AgendaMobileAppTest {
         compose.onNodeWithText("Agenda").assertIsDisplayed()
         compose.onNodeWithText("Somente neste telefone").assertIsDisplayed()
         compose.onNodeWithText("Tarefa fictícia").assertIsDisplayed()
+    }
+
+    @Test
+    fun systemBackReturnsBottomSectionToHomeBeforeActivityCanClose() {
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(),
+                    onSaveCapture = { _, _ -> }, onStartProtocol = {},
+                    onCompleteStep = { _, _ -> }, onSync = {}, onPair = { _, _ -> },
+                    onCancelPairing = {}, onPairingCompletionShown = {}, onFeedbackShown = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText("Capturar").performClick()
+        compose.onNodeWithText("Texto livre").assertIsDisplayed()
+        pressBack()
+
+        compose.onNodeWithText("Vou sair").assertIsDisplayed()
+        compose.onNodeWithText("Texto livre").assertDoesNotExist()
+    }
+
+    @Test
+    fun systemBackClosesSecondaryScreenAndKeepsHomeVisible() {
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(),
+                    onSaveCapture = { _, _ -> }, onStartProtocol = {},
+                    onCompleteStep = { _, _ -> }, onSync = {}, onPair = { _, _ -> },
+                    onCancelPairing = {}, onPairingCompletionShown = {}, onFeedbackShown = {},
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Configurações sensoriais").performClick()
+        compose.onNodeWithText("Configurações sensoriais").assertIsDisplayed()
+        pressBack()
+
+        compose.onNodeWithText("Agenda").assertIsDisplayed()
+        compose.onNodeWithText("Vou sair").assertIsDisplayed()
     }
 
     @Test

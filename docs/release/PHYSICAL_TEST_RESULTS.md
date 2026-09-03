@@ -108,21 +108,33 @@ durante a janela.
 Novo baseline do binário com seleção individual de áudio, às 20:13 UTC:
 telefone fora de carga, bateria 28%, temperatura 31,9 °C, PSS aproximado de
 129 MB e zero referências ao pacote no buffer de crash. O timeout permaneceu em
-5 minutos. A coleta final foi reagendada para 04/09/2026 às 16:14
-(`America/Manaus`), após completar 24 horas desse mesmo binário.
+5 minutos. Uma coleta havia sido agendada para 04/09/2026 às 16:14, mas esse
+baseline foi posteriormente invalidado pela correção de navegação abaixo.
 
 O timeout temporário de tela do Moto foi restaurado de 30 para 5 minutos. A
-coleta final protegida foi reagendada localmente para 04/09/2026 às 16:14
-(`America/Manaus`), após completar 24 horas. Ela recusa execução
-antecipada, emulador e modelo diferente do telefone autorizado; sucesso ou
-falha será mostrado em diálogo. A smartband fechada não expõe bateria por ADB,
-portanto esse valor continua dependendo de leitura manual no aplicativo
-companheiro ou será registrado como indisponível.
+instalação da correção de navegação em 03/09 invalidou o baseline anterior; o
+timer das 16:14 de 04/09 foi cancelado porque o telefone sairia da rede. Uma
+nova janela de 24 horas deve começar quando o aparelho estiver novamente
+disponível. A smartband fechada não expõe bateria por ADB, portanto esse valor
+continua dependendo de leitura manual no aplicativo companheiro ou será
+registrado como indisponível.
+
+## Navegação e sync móvel
+
+O `fieldTest` mais recente foi instalado com preservação dos dados. As seis
+operações locais continuaram na fila. No Moto, abrir `Capturar` e pressionar
+Voltar retornou a `Hoje`; um segundo Voltar encerrou a Activity, que foi
+reaberta ao final. Dois testes Compose equivalentes passaram no AVD.
+
+O aceite também revelou que o telefone não estava pareado e que o servidor
+desktop atual só vive durante a sessão efêmera de pareamento. A fila offline é
+durável, mas sync recorrente após fechar/expirar a janela ainda não é um recurso
+operacional. `P2-03` foi reaberta para corrigir o ciclo de vida do endpoint e da
+identidade TLS.
 
 ## Próxima interação mínima
 
-1. manter telefone/computador na mesma rede até a coleta agendada; o telefone
-   pode ficar fora do cabo;
+1. ao retornar com o telefone, iniciar nova janela de 24 horas com o APK atual;
 2. informar a bateria da pulseira pelo aplicativo companheiro, se disponível;
 3. backup cifrado da chave definitiva no Google Drive: concluído em 03/09/2026,
    com restauração não destrutiva validada.

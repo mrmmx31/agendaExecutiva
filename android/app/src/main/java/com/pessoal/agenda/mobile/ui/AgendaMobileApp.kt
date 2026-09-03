@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.health.connect.client.PermissionController
 import androidx.compose.foundation.layout.Arrangement
@@ -262,6 +263,25 @@ internal fun AgendaMobileScreen(
     }
     LaunchedEffect(showRecommendations) {
         if (showRecommendations) onRefreshRecommendations()
+    }
+    val secondaryScreenVisible = showSensorySettings || showHealth || showRecommendations
+    BackHandler(
+        enabled = showPairing || showLeavingChoices || secondaryScreenVisible
+            || selected != MobileSection.TODAY.ordinal,
+    ) {
+        when {
+            showPairing -> {
+                if (state.pairingInProgress) onCancelPairing()
+                showPairing = false
+            }
+            showLeavingChoices -> showLeavingChoices = false
+            secondaryScreenVisible -> {
+                showSensorySettings = false
+                showHealth = false
+                showRecommendations = false
+            }
+            else -> selected = MobileSection.TODAY.ordinal
+        }
     }
     if (showPairing) {
         PairingDialog(

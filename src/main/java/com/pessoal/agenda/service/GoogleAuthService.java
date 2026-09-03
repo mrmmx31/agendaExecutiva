@@ -12,6 +12,10 @@ import java.time.Duration;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -39,8 +43,10 @@ public class GoogleAuthService {
     private static final String TOKENS_PATH =
             System.getProperty("user.home") + "/.agenda/google-tokens.json";
 
-    private static final String SCOPE =
+    public static final String TASKS_SCOPE =
             "https://www.googleapis.com/auth/tasks";
+    public static final String DRIVE_APPDATA_SCOPE =
+            "https://www.googleapis.com/auth/drive.appdata";
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(20);
 
@@ -54,6 +60,7 @@ public class GoogleAuthService {
     private String accessToken;
     private String refreshToken;
     private long   expiresAt; // epoch seconds
+    private final Set<String> grantedScopes = new LinkedHashSet<>();
 
     private static GoogleAuthService INSTANCE;
 
@@ -73,6 +80,10 @@ public class GoogleAuthService {
         return refreshToken != null && !refreshToken.isBlank();
     }
 
+    public synchronized boolean hasDriveAppDataScope() {
+        return isAuthorized() && grantedScopes.contains(DRIVE_APPDATA_SCOPE);
+    }
+
     public boolean hasValidCredentials() {
         return notBlank(clientId) && notBlank(clientSecret)
                 && validHttpUri(tokenUri) && validHttpUri(authUri);
@@ -83,6 +94,7 @@ public class GoogleAuthService {
         accessToken  = null;
         refreshToken = null;
         expiresAt    = 0;
+        grantedScopes.clear();
         Files.deleteIfExists(Paths.get(TOKENS_PATH));
     }
 
@@ -136,7 +148,14 @@ public class GoogleAuthService {
     }
 
     public AuthorizationSession newAuthorizationSession() {
-        return new AuthorizationSession();
+        return new AuthorizationSession(Set.of(TASKS_SCOPE));
+    }
+
+    public AuthorizationSession newAuthorizationSession(Set<String> requestedScopes) {
+        if (requestedScopes == null || requestedScopes.isEmpty()) {
+            throw new IllegalArgumentException("Informe ao menos um escopo OAuth.");
+        }
+        return new AuthorizationSession(Set.copyOf(requestedScopes));
     }
 
     private void authorize(Consumer<String> progressCallback,
@@ -152,7 +171,8 @@ public class GoogleAuthService {
             session.attach(callbackServer);
             String redirectUri = "http://localhost:" + callbackServer.getLocalPort();
             String state = newAuthorizationState();
-            String authUrl = buildAuthorizationUrl(authUri, clientId, redirectUri, state);
+            String authUrl = buildAuthorizationUrl(
+                    authUri, clientId, redirectUri, state, session.requestedScopes);
 
             if (authorizationUrlCallback != null) {
                 authorizationUrlCallback.accept(authUrl);
@@ -185,7 +205,7 @@ public class GoogleAuthService {
 
             session.throwIfCancelled();
             if (progressCallback != null) progressCallback.accept("Trocando código por tokens...");
-            exchangeCodeForTokens(code, redirectUri);
+            exchangeCodeForTokens(code, redirectUri, session.requestedScopes);
         } finally {
             session.detach();
         }
@@ -195,13 +215,22 @@ public class GoogleAuthService {
 
     static String buildAuthorizationUrl(String authUri, String clientId,
                                         String redirectUri, String state) {
+        return buildAuthorizationUrl(authUri, clientId, redirectUri, state,
+                Set.of(TASKS_SCOPE));
+    }
+
+    static String buildAuthorizationUrl(String authUri, String clientId,
+                                        String redirectUri, String state,
+                                        Set<String> scopes) {
+        String scope = String.join(" ", new TreeSet<>(scopes));
         return authUri + "?"
                 + "client_id=" + encode(clientId)
                 + "&redirect_uri=" + encode(redirectUri)
                 + "&response_type=code"
-                + "&scope=" + encode(SCOPE)
+                + "&scope=" + encode(scope)
                 + "&access_type=offline"
                 + "&prompt=" + encode("select_account consent")
+                + "&include_granted_scopes=true"
                 + "&state=" + encode(state);
     }
 
@@ -237,8 +266,11 @@ public class GoogleAuthService {
     public final class AuthorizationSession {
         private final AtomicBoolean cancelled = new AtomicBoolean();
         private final AtomicReference<ServerSocket> callbackServer = new AtomicReference<>();
+        private final Set<String> requestedScopes;
 
-        private AuthorizationSession() {}
+        private AuthorizationSession(Set<String> requestedScopes) {
+            this.requestedScopes = requestedScopes;
+        }
 
         public void authorize(Consumer<String> progressCallback,
                               Consumer<String> authorizationUrlCallback,
@@ -329,7 +361,8 @@ public class GoogleAuthService {
         client.getOutputStream().write(response.getBytes(StandardCharsets.UTF_8));
     }
 
-    private void exchangeCodeForTokens(String code, String redirectUri)
+    private void exchangeCodeForTokens(String code, String redirectUri,
+                                       Set<String> requestedScopes)
             throws IOException, InterruptedException {
         String body = "grant_type=authorization_code"
                 + "&code=" + URLEncoder.encode(code, StandardCharsets.UTF_8)
@@ -338,7 +371,7 @@ public class GoogleAuthService {
                 + "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8);
 
         String response = post(tokenUri, body);
-        parseAndSaveTokens(response);
+        parseAndSaveTokens(response, requestedScopes);
     }
 
     private synchronized void refreshAccessToken() throws IOException, InterruptedException {
@@ -368,14 +401,19 @@ public class GoogleAuthService {
         saveTokens();
     }
 
-    private void parseAndSaveTokens(String response) throws IOException {
+    private synchronized void parseAndSaveTokens(String response,
+                                                 Set<String> requestedScopes) throws IOException {
         requireTokenResponse(response);
-        accessToken  = SimpleJson.str(response, "access_token");
-        refreshToken = SimpleJson.str(response, "refresh_token");
+        String newAccess = SimpleJson.str(response, "access_token");
+        String newRefresh = SimpleJson.str(response, "refresh_token");
         long expiresIn = SimpleJson.num(response, "expires_in");
-        if (accessToken == null || refreshToken == null) {
+        if (newAccess == null || (!notBlank(newRefresh) && !notBlank(refreshToken))) {
             throw GoogleSyncException.invalidResponse();
         }
+        accessToken = newAccess;
+        if (notBlank(newRefresh)) refreshToken = newRefresh;
+        Set<String> returnedScopes = parseScopes(SimpleJson.str(response, "scope"));
+        grantedScopes.addAll(returnedScopes.isEmpty() ? requestedScopes : returnedScopes);
         expiresAt = Instant.now().getEpochSecond() + (expiresIn > 0 ? expiresIn : 3600);
         saveTokens();
     }
@@ -384,7 +422,8 @@ public class GoogleAuthService {
         Path path = Paths.get(TOKENS_PATH);
         String json = "{\"access_token\":\"" + accessToken + "\","
                     + "\"refresh_token\":\"" + refreshToken + "\","
-                    + "\"expires_at\":" + expiresAt + "}";
+                    + "\"expires_at\":" + expiresAt + ","
+                    + "\"scopes\":\"" + String.join(" ", new TreeSet<>(grantedScopes)) + "\"}";
         writePrivateFile(path, json);
     }
 
@@ -398,6 +437,14 @@ public class GoogleAuthService {
             accessToken  = SimpleJson.str(json, "access_token");
             refreshToken = SimpleJson.str(json, "refresh_token");
             expiresAt    = SimpleJson.num(json, "expires_at");
+            grantedScopes.clear();
+            String persistedScopes = SimpleJson.str(json, "scopes");
+            if (persistedScopes == null && notBlank(refreshToken)) {
+                // Tokens anteriores à integração Drive autorizavam somente o Tasks.
+                grantedScopes.add(TASKS_SCOPE);
+            } else {
+                grantedScopes.addAll(parseScopes(persistedScopes));
+            }
         } catch (IOException e) {
             // tokens inexistentes ou corrompidos – ignorar
         }
@@ -478,7 +525,13 @@ public class GoogleAuthService {
         accessToken = null;
         refreshToken = null;
         expiresAt = 0;
+        grantedScopes.clear();
         Files.deleteIfExists(Paths.get(TOKENS_PATH));
+    }
+
+    static Set<String> parseScopes(String value) {
+        if (value == null || value.isBlank()) return Set.of();
+        return new LinkedHashSet<>(Arrays.asList(value.trim().split("\\s+")));
     }
 
     static void writePrivateFile(Path path, String content) throws IOException {

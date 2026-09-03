@@ -11,6 +11,7 @@ import com.pessoal.agenda.service.QuickCapturePreferences;
 import com.pessoal.agenda.service.LocalMetricsService;
 import com.pessoal.agenda.service.GoogleAuthService;
 import com.pessoal.agenda.service.GoogleSyncErrorPresenter;
+import com.pessoal.agenda.service.SigningKeyDriveBackupService;
 import com.pessoal.agenda.ui.view.GoogleAccountConnectionFlow;
 import com.pessoal.agenda.ui.view.GoogleTasksSyncWindow;
 import com.pessoal.agenda.ui.view.MobilePairingWindow;
@@ -24,9 +25,14 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.concurrent.Task;
 
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -110,7 +116,8 @@ public class ConfigController {
                 buildQuickCaptureSection());
         if (localMetricsService != null) general.getChildren().add(buildLocalMetricsSection());
 
-        VBox integrations = new VBox(14, buildGoogleTasksSection(), buildMobilePairingSection());
+        VBox integrations = new VBox(14, buildGoogleTasksSection(),
+                buildSigningKeyBackupSection(), buildMobilePairingSection());
         VBox categories = new VBox(14, row1, row2, row3);
 
         TabPane sections = new TabPane(
@@ -124,6 +131,233 @@ public class ConfigController {
         content.setPadding(new Insets(16));
         tab.setContent(content);
         return tab;
+    }
+
+    private VBox buildSigningKeyBackupSection() {
+        GoogleAuthService auth = GoogleAuthService.getInstance();
+        SigningKeyDriveBackupService backupService = new SigningKeyDriveBackupService();
+
+        Label title = new Label("Backup da chave de assinatura");
+        title.getStyleClass().add("section-title");
+        Label localState = new Label();
+        Label permissionState = new Label();
+        Label remoteState = new Label("Não verificado");
+        remoteState.getStyleClass().add("t-muted");
+
+        GridPane stateGrid = new GridPane();
+        stateGrid.setHgap(18);
+        stateGrid.setVgap(8);
+        addSettingRow(stateGrid, 0, "Chave local", localState);
+        addSettingRow(stateGrid, 1, "Permissão Drive", permissionState);
+        addSettingRow(stateGrid, 2, "Backup remoto", remoteState);
+
+        Button authorize = new Button("Autorizar Google Drive");
+        authorize.getStyleClass().add("primary-button");
+        Button cancelAuthorization = new Button("Cancelar autorização");
+        cancelAuthorization.getStyleClass().add("danger-button");
+        cancelAuthorization.setVisible(false);
+        cancelAuthorization.setManaged(false);
+        Button upload = new Button("Criar ou atualizar backup");
+        upload.getStyleClass().add("secondary-button");
+        Button restoreTest = new Button("Testar restauração");
+        restoreTest.getStyleClass().add("secondary-button");
+        Button refresh = new Button("↻");
+        refresh.getStyleClass().add("secondary-button");
+        refresh.setTooltip(new Tooltip("Atualizar estado do backup"));
+
+        Control[] controls = {authorize, upload, restoreTest, refresh};
+        boolean[] busy = {false};
+        boolean[] remoteAvailable = {false};
+        AtomicReference<GoogleAccountConnectionFlow.ConnectionAttempt> attempt =
+                new AtomicReference<>();
+
+        Runnable refreshLocalState = () -> {
+            boolean local = backupService.localKeyExists();
+            boolean drive = auth.hasDriveAppDataScope();
+            localState.setText(local ? "Disponível" : "Ausente");
+            permissionState.setText(drive ? "Autorizada" : "Pendente");
+            setSemanticState(localState, local, false);
+            setSemanticState(permissionState, drive, false);
+            authorize.setDisable(busy[0] || drive || !auth.hasValidCredentials());
+            upload.setDisable(busy[0] || !drive || !local);
+            restoreTest.setDisable(busy[0] || !drive || !remoteAvailable[0]);
+            refresh.setDisable(busy[0] || !drive);
+        };
+        Consumer<Boolean> setBusy = value -> {
+            busy[0] = value;
+            for (Control control : controls) control.setDisable(value);
+            cancelAuthorization.setVisible(value && attempt.get() != null);
+            cancelAuthorization.setManaged(value && attempt.get() != null);
+            if (!value) refreshLocalState.run();
+        };
+
+        Runnable refreshRemote = () -> runGoogleOperation(
+                "Verificando backup no Google Drive...", setBusy,
+                backupService::findBackup,
+                found -> {
+                    remoteAvailable[0] = found.isPresent();
+                    remoteState.setText(found.map(item -> "Disponível · "
+                                    + DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+                                    .withZone(ZoneId.systemDefault()).format(item.modifiedAt()))
+                            .orElse("Ainda não criado"));
+                    remoteState.getStyleClass().removeAll("t-muted", "t-success", "t-danger");
+                    remoteState.getStyleClass().add(found.isPresent() ? "t-success" : "t-muted");
+                    refreshLocalState.run();
+                });
+
+        authorize.setOnAction(event -> {
+            attempt.set(GoogleAccountConnectionFlow.start(auth,
+                    Set.of(GoogleAuthService.TASKS_SCOPE, GoogleAuthService.DRIVE_APPDATA_SCOPE),
+                    "Autorizar backup no Google Drive", ctx::setStatus, setBusy,
+                    () -> {
+                        attempt.set(null);
+                        ctx.setStatus("Google Drive autorizado para o backup privado.");
+                        refreshLocalState.run();
+                        refreshRemote.run();
+                    },
+                    () -> {
+                        attempt.set(null);
+                        ctx.setStatus("Autorização do Google Drive cancelada.");
+                        refreshLocalState.run();
+                    },
+                    error -> {
+                        attempt.set(null);
+                        showGoogleOperationError("Erro de autorização do Drive", error);
+                        refreshLocalState.run();
+                    }));
+            cancelAuthorization.setVisible(busy[0] && attempt.get() != null);
+            cancelAuthorization.setManaged(busy[0] && attempt.get() != null);
+        });
+        cancelAuthorization.setOnAction(event -> {
+            GoogleAccountConnectionFlow.ConnectionAttempt current = attempt.get();
+            if (current != null) current.cancel();
+        });
+        upload.setOnAction(event -> promptBackupPasswords(true).ifPresent(passwords ->
+                runGoogleOperation("Cifrando e enviando a chave...", setBusy,
+                        () -> {
+                            try {
+                                return backupService.createOrUpdate(
+                                        passwords.keyPassword(), passwords.recoveryPassword());
+                            } finally {
+                                passwords.clear();
+                            }
+                        }, result -> {
+                            remoteAvailable[0] = true;
+                            remoteState.setText("Disponível · restauração ainda não testada");
+                            remoteState.getStyleClass().removeAll("t-muted", "t-danger");
+                            remoteState.getStyleClass().add("t-success");
+                            ctx.setStatus("Backup cifrado salvo no Google Drive.");
+                            refreshLocalState.run();
+                        })));
+        restoreTest.setOnAction(event -> promptBackupPasswords(false).ifPresent(passwords ->
+                runGoogleOperation("Baixando e validando o backup...", setBusy,
+                        () -> {
+                            try {
+                                return backupService.testRestore(
+                                        passwords.keyPassword(), passwords.recoveryPassword());
+                            } finally {
+                                passwords.clear();
+                            }
+                        }, result -> {
+                            remoteState.setText("Disponível · restauração validada");
+                            remoteState.getStyleClass().removeAll("t-muted", "t-danger");
+                            remoteState.getStyleClass().add("t-success");
+                            ctx.setStatus("Teste de restauração concluído sem substituir a chave local.");
+                            Dialogs.info("Restauração validada",
+                                    "O backup foi baixado, decifrado e validado. A chave local não foi alterada.");
+                        })));
+        refresh.setOnAction(event -> refreshRemote.run());
+
+        FlowPane buttons = new FlowPane(10, 8,
+                authorize, cancelAuthorization, upload, restoreTest, refresh);
+        buttons.setAlignment(Pos.CENTER_LEFT);
+        buttons.setMaxWidth(Double.MAX_VALUE);
+        VBox section = new VBox(12, title, stateGrid, buttons);
+        section.setId("config-signing-key-backup");
+        section.getStyleClass().add("config-section");
+        section.setPadding(new Insets(12, 14, 12, 14));
+        refreshLocalState.run();
+        return section;
+    }
+
+    private Optional<BackupPasswords> promptBackupPasswords(boolean confirmRecovery) {
+        Dialog<BackupPasswords> dialog = new Dialog<>();
+        dialog.setTitle(confirmRecovery ? "Criar backup cifrado" : "Testar restauração");
+        dialog.setHeaderText(confirmRecovery
+                ? "Informe as duas senhas para proteger a chave"
+                : "Informe as senhas para validar o backup");
+        ButtonType proceed = new ButtonType(confirmRecovery ? "Criar backup" : "Validar",
+                ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(proceed, ButtonType.CANCEL);
+        PasswordField keyPassword = new PasswordField();
+        keyPassword.setPromptText("Senha atual do PKCS#12");
+        PasswordField recovery = new PasswordField();
+        recovery.setPromptText("Senha de recuperação (mínimo 16 caracteres)");
+        PasswordField confirmation = new PasswordField();
+        confirmation.setPromptText("Repita a senha de recuperação");
+        GridPane fields = new GridPane();
+        fields.setHgap(10);
+        fields.setVgap(10);
+        fields.addRow(0, new Label("Chave local"), keyPassword);
+        fields.addRow(1, new Label("Recuperação"), recovery);
+        if (confirmRecovery) fields.addRow(2, new Label("Confirmação"), confirmation);
+        dialog.getDialogPane().setContent(fields);
+        javafx.scene.Node proceedButton = dialog.getDialogPane().lookupButton(proceed);
+        Runnable validate = () -> proceedButton.setDisable(recovery.getText().length() < 16
+                || (confirmRecovery && !recovery.getText().equals(confirmation.getText())));
+        recovery.textProperty().addListener((observable, oldValue, newValue) -> validate.run());
+        confirmation.textProperty().addListener((observable, oldValue, newValue) -> validate.run());
+        validate.run();
+        dialog.setResultConverter(button -> button == proceed
+                ? new BackupPasswords(keyPassword.getText().toCharArray(),
+                        recovery.getText().toCharArray()) : null);
+        return dialog.showAndWait();
+    }
+
+    private <T> void runGoogleOperation(String status,
+                                        Consumer<Boolean> busy,
+                                        ThrowingSupplier<T> action,
+                                        Consumer<T> success) {
+        if (!GoogleAccountConnectionFlow.tryStartGoogleOperation()) {
+            ctx.setStatus("Aguarde a operação Google em andamento terminar.");
+            return;
+        }
+        busy.accept(true);
+        ctx.setStatus(status);
+        Task<T> task = new Task<>() {
+            @Override protected T call() throws Exception { return action.get(); }
+        };
+        task.setOnSucceeded(event -> {
+            GoogleAccountConnectionFlow.finishGoogleOperation();
+            busy.accept(false);
+            success.accept(task.getValue());
+        });
+        task.setOnFailed(event -> {
+            GoogleAccountConnectionFlow.finishGoogleOperation();
+            busy.accept(false);
+            showGoogleOperationError("Erro no backup do Drive", task.getException());
+        });
+        Thread thread = new Thread(task, "google-drive-backup");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void showGoogleOperationError(String title, Throwable error) {
+        String message = GoogleSyncErrorPresenter.userMessage(error);
+        ctx.setStatus(message);
+        Dialogs.error(title, message);
+    }
+
+    @FunctionalInterface
+    private interface ThrowingSupplier<T> {
+        T get() throws Exception;
+    }
+
+    private record BackupPasswords(char[] keyPassword, char[] recoveryPassword) {
+        void clear() {
+            Arrays.fill(keyPassword, '\0');
+            Arrays.fill(recoveryPassword, '\0');
+        }
     }
 
     private Tab settingsTab(String title, VBox content) {

@@ -37,6 +37,9 @@ arquivo tem modo `600`; a senha não foi impressa nem registrada. APK e AAB de
 telefone e Wear foram gerados, tiveram assinatura verificada e apresentaram o
 mesmo certificado. O registro público está em `RELEASE_0.1.md`.
 
-A cópia cifrada em armazenamento separado e o ensaio de restauração ainda são
-obrigatórios antes da instalação. Não mover o keystore para o repositório, para
-o telefone ou para diretório sincronizado sem proteção explícita.
+Em 03/09/2026, a cópia cifrada foi criada no `appDataFolder` do Google Drive
+com escopo mínimo. O ensaio de restauração baixou, autenticou, decifrou e abriu
+o PKCS#12, comparando seu certificado com a chave local sem substituir o
+arquivo. Conta, token, senha e identificador remoto não foram registrados.
+Não mover o keystore aberto para o repositório, para o telefone ou para
+diretório sincronizado sem proteção explícita.

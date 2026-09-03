@@ -12,7 +12,7 @@ Este documento é o ponto de entrada para manutenção. Ele reduz a necessidade 
 | IA ou personalização | `PROJECT2_SPEC.md` seções 14, 15, 20 e 21 → `docs/adr/0003-personal-ranking-runtime.md` → model card correspondente |
 | Saúde ou relatório médico | `PROJECT2_SPEC.md` seções 2, 12, 13, 15 e 21 |
 | Google Tasks | `SPEC.md` seções 9.9 e 26 → classes `Google*` → testes correspondentes |
-| Backup Google Drive | `docs/integrations/GOOGLE_DRIVE_SETUP.md` → `GoogleAuthService` → cliente `appDataFolder` ainda pendente |
+| Backup Google Drive | `docs/integrations/GOOGLE_DRIVE_SETUP.md` → `GoogleAuthService` → `GoogleDriveAppDataService` → `SigningKeyBackupCrypto` → `SigningKeyDriveBackupService` → seção Integrações |
 | Tema/janelas | `DEVELOPMENT.md` → `ThemeManager`, `WindowManager`, CSS e testes JavaFX |
 | Ver estado recente | `LAST_CHANGES.md` → `git log` → `git status` |
 

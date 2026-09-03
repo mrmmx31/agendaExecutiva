@@ -20,11 +20,26 @@ Drive e não altera sozinha o token atual do Google Tasks.
    conta usada pela Agenda está cadastrada como usuário de teste quando o app
    estiver em modo `Testing`.
 
-Depois desses passos, informe que a configuração Cloud foi concluída. A Agenda
-ainda precisará implementar consentimento incremental, upload, download e teste
-de restauração. Na primeira utilização do backup, o Google voltará a mostrar a
-tela de consentimento para o novo escopo; o acesso já concedido ao Tasks deve
-ser preservado.
+Depois desses passos, abra `Configurações > Integrações > Backup da chave de
+assinatura` e use `Autorizar Google Drive`. A autorização é incremental e pede
+Tasks junto com `drive.appdata`, preservando a sincronização existente. O link
+pode ser aberto e copiado ou somente copiado para outro perfil do navegador.
+
+Em seguida, use `Criar ou atualizar backup`. A senha atual do PKCS#12 apenas
+valida a chave local. A senha de recuperação, com no mínimo 16 caracteres,
+deriva a chave AES e não é salva. Por fim, `Testar restauração` baixa, decifra e
+valida o PKCS#12 em memória sem substituir o arquivo local.
+
+## Implementação
+
+- `GoogleAuthService`: escopos persistidos e migração de tokens antigos como
+  Tasks-only, consentimento incremental e preservação do refresh token;
+- `GoogleDriveAppDataService`: lista, cria, atualiza e baixa um único arquivo
+  fixo em `appDataFolder`;
+- `SigningKeyBackupCrypto`: PBKDF2-HMAC-SHA256 (600.000 iterações), AES-256-GCM,
+  salt e nonce aleatórios, cabeçalho autenticado e hash SHA-256 do conteúdo;
+- `SigningKeyDriveBackupService`: valida chave privada/certificado no PKCS#12,
+  zera buffers temporários e executa restauração não destrutiva.
 
 ## Limites
 
@@ -34,6 +49,8 @@ ser preservado.
 - a restauração deve verificar hash e certificado antes de substituir qualquer
   arquivo local;
 - publicação para terceiros exige nova revisão OAuth, privacidade e suporte.
+- o estado só pode ser marcado como concluído depois de upload e restauração
+  reais com a chave definitiva; testes unitários não substituem essa prova.
 
 Referências: [pasta de dados da aplicação](https://developers.google.com/drive/api/guides/appdata) e
 [autorização incremental](https://developers.google.com/identity/protocols/oauth2/resources/best-practices#incremental-authorization).

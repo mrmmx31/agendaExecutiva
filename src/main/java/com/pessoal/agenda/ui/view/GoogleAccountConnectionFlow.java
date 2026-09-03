@@ -11,6 +11,7 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 
 import java.util.concurrent.CancellationException;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /** Fluxo OAuth compartilhado pela configuração e pela janela de sincronização. */
@@ -30,6 +31,18 @@ public final class GoogleAccountConnectionFlow {
                                           Runnable onSuccess,
                                           Runnable onCancelled,
                                           Consumer<Throwable> onError) {
+        return start(auth, Set.of(GoogleAuthService.TASKS_SCOPE),
+                "Conectar conta Google", status, busy, onSuccess, onCancelled, onError);
+    }
+
+    public static ConnectionAttempt start(GoogleAuthService auth,
+                                          Set<String> requestedScopes,
+                                          String dialogTitle,
+                                          Consumer<String> status,
+                                          Consumer<Boolean> busy,
+                                          Runnable onSuccess,
+                                          Runnable onCancelled,
+                                          Consumer<Throwable> onError) {
         if (!auth.hasValidCredentials()) {
             onError.accept(GoogleSyncException.configuration(
                     "Arquivo ausente ou inválido: ~/.agenda/google-credentials.json."));
@@ -37,7 +50,7 @@ public final class GoogleAccountConnectionFlow {
         }
 
         Alert choice = Dialogs.build(Alert.AlertType.CONFIRMATION,
-                "Conectar conta Google",
+                dialogTitle,
                 "Escolha onde autorizar a conta",
                 "O Google exibirá a seleção de contas. O link também pode ser colado em outro "
                         + "navegador ou perfil conectado à conta autorizada para esta aplicação.");
@@ -53,7 +66,8 @@ public final class GoogleAccountConnectionFlow {
         }
 
         boolean openBrowser = selected == openAndCopy;
-        GoogleAuthService.AuthorizationSession session = auth.newAuthorizationSession();
+        GoogleAuthService.AuthorizationSession session =
+                auth.newAuthorizationSession(requestedScopes);
         busy.accept(true);
         status.accept("Preparando autorização OAuth...");
 
@@ -89,6 +103,14 @@ public final class GoogleAccountConnectionFlow {
         thread.setDaemon(true);
         thread.start();
         return session::cancel;
+    }
+
+    public static boolean tryStartGoogleOperation() {
+        return OPERATION_GUARD.tryStart();
+    }
+
+    public static void finishGoogleOperation() {
+        OPERATION_GUARD.finish();
     }
 
     @FunctionalInterface

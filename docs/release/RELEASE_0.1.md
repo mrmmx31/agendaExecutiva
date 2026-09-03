@@ -9,7 +9,8 @@ artefato foi publicado ou enviado a terceiro.
 - certificado SHA-256: `2339d2c87cea8b686aecbfca621de7d0f0816f4c7c7c14fe8431b8249cfe4905`;
 - mesmo certificado confirmado nos módulos telefone e Wear;
 - chave privada e senha: fora do repositório;
-- backup cifrado separado e restauração: pendentes.
+- backup cifrado separado: criado no `appDataFolder` do Google Drive e
+  restauração não destrutiva validada em 03/09/2026.
 
 ## Artefatos
 
@@ -21,8 +22,8 @@ artefato foi publicado ou enviado a terceiro.
 | `wear-release.aab` | `6033b0286afbacf03666598dc77aef92bf96997f1845903dfdbf2dce39f1d837` |
 
 `android/scripts/p2_10_release_candidate.sh` verificou as quatro assinaturas,
-o certificado comum e o gate estático. A instalação final aguarda o backup da
-chave e o encerramento do gate 9.
+o certificado comum e o gate estático. A instalação final aguarda a regeneração
+do candidato com a seleção de áudio atual e o encerramento do gate 9.
 
 Este candidato foi sucedido por uma alteração ainda não empacotada na seleção
 individual de saída de áudio. Os hashes acima continuam identificando o

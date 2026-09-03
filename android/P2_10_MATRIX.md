@@ -17,7 +17,7 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 | 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | aprovado com limites do ambiente | telefone, MOTO XT220, DND e mídia concorrente aprovados; smartband é intermitente, USB ausente e chamada real não foi provocada |
 | 8 | wearable fisico: entrega, acoes disponiveis e desconexao | aprovado com limites do hardware | texto/som e ações no telefone aprovados; ações/vibração/fila no pulso indisponíveis; alertas desligados não entregam |
 | 9 | bateria, memoria e temperatura em uso prolongado | em execução | baseline reiniciado após atualizar o `fieldTest`; coleta final agendada para 04/09 às 16:14 |
-| 10 | aceite final, artefato assinado e decisao de distribuicao | preparado; bloqueado pelos gates finais | v0.1 definida como sideload pessoal; chave validada; falta regenerar artefatos após áudio/Drive, fazer backup cifrado, instalar e percorrer aceite |
+| 10 | aceite final, artefato assinado e decisao de distribuicao | preparado; bloqueado pelos gates finais | v0.1 definida como sideload pessoal; chave e backup Drive validados; falta regenerar artefatos, instalar e percorrer aceite |
 
 **Estado atual:** 80% do P2-10 (8 de 10); Projeto 2 em 98%.
 
@@ -158,12 +158,13 @@ uma chave RSA de 4096 bits em armazenamento privado fora do projeto, com modo
 telefone e Wear, comprovou o certificado comum, repetiu o gate estático e
 terminou sem publicação. Certificado e checksums públicos estão em
 `docs/release/RELEASE_0.1.md`; senha e chave privada não são versionadas. O
-backup cifrado separado, a instalação final e o percurso de aceite permanecem
-pendentes, assim como a conclusão temporal do gate 9.
+backup cifrado separado e a restauração não destrutiva foram validados em
+03/09/2026. A instalação final e o percurso de aceite permanecem pendentes,
+assim como a conclusão temporal do gate 9.
 
 Depois desse candidato, a seleção de áudio passou a distinguir cada saída que o
 Android realmente expõe, mantendo preferência local sem endereço Bluetooth e
 fallback para telefone/sistema. Em teste físico, o fone apareceu separadamente;
 a smartband conectada ao Da Fit não estava simultaneamente disponível como rota
-de áudio. O candidato definitivo será regenerado somente depois de estabilizar
-essa alteração e o backup Drive, evitando múltiplas cerimônias de senha.
+de áudio. O candidato definitivo será regenerado com essa alteração agora
+estabilizada; o backup Drive já foi comprovado.

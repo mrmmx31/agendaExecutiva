@@ -124,7 +124,8 @@ companheiro ou será registrado como indisponível.
 1. manter telefone/computador na mesma rede até a coleta agendada; o telefone
    pode ficar fora do cabo;
 2. informar a bateria da pulseira pelo aplicativo companheiro, se disponível;
-3. escolher armazenamento separado para o backup cifrado da chave definitiva.
+3. backup cifrado da chave definitiva no Google Drive: concluído em 03/09/2026,
+   com restauração não destrutiva validada.
 
 ## Seleção individual de áudio
 

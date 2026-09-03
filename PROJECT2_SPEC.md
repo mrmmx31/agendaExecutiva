@@ -1013,6 +1013,18 @@ automática escolheu a ZL02CPRO; `Priorizar telefone` tocou no Moto Edge 60 e
 tentativa antes do foco. A smartband permaneceu intermitente como saída, e USB
 e chamada controlada foram registrados como indisponíveis no ambiente.
 
+**Preparação do backup do gate 10:** a aplicação desktop implementa
+consentimento incremental para `drive.appdata`, preserva o escopo do Tasks e
+mantém a operação sob o mesmo bloqueio da sincronização. A chave PKCS#12 é
+validada localmente, cifrada com AES-256-GCM e PBKDF2-HMAC-SHA256 antes do
+upload para `appDataFolder`. O teste de restauração é não destrutivo. Cliente,
+criptografia, adulteração e repetição após 401 têm testes automatizados. Upload
+e restauração reais foram aprovados em 03/09/2026: o Drive confirmou um único
+arquivo cifrado de 4.516 bytes e a aplicação confirmou integridade, senha do
+PKCS#12 e igualdade do certificado sem substituir a chave local. Nenhum dado de
+conta, token, senha ou identificador remoto foi documentado. O gate 10 ainda
+depende do novo candidato, instalação e aceite final.
+
 ## 21. Gates obrigatórios
 
 1. Não iniciar saúde antes de sync e exclusão estarem testados.

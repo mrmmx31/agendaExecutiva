@@ -11,6 +11,7 @@ import java.nio.file.attribute.PosixFilePermissions;
 import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.CancellationException;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -34,8 +35,23 @@ class GoogleTasksTransportTest {
         assertTrue(url.contains("client_id=client+id"));
         assertTrue(url.contains("redirect_uri=http%3A%2F%2Flocalhost%3A43210"));
         assertTrue(url.contains("prompt=select_account+consent"));
+        assertTrue(url.contains("include_granted_scopes=true"));
         assertTrue(url.contains("state=state-token"));
         assertFalse(url.contains("client_secret"));
+    }
+
+    @Test
+    void incrementalAuthorizationCarriesTasksAndPrivateDriveScopes() {
+        String url = GoogleAuthService.buildAuthorizationUrl(
+                "https://accounts.google.com/o/oauth2/auth", "client", "http://localhost", "state",
+                Set.of(GoogleAuthService.TASKS_SCOPE, GoogleAuthService.DRIVE_APPDATA_SCOPE));
+
+        assertTrue(url.contains("scope="));
+        assertTrue(url.contains("auth%2Ftasks"));
+        assertTrue(url.contains("auth%2Fdrive.appdata"));
+        assertEquals(Set.of(GoogleAuthService.TASKS_SCOPE, GoogleAuthService.DRIVE_APPDATA_SCOPE),
+                GoogleAuthService.parseScopes(GoogleAuthService.TASKS_SCOPE + " "
+                        + GoogleAuthService.DRIVE_APPDATA_SCOPE));
     }
 
     @Test

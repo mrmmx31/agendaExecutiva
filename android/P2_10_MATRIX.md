@@ -17,7 +17,7 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 | 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | aprovado com limites do ambiente | telefone, MOTO XT220, DND e mídia concorrente aprovados; smartband é intermitente, USB ausente e chamada real não foi provocada |
 | 8 | wearable fisico: entrega, acoes disponiveis e desconexao | aprovado com limites do hardware | texto/som e ações no telefone aprovados; ações/vibração/fila no pulso indisponíveis; alertas desligados não entregam |
 | 9 | bateria, memoria e temperatura em uso prolongado | em execução | baseline inicial coletado; janela de 24 horas e medição final pendentes |
-| 10 | aceite final, artefato assinado e decisao de distribuicao | bloqueado pelos gates 4-9 | preencher lacunas legais/publicacao ou declarar release apenas pessoal |
+| 10 | aceite final, artefato assinado e decisao de distribuicao | preparado; bloqueado pelo gate 9 e chave definitiva | v0.1 definida como sideload pessoal; venda/loja fora do escopo; falta cerimonia da chave, artefato final e instalação |
 
 **Estado atual:** 80% do P2-10 (8 de 10); Projeto 2 em 98%.
 

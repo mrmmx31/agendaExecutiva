@@ -7,27 +7,25 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | test(android): aprovar gate fisico de audio |
-| Data | 2026-09-03 12:21:40 -0400 |
+| Mensagem | docs(release): definir aceite pessoal do projeto 2 |
+| Data | 2026-09-03 12:22:53 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
-PROJECT2_SPEC.md
-SPEC.md
+MAINTENANCE_MAP.md
 android/P2_10_MATRIX.md
-docs/release/PHYSICAL_TEST_RESULTS.md
+docs/release/ACCEPTANCE.md
 ```
 
 ## Diff Resumido
 
 ```diff
- PROJECT2_SPEC.md                      | 16 ++++++++++++----
- SPEC.md                               |  4 ++--
- android/P2_10_MATRIX.md               |  4 ++--
- docs/release/PHYSICAL_TEST_RESULTS.md | 21 ++++++++++++---------
- 4 files changed, 28 insertions(+), 17 deletions(-)
+ MAINTENANCE_MAP.md         |  1 +
+ android/P2_10_MATRIX.md    |  2 +-
+ docs/release/ACCEPTANCE.md | 50 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 52 insertions(+), 1 deletion(-)
 ```
 
 ---

@@ -1,0 +1,18 @@
+{
+  "contract_version": 1,
+  "event_id": "c6000000-0000-4000-8000-000000000001",
+  "event_type": "ALERT_SNOOZED",
+  "occurred_at": "2026-09-02T15:00:00Z",
+  "local_hour": 11,
+  "day_of_week": 3,
+  "source_device": "PHONE",
+  "active_context": "PROTOCOL",
+  "capacity_context": "PARALLEL_EXPLICIT",
+  "alert_kind": "TASK",
+  "deadline_bucket": "TODAY",
+  "channel": "VISUAL",
+  "response_latency_seconds": 42,
+  "snooze_minutes": 15,
+  "recommendation_id": "c6000000-0000-4000-8000-000000000002",
+  "option_code": "SNOOZE_15"
+}

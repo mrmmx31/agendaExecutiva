@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 70% do Projeto 2 |
+| Status | Implementação em andamento; 71,7% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-07` estão concluídas. O avanço geral é 70% e restam 30%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-07` estão concluídas e `P2-08` tem 1 de 6 itens. O avanço geral é 71,7% e restam 28,3%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -711,6 +711,26 @@ Consentimentos, Health Connect, entradas manuais, retenção, relatório com pro
 
 Eventos sem texto sensível, regras explicáveis, catálogo, baseline e painel de correção/limpeza.
 
+**Status:** Em andamento, 16,7% (1 de 6 itens concluídos).
+
+**Checklist de avanço:**
+
+- [x] fechar contratos de evento e decisão, códigos de razão, inventário de dados, model card e decisão arquitetural;
+- [ ] evoluir o Room para v9 com eventos, decisões e configurações locais, migração e retenção testadas;
+- [ ] implementar `RecommendationEngine` determinístico, baseline cauteloso e mínimo por contexto;
+- [ ] instrumentar alertas e protocolos sem texto, identificador operacional ou inferência de distração;
+- [ ] entregar personalização opt-in, estatísticas locais, inspeção, correção, limpeza e retorno ao baseline;
+- [ ] aprovar matriz de privacidade, regras, retenção, temas, desempenho e documentação final.
+
+**Evidência do primeiro item:** dois schemas JSON fechados e fixtures fictícias
+definem eventos categóricos minimizados e decisões com até três opções, versão da
+regra, fallback e razão visível. `RECOMMENDATION_V1.md`, o inventário de dados, o
+model card `rules-v1` e o ADR 0002 proíbem texto, IDs operacionais, saúde,
+localização, conteúdo de tela, analytics e inferência de distração por
+simultaneidade. Eventos permanecem locais, personalização nasce desligada e uma
+recomendação nunca executa a ação sugerida. As suítes Java/Kotlin compartilham as
+mesmas formas v1 e `jq empty` valida a sintaxe.
+
 ### P2-09 — Personalização por modelo
 
 Somente após volume mínimo: benchmark LiteRT/ONNX, avaliação offline, shadow mode, ativação opt-in e rollback.
@@ -762,4 +782,4 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Iniciar `P2-08`: eventos locais sem texto sensível, regras explicáveis, catálogo, baseline e controles de correção/limpeza.
+Continuar `P2-08`: persistir eventos, decisões e configurações no Room v9, com retenção local testada.

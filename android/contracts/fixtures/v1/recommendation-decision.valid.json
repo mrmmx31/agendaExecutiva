@@ -1,0 +1,15 @@
+{
+  "contract_version": 1,
+  "recommendation_id": "c6000000-0000-4000-8000-000000000002",
+  "generated_at": "2026-09-02T15:00:00Z",
+  "engine_id": "DETERMINISTIC_RULES",
+  "rule_version": "rules-v1",
+  "purpose": "SNOOZE_PRESET",
+  "sample_count": 0,
+  "minimum_samples": 12,
+  "fallback": true,
+  "options": [
+    { "option_code": "SNOOZE_15", "rank": 1, "reason_code": "CAUTIOUS_DEFAULT" },
+    { "option_code": "SNOOZE_30", "rank": 2, "reason_code": "CAUTIOUS_DEFAULT" }
+  ]
+}

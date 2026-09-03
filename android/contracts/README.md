@@ -30,12 +30,15 @@ mesma versão.
 | `symptom-log.schema.json` | sintoma ou evento subjetivo informado manualmente |
 | `health-summary.schema.json` | agregado importado com cobertura, unidade, origem e lacuna explícita |
 | `health-report.schema.json` | snapshot revisável e reproduzível para exportação explícita |
+| `recommendation-event.schema.json` | evento local categórico sem texto sensível |
+| `recommendation-decision.schema.json` | opções ordenadas com razão e fallback explícitos |
 
 O pareamento e o modelo de ameaça da fase seguinte estão em
 `PAIRING_V1.md` e `THREAT_MODEL_P2_03.md`.
 
 Os limites sensoriais e as formas das ações estão em `ALERTS_V1.md`.
 O transporte e os limites do relógio estão em `WEAR_V1.md`.
+Os eventos e razões do motor local estão em `RECOMMENDATION_V1.md`.
 O inventário e a fronteira de proteção de saúde estão em
 `../../docs/privacy/HEALTH_DATA_INVENTORY.md` e
 `../../docs/adr/0001-health-data-security-boundary.md`.

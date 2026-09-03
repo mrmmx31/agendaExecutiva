@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/recommendation-event.schema.json",
+  "title": "Local recommendation telemetry event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "event_id", "event_type", "occurred_at", "local_hour", "day_of_week", "source_device", "active_context", "capacity_context", "alert_kind", "deadline_bucket", "channel", "response_latency_seconds", "snooze_minutes", "recommendation_id", "option_code"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": { "enum": ["ALERT_PRESENTED", "ALERT_COMPLETED", "ALERT_SNOOZED", "ALERT_EXPIRED", "PROTOCOL_STARTED", "PROTOCOL_STEP_COMPLETED", "RECOMMENDATION_SHOWN", "RECOMMENDATION_ACCEPTED", "RECOMMENDATION_CORRECTED"] },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "local_hour": { "type": "integer", "minimum": 0, "maximum": 23 },
+    "day_of_week": { "type": "integer", "minimum": 1, "maximum": 7 },
+    "source_device": { "enum": ["PHONE", "WATCH"] },
+    "active_context": { "enum": ["NONE", "FOCUS", "PROTOCOL"] },
+    "capacity_context": { "enum": ["STANDARD", "REDUCED_EXPLICIT", "PARALLEL_EXPLICIT"] },
+    "alert_kind": { "type": ["string", "null"], "enum": ["TASK", "FOCUS", "PROTOCOL", "ROUTINE", "OTHER", null] },
+    "deadline_bucket": { "type": ["string", "null"], "enum": ["OVERDUE", "UNDER_15_MIN", "UNDER_1_HOUR", "TODAY", "LATER", "NONE", null] },
+    "channel": { "type": ["string", "null"], "enum": ["VISUAL", "PHONE_AUDIO", "PHONE_VIBRATION", "WATCH", null] },
+    "response_latency_seconds": { "type": ["integer", "null"], "minimum": 0, "maximum": 86400 },
+    "snooze_minutes": { "type": ["integer", "null"], "minimum": 5, "maximum": 240 },
+    "recommendation_id": { "type": ["string", "null"], "format": "uuid" },
+    "option_code": { "type": ["string", "null"], "enum": ["SNOOZE_5", "SNOOZE_10", "SNOOZE_15", "SNOOZE_30", "SNOOZE_60", "CHANNEL_VISUAL", "CHANNEL_AUDIO", "CHANNEL_WATCH", "PROTOCOL_EXIT", null] }
+  }
+}

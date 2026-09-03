@@ -34,6 +34,8 @@ class SharedContractFixtureTest {
         assertKeys("symptom-log.valid.json", SYMPTOM_LOG_KEYS);
         assertKeys("health-summary.valid.json", HEALTH_SUMMARY_KEYS);
         assertKeys("health-report.valid.json", HEALTH_REPORT_KEYS);
+        assertKeys("recommendation-event.valid.json", RECOMMENDATION_EVENT_KEYS);
+        assertKeys("recommendation-decision.valid.json", RECOMMENDATION_DECISION_KEYS);
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").get("status").getAsString());
         assertEquals("APPLIED", fixture("sync-result.valid.json").get("status").getAsString());
@@ -46,6 +48,8 @@ class SharedContractFixtureTest {
         assertEquals("MANUAL", fixture("symptom-log.valid.json").get("source").getAsString());
         assertEquals("HEART_RATE", fixture("health-summary.valid.json").get("category").getAsString());
         assertEquals(1, fixture("health-report.valid.json").get("contract_version").getAsInt());
+        assertEquals("ALERT_SNOOZED", fixture("recommendation-event.valid.json").get("event_type").getAsString());
+        assertTrue(fixture("recommendation-decision.valid.json").get("fallback").getAsBoolean());
     }
 
     @Test
@@ -90,5 +94,7 @@ class SharedContractFixtureTest {
     private static final Set<String> SYMPTOM_LOG_KEYS = Set.of("contract_version", "entry_id", "kind", "label", "occurred_at", "time_zone", "intensity", "note", "source", "revision", "tombstone", "updated_at");
     private static final Set<String> HEALTH_SUMMARY_KEYS = Set.of("contract_version", "summary_id", "consent_id", "category", "period_start", "period_end", "coverage_start", "coverage_end", "sample_count", "metrics", "source_packages", "missing_reason", "imported_at");
     private static final Set<String> HEALTH_REPORT_KEYS = Set.of("contract_version", "snapshot_id", "generated_at", "period_start", "period_end", "time_zone", "subject_label", "selected_categories", "permissions", "sources", "limitations", "excluded_entry_count", "entries");
+    private static final Set<String> RECOMMENDATION_EVENT_KEYS = Set.of("contract_version", "event_id", "event_type", "occurred_at", "local_hour", "day_of_week", "source_device", "active_context", "capacity_context", "alert_kind", "deadline_bucket", "channel", "response_latency_seconds", "snooze_minutes", "recommendation_id", "option_code");
+    private static final Set<String> RECOMMENDATION_DECISION_KEYS = Set.of("contract_version", "recommendation_id", "generated_at", "engine_id", "rule_version", "purpose", "sample_count", "minimum_samples", "fallback", "options");
     private static final Set<String> RESULT_STATES = Set.of("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE");
 }

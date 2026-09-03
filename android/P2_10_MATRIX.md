@@ -14,12 +14,12 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 | 4 | regressao funcional ponta a ponta em telefone/Wear virtuais | aprovado | suites comuns verdes e 14 passos pareados orquestrados por `p2_10_emulator_gate.sh` |
 | 5 | falhas virtuais: processo, rede, Data Layer, Doze e reinicio | aprovado | fixture duravel sobreviveu a rede desligada, processo, idle e reboot; API Wear possui retry limitado |
 | 6 | telefone fisico: instalacao, permissoes, Health Connect e exportacao | aprovado | fluxo isolado completo; origem sintética restrita ao Toolbox, exportações SAF validadas, revogação real e limpeza aprovadas |
-| 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | em execução | automática saiu na smartband, preferência de telefone passou e DND bloqueou; smartband foi silenciosa como fone, faltam fone real e concorrência controlada |
+| 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | aprovado com limites do ambiente | telefone, MOTO XT220, DND e mídia concorrente aprovados; smartband é intermitente, USB ausente e chamada real não foi provocada |
 | 8 | wearable fisico: entrega, acoes disponiveis e desconexao | aprovado com limites do hardware | texto/som e ações no telefone aprovados; ações/vibração/fila no pulso indisponíveis; alertas desligados não entregam |
 | 9 | bateria, memoria e temperatura em uso prolongado | em execução | baseline inicial coletado; janela de 24 horas e medição final pendentes |
 | 10 | aceite final, artefato assinado e decisao de distribuicao | bloqueado pelos gates 4-9 | preencher lacunas legais/publicacao ou declarar release apenas pessoal |
 
-**Estado atual:** 70% do P2-10 (7 de 10); Projeto 2 em 97%.
+**Estado atual:** 80% do P2-10 (8 de 10); Projeto 2 em 98%.
 
 **Sessão física em andamento:** o detalhamento incremental, sem identificadores,
 fica em `docs/release/PHYSICAL_TEST_RESULTS.md`. Evidência parcial não altera o

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 97% do Projeto 2 |
+| Status | Implementação em andamento; 98% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -577,7 +577,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-09` estão concluídas e `P2-10` tem 7 de 10 gates. O avanço geral é 97% e restam 3%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-09` estão concluídas e `P2-10` tem 8 de 10 gates. O avanço geral é 98% e restam 2%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -922,7 +922,7 @@ comando.
 
 Telefone e relógio físicos, bateria, permissões, áudio, perda de conexão, exportação para médico e revisão do enquadramento antes de qualquer alegação clínica.
 
-**Status:** Em andamento, 70% (7 de 10 gates concluídos).
+**Status:** Em andamento, 80% (8 de 10 gates concluídos).
 
 **Checklist de avanço:**
 
@@ -932,7 +932,7 @@ Telefone e relógio físicos, bateria, permissões, áudio, perda de conexão, e
 - [x] aprovar regressão funcional completa nos AVDs de telefone e Wear pareados;
 - [x] aprovar processo morto, rede/Data Layer interrompidos, Doze e reinício nos AVDs;
 - [x] validar instalação, permissões, Health Connect e exportação em telefone físico autorizado;
-- [ ] validar áudio e fallback físicos com fones, DND, chamada e mídia concorrente;
+- [x] validar áudio e fallback físicos com fone Bluetooth, DND e mídia concorrente; registrar USB/chamada como indisponíveis no ambiente;
 - [x] validar espelhamento conectado/desconectado na Mertto ZL02D e registrar
   ações como suportadas ou indisponíveis; manter ações completas validadas no
   módulo Wear OS;
@@ -985,6 +985,14 @@ local; a correção agora chama a revogação oficial do Health Connect, desliga
 todos os sensores importáveis e preserva categorias manuais. Testes, lint,
 `fieldTest` e `release` passaram em 265 tarefas. Ao final, registro sintético,
 Toolbox, exportações e permissões foram removidos.
+
+**Evidência física do gate 7:** a prévia de 700 ms passou a funcionar sem
+ativar entregas reais e preserva o rascunho após recriação da Activity. A rota
+automática escolheu a ZL02CPRO; `Priorizar telefone` tocou no Moto Edge 60 e
+`Priorizar fone` tocou no MOTO XT220. Com música concorrente, o foco
+`MAY_DUCK` reduziu e restaurou o volume corretamente. Não Perturbe bloqueou a
+tentativa antes do foco. A smartband permaneceu intermitente como saída, e USB
+e chamada controlada foram registrados como indisponíveis no ambiente.
 
 ## 21. Gates obrigatórios
 

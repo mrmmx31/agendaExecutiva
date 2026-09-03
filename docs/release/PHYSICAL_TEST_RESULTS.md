@@ -39,11 +39,13 @@ fora do Git.
 | prévia isolada | aprovado após correção | tom de 700 ms e volume interno 0,35 agora pode ser testado sem ativar alertas; rascunho sobrevive a recriação da Activity |
 | automática do sistema | aprovado com ressalva | beep ouvido na ZL02CPRO; a escolha automática do Android não priorizou o telefone |
 | priorizar telefone | aprovado | `setPreferredDevice` aceito, saída efetiva exibida como Moto Edge 60 e beep ouvido no telefone |
-| priorizar fone com ZL02CPRO | falhou/intermitente | Android aceitou e exibiu a smartband como saída, mas a tentativa observada não produziu beep audível |
+| priorizar fone com ZL02CPRO | falhou/intermitente | Android aceitou e exibiu a smartband como saída; houve reprodução em tentativas automáticas anteriores, mas não na tentativa observada desta rota |
 | Não Perturbe | aprovado | tentativa bloqueada antes de pedir foco de áudio; estado normal restaurado imediatamente |
-| fone Bluetooth real | pendente | necessário para separar comportamento da Agenda da limitação da smartband |
-| fone com fio/USB e remoção | não testado | acessório não disponível na sessão |
-| chamada e mídia concorrente | pendente | exige ambiente controlado sem afetar comunicação real |
+| fone Bluetooth real | aprovado | MOTO XT220 foi identificado como saída efetiva e reproduziu o beep |
+| remoção do fone | aprovado com ressalva | após remover o MOTO XT220, a próxima saída elegível foi a ZL02CPRO; fallback para telefone não ocorre enquanto outro endpoint Bluetooth existe |
+| mídia concorrente | aprovado | foco `MAY_DUCK`: beep no MOTO XT220, música reduziu e retornou ao volume normal |
+| fone com fio/USB | não suportado no ambiente | acessório não disponível na sessão |
+| chamada controlada | não suportado no ambiente | nenhuma chamada real foi provocada; bloqueio por política permanece coberto por teste automatizado |
 
 ## Gate 8 - aprovado com limites do hardware
 
@@ -95,13 +97,14 @@ Fit.
 ## Gate 9
 
 Baseline inicial às 11:20 UTC: telefone em carga, bateria 48%, temperatura
-34,0 °C e PSS aproximado de 198 MB após uso funcional. Não houve `FATAL
-EXCEPTION`; mensagens de vendor/HWUI sem crash foram observadas. A janela de 24
+34,0 °C e PSS aproximado de 198 MB após uso funcional. Medição intermediária
+às 16:20 UTC, depois dos gates 6 e 7: bateria 52%, temperatura 33,9 °C, PSS
+aproximado de 190 MB e nenhum `FATAL EXCEPTION` retido. A variação de bateria
+não representa consumo porque houve carga durante a sessão. A janela de 24
 horas, bateria da pulseira e medição final continuam pendentes.
 
 ## Próxima interação mínima
 
-1. confirmar teste do áudio próprio da Agenda em volume baixo para o gate 7;
-2. completar a janela e a medição final do gate 9;
-3. retirar o cabo USB quando conveniente e manter telefone/computador na mesma
+1. completar a janela e a medição final do gate 9;
+2. retirar o cabo USB quando conveniente e manter telefone/computador na mesma
    rede durante o restante da sessão.

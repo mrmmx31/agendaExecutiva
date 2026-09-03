@@ -99,6 +99,17 @@ Wear, não instalar APK Wear e não tentar ADB. Confirmar qual aplicativo
 companheiro está pareado e conceder acesso somente às notificações fictícias da
 `Agenda Sensorial - Teste`.
 
+Depois da permissão visual, o ADB autorizado pode criar um único alerta visual
+fictício sem desktop. O receptor existe apenas no build `fieldTest`, exige a
+permissão de sistema `android.permission.DUMP` do processo shell e não toca em
+dados pessoais:
+
+```bash
+adb -s '<serial autorizado>' shell am broadcast \
+  -a com.pessoal.agenda.mobile.fieldtest.PUBLISH_FIXTURE_ALERT \
+  -n com.pessoal.agenda.mobile.fieldtest/com.pessoal.agenda.mobile.fieldtest.FieldTestAlertReceiver
+```
+
 1. publicar alerta ficticio e verificar texto e vibracao espelhados;
 2. observar se a pulseira mostra ações; registrar `suportado` ou `indisponível`,
    sem presumir que botões Android sejam encaminhados pelo app companheiro;

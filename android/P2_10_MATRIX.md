@@ -21,6 +21,10 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 
 **Estado atual:** 50% do P2-10 (5 de 10); Projeto 2 em 95%.
 
+**Sessão física em andamento:** o detalhamento incremental, sem identificadores,
+fica em `docs/release/PHYSICAL_TEST_RESULTS.md`. Evidência parcial não altera o
+percentual de um gate até todos os critérios obrigatórios dele passarem.
+
 ## Gate 1 - decisao regulatoria
 
 Uso v1 permanece produtividade, acessibilidade pessoal, autorregistro e

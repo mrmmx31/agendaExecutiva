@@ -75,6 +75,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - O build `fieldTest` gera telefone/Wear sob `com.pessoal.agenda.mobile.fieldtest`; o script físico recusa execução sem autorização e o runbook fica em [`PHYSICAL_TEST_RUNBOOK.md`](../docs/release/PHYSICAL_TEST_RUNBOOK.md).
 - A assinatura release é opcional e vem somente de quatro variáveis `AGENDA_RELEASE_*`; [`SIGNING.md`](../docs/release/SIGNING.md) e `p2_10_release_candidate.sh` verificam certificado comum e artefatos sem publicar.
 - O wearable físico disponível é uma Mertto ZL02D/ZL02CPro sem Wear OS. Seu perfil em [`SMARTBAND_COMPATIBILITY.md`](../docs/release/SMARTBAND_COMPATIBILITY.md) usa espelhamento de notificação; o APK Wear permanece para dispositivos Wear OS.
+- A execução física incremental e suas pendências ficam em [`PHYSICAL_TEST_RESULTS.md`](../docs/release/PHYSICAL_TEST_RESULTS.md), sem identificadores dos aparelhos.
 
 ## Limites
 

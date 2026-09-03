@@ -133,6 +133,7 @@ Implementado até a conclusão de `P2-09`:
 | Gate físico P2-10 | build `fieldTest`, `android/scripts/p2_10_physical_gate.sh` e `docs/release/PHYSICAL_TEST_RUNBOOK.md`; pacote isolado, trava de autorização e critérios 6-9 |
 | Assinatura P2-10 | `android/scripts/p2_10_release_candidate.sh` e `docs/release/SIGNING.md`; segredo somente no ambiente, certificado comum telefone/Wear e checksums fora do Git |
 | Smartband real | `docs/release/SMARTBAND_COMPATIBILITY.md` e gate 8 do runbook; Mertto ZL02D/ZL02CPro usa espelhamento BLE, sem APK Wear ou Data Layer |
+| Resultados físicos P2-10 | `docs/release/PHYSICAL_TEST_RESULTS.md`; checklist incremental sem serial, MAC, conta ou dump bruto |
 | Matriz P2-05 | `android/P2_05_MATRIX.md`; conexão, ações conectadas, reconciliação offline, UI e limites |
 
 | Domínio | Android | Wear | Desktop |

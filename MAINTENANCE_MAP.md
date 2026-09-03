@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 93%, restando 7%; `P2-01` a `P2-09` concluídas e `P2-10` em 3 de 10 gates.
+- Projeto 2: implementação em 95%, restando 5%; `P2-01` a `P2-09` concluídas e `P2-10` em 5 de 10 gates.
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -129,6 +129,7 @@ Implementado até a conclusão de `P2-09`:
 | Ativação e inspeção | `ui/RecommendationSettingsScreen.kt`, `AgendaMobileViewModel.kt` e `PersonalSnoozeOptionRanker.kt`; opt-in confirmado, métricas e presets Wear limitados |
 | Matriz e benchmark P2-09 | `android/P2_09_MATRIX.md` e `android/P2_09_RUNTIME_BENCHMARK.md`; privacidade, qualidade, integridade, custo, runtime, fallback e limites físicos |
 | Release e regulação P2-10 | `android/P2_10_MATRIX.md`, `android/scripts/p2_10_static_gate.sh`, `docs/privacy/PRIVACY_NOTICE.md` e `docs/release/`; progresso, APK/permissões, declarações e limites de distribuição |
+| Gates virtuais P2-10 | `android/scripts/p2_10_emulator_gate.sh`, `p2_10_resilience_gate.sh` e `P2_10ResilienceTest`; suites pareadas, rede, processo, idle, reboot e baseline sem aparelho físico |
 | Matriz P2-05 | `android/P2_05_MATRIX.md`; conexão, ações conectadas, reconciliação offline, UI e limites |
 
 | Domínio | Android | Wear | Desktop |

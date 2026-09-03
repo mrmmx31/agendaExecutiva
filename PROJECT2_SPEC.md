@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 93% do Projeto 2 |
+| Status | Implementação em andamento; 95% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-09` estão concluídas e `P2-10` tem 3 de 10 gates. O avanço geral é 93% e restam 7%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-09` estão concluídas e `P2-10` tem 5 de 10 gates. O avanço geral é 95% e restam 5%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -910,15 +910,15 @@ comando.
 
 Telefone e relógio físicos, bateria, permissões, áudio, perda de conexão, exportação para médico e revisão do enquadramento antes de qualquer alegação clínica.
 
-**Status:** Em andamento, 30% (3 de 10 gates concluídos).
+**Status:** Em andamento, 50% (5 de 10 gates concluídos).
 
 **Checklist de avanço:**
 
 - [x] documentar uso pretendido, limites não clínicos e gatilhos de revisão regulatória;
 - [x] preparar aviso de privacidade e rascunhos Data Safety/Health apps, com lacunas de publicação explícitas;
 - [x] auditar APKs release, permissões, backup, cleartext, logs, SDKs e segredos por gate automatizado;
-- [ ] aprovar regressão funcional completa nos AVDs de telefone e Wear pareados;
-- [ ] aprovar processo morto, rede/Data Layer interrompidos, Doze e reinício nos AVDs;
+- [x] aprovar regressão funcional completa nos AVDs de telefone e Wear pareados;
+- [x] aprovar processo morto, rede/Data Layer interrompidos, Doze e reinício nos AVDs;
 - [ ] validar instalação, permissões, Health Connect e exportação em telefone físico autorizado;
 - [ ] validar áudio e fallback físicos com fones, DND, chamada e mídia concorrente;
 - [ ] validar entrega e ações conectadas/desconectadas em relógio físico autorizado;
@@ -935,6 +935,16 @@ tarefas; `p2_10_static_gate.sh` confirmou ambos não depuráveis, permissões
 esperadas, backup/cleartext bloqueados e ausência de analytics, runtime de ML,
 logs sensíveis e padrões de segredo. Nenhum comando foi enviado ao telefone
 físico.
+
+**Evidência dos gates virtuais:** os testes pareados passaram a exigir opt-in e
+`p2_10_emulator_gate.sh` executou automaticamente as suites comuns e 14 passos
+coordenados entre `emulator-5554` e `emulator-5556`. Adiar, concluir, manter ação
+offline e avançar protocolo convergiram sem falha. `p2_10_resilience_gate.sh`
+provou captura/fila e alerta futuro duráveis com rede desligada, processo morto,
+idle e reboot dos dois AVDs. Room, WorkManager e pareamento sobreviveram. O
+orquestrador trata a indisponibilidade transitória da API Wear após boot com
+retry limitado e sempre restaura rede/bateria/idle. Nenhum estímulo foi emitido
+e o telefone físico não recebeu comando.
 
 ## 21. Gates obrigatórios
 
@@ -979,6 +989,6 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Concluir os gates 4 e 5 de `android/P2_10_MATRIX.md` nos emuladores. Depois,
-solicitar autorização explícita para os gates físicos 6 a 9; o gate 10 fecha o
-aceite e a decisão de distribuição.
+Solicitar autorização explícita e condições de teste para os gates físicos 6 a
+9 de `android/P2_10_MATRIX.md`. O gate 10 fecha o aceite e a decisão de
+distribuição depois dessas evidências.

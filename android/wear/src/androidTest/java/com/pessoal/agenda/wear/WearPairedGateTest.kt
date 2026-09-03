@@ -3,6 +3,7 @@ package com.pessoal.agenda.wear
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.Wearable
 import com.pessoal.agenda.wear.contract.WearActionType
@@ -18,6 +19,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -28,6 +31,14 @@ class WearPairedGateTest {
     private val identity = WearDeviceIdentity(context)
     private val store = WearAlertStore(database, { identity.deviceId })
     private val protocolStore = WearProtocolStore(database, { identity.deviceId })
+
+    @Before
+    fun requireExplicitPairedGate() {
+        assumeTrue(
+            "Gate pareado executado somente pelo orquestrador de dois AVDs.",
+            InstrumentationRegistry.getArguments().getString("pairedGate") == "true",
+        )
+    }
 
     @Test
     fun pairedNodeIsReachable() {

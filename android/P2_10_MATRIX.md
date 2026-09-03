@@ -11,15 +11,15 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 | 1 | uso pretendido e enquadramento regulatorio | aprovado | `docs/release/REGULATORY_SCOPE.md`; limites nao clinicos e gatilhos de nova revisao |
 | 2 | privacidade, Data Safety e Health apps | aprovado para pre-release | aviso dentro do app, `PRIVACY_NOTICE.md` e rascunho `GOOGLE_PLAY_DECLARATIONS.md`; URL/controlador continuam gate de publicacao |
 | 3 | APK release, permissoes, backup, logs, SDKs e segredos | aprovado | APKs nao depuraveis e `scripts/p2_10_static_gate.sh` verde; release ainda nao assinado |
-| 4 | regressao funcional ponta a ponta em telefone/Wear virtuais | pendente | executar todos os instrumentados e percurso pareado com fixtures novas |
-| 5 | falhas virtuais: processo, rede, Data Layer, Doze e reinicio | pendente | provar persistencia, reconciliacao e ausencia de estimulo indevido |
+| 4 | regressao funcional ponta a ponta em telefone/Wear virtuais | aprovado | suites comuns verdes e 14 passos pareados orquestrados por `p2_10_emulator_gate.sh` |
+| 5 | falhas virtuais: processo, rede, Data Layer, Doze e reinicio | aprovado | fixture duravel sobreviveu a rede desligada, processo, idle e reboot; API Wear possui retry limitado |
 | 6 | telefone fisico: instalacao, permissoes, Health Connect e exportacao | bloqueado por autorizacao | usar perfil/dados de teste separados; nao acessar a Agenda pessoal |
 | 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | bloqueado por autorizacao | validar rota efetiva e fallback, sem prometer controle de outros apps |
 | 8 | relogio fisico: entrega, concluir, adiar, desconexao e reconciliacao | bloqueado por autorizacao | confirmar modelo Wear OS e pareamento antes de instalar |
 | 9 | bateria, memoria e temperatura em uso prolongado | bloqueado por autorizacao/tempo | baseline e janela definida abaixo; medir telefone e relogio reais |
 | 10 | aceite final, artefato assinado e decisao de distribuicao | bloqueado pelos gates 4-9 | preencher lacunas legais/publicacao ou declarar release apenas pessoal |
 
-**Estado atual:** 30% do P2-10 (3 de 10); Projeto 2 em 93%.
+**Estado atual:** 50% do P2-10 (5 de 10); Projeto 2 em 95%.
 
 ## Gate 1 - decisao regulatoria
 
@@ -73,6 +73,25 @@ Gate 5 deve exercitar, sempre por serial explicito de emulador:
 5. reiniciar AVDs e verificar Room, WorkManager e outboxes;
 6. coletar `dumpsys batterystats`, memoria e jobs apenas como baseline virtual.
 
+## Resultado dos gates virtuais
+
+`p2_10_emulator_gate.sh` protege ambos os seriais recusando qualquer valor que
+nao seja AVD/QEMU. A suite comum do telefone executou 50 casos, com os nove
+passos pareados corretamente ignorados; a do Wear executou 12, com cinco passos
+pareados ignorados. Em seguida, 14 instrumentacoes coordenadas validaram nos
+dois sentidos o pareamento, adiamento, conclusao, outbox offline e protocolo.
+Todos passaram. Os testes pareados agora exigem o argumento `pairedGate=true`,
+portanto nao aguardam a outra ponta dentro de uma suite comum.
+
+`p2_10_resilience_gate.sh` criou, sem rede, uma captura pendente e um alerta
+visual quatro horas no futuro. Room e WorkManager mantiveram ambos apos morte do
+processo, idle e reboot do telefone. O Wear tambem reiniciou e os dois lados
+voltaram a encontrar o no pareado. O primeiro ensaio mostrou que
+`sys.boot_completed=1` pode preceder a disponibilidade da API Wear; o gate agora
+faz retry limitado, e a repeticao completa passou. O script restaura rede,
+bateria simulada e idle por `trap`, inclusive em falha, e coleta somente baseline
+virtual de memoria/jobs/bateria. Nenhum canal sensorial foi acionado.
+
 ## Plano dos gates fisicos
 
 - criar backup e perfil de teste antes da instalacao;
@@ -90,4 +109,3 @@ Gate 5 deve exercitar, sempre por serial explicito de emulador:
 
 O gate fisico nao autoriza coleta continua de sensor, uso de dados pessoais da
 Agenda desktop nem alteracao da rota global de outros aplicativos.
-

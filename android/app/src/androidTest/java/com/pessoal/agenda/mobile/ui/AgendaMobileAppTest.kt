@@ -176,6 +176,12 @@ class AgendaMobileAppTest {
             }
         }
 
+        compose.onNodeWithText(
+            "Dados de saúde são opcionais, processados localmente e usados somente no relatório que você revisa. Nada é enviado automaticamente.",
+        ).assertExists()
+        compose.onNodeWithText(
+            "A Agenda não diagnostica, não prescreve e não substitui orientação de profissional de saúde.",
+        ).assertExists()
         repeat(4) { compose.onRoot().performTouchInput { swipeUp() } }
         compose.onNodeWithText("Gerar prévia").performClick()
         assertEquals(7 to setOf(HealthCategory.SYMPTOM), generated)

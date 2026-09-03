@@ -1455,7 +1455,7 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 ## 32. Projeto 2 — Extensão móvel e sensorial
 
-**Status:** Especificado em 31/08/2026; implementação 90%, com 10% restantes. `P2-01` a `P2-09` estão concluídas.
+**Status:** Especificado em 31/08/2026; implementação 93%, com 7% restantes. `P2-01` a `P2-09` estão concluídas e `P2-10` tem 3 de 10 gates.
 
 **Visão:** estender a Agenda para Android e Wear OS, mantendo o desktop como superfície de organização, o smartphone como nó móvel offline e o smartwatch como superfície curta de percepção e resposta. Alertas devem oferecer `Concluir` e `Adiar`; capturas e protocolos devem funcionar fora do notebook e convergir depois.
 
@@ -1465,4 +1465,4 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 **Documentos:** requisitos, arquitetura, fases e gates estão em `PROJECT2_SPEC.md`. O ponto de entrada para manutenção, catálogos, contratos e retomada de contexto está em `MAINTENANCE_MAP.md`.
 
-**Próxima ação:** executar as revisões automatizáveis do P2-10 e, mediante autorização explícita, validar telefone e relógio físicos, bateria, áudio, conexão, permissões e exportação.
+**Próxima ação:** concluir regressão e falhas virtuais dos gates 4 e 5 do P2-10; somente depois solicitar autorização explícita para telefone e relógio físicos.

@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import com.pessoal.agenda.mobile.health.HealthCategory
+import com.pessoal.agenda.mobile.R
 import com.pessoal.agenda.mobile.health.IntakeInput
 import com.pessoal.agenda.mobile.health.IntakeKind
 import com.pessoal.agenda.mobile.health.SymptomInput
@@ -110,6 +112,17 @@ internal fun HealthPrivacyScreen(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item { SectionTitle("Privacidade e limites") }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(stringResource(R.string.health_privacy_notice))
+                Text(
+                    stringResource(R.string.health_non_medical_disclaimer),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         item { SectionTitle("Health Connect") }
         item {
             val importableEnabled = enabled.any { (category, active) ->

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 90% do Projeto 2 |
+| Status | Implementação em andamento; 93% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-09` estão concluídas. O avanço geral é 90% e restam 10%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-09` estão concluídas e `P2-10` tem 3 de 10 gates. O avanço geral é 93% e restam 7%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -910,6 +910,32 @@ comando.
 
 Telefone e relógio físicos, bateria, permissões, áudio, perda de conexão, exportação para médico e revisão do enquadramento antes de qualquer alegação clínica.
 
+**Status:** Em andamento, 30% (3 de 10 gates concluídos).
+
+**Checklist de avanço:**
+
+- [x] documentar uso pretendido, limites não clínicos e gatilhos de revisão regulatória;
+- [x] preparar aviso de privacidade e rascunhos Data Safety/Health apps, com lacunas de publicação explícitas;
+- [x] auditar APKs release, permissões, backup, cleartext, logs, SDKs e segredos por gate automatizado;
+- [ ] aprovar regressão funcional completa nos AVDs de telefone e Wear pareados;
+- [ ] aprovar processo morto, rede/Data Layer interrompidos, Doze e reinício nos AVDs;
+- [ ] validar instalação, permissões, Health Connect e exportação em telefone físico autorizado;
+- [ ] validar áudio e fallback físicos com fones, DND, chamada e mídia concorrente;
+- [ ] validar entrega e ações conectadas/desconectadas em relógio físico autorizado;
+- [ ] medir bateria, memória e temperatura em janela prolongada nos dispositivos reais;
+- [ ] fechar aceite, assinatura, declarações de loja e decisão de distribuição.
+
+**Evidência inicial:** `android/P2_10_MATRIX.md` registra os dez gates. O app
+agora informa antes dos consentimentos que dados de saúde são opcionais, locais,
+não enviados automaticamente e não constituem diagnóstico/prescrição; teste
+Compose e inspeção real em 360 dp claro/escuro passaram no `emulator-5554`.
+Aviso de privacidade, rascunho Google Play e escopo regulatório ficam em
+`docs/privacy` e `docs/release`. APKs release não assinados foram montados em 101
+tarefas; `p2_10_static_gate.sh` confirmou ambos não depuráveis, permissões
+esperadas, backup/cleartext bloqueados e ausência de analytics, runtime de ML,
+logs sensíveis e padrões de segredo. Nenhum comando foi enviado ao telefone
+físico.
+
 ## 21. Gates obrigatórios
 
 1. Não iniciar saúde antes de sync e exclusão estarem testados.
@@ -953,6 +979,6 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Executar P2-10: fechar primeiro as revisões e testes reproduzíveis sem dispositivo
-real; depois validar telefone e relógio físicos, bateria, áudio, perda de conexão,
-permissões e exportação mediante autorização explícita.
+Concluir os gates 4 e 5 de `android/P2_10_MATRIX.md` nos emuladores. Depois,
+solicitar autorização explícita para os gates físicos 6 a 9; o gate 10 fecha o
+aceite e a decisão de distribuição.

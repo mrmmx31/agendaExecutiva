@@ -7,8 +7,8 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | test(model): concluir matriz P2-09 |
-| Data | 2026-09-02 23:43:52 -0400 |
+| Mensagem | docs(release): abrir gates P2-10 |
+| Data | 2026-09-03 00:05:35 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
@@ -17,29 +17,33 @@
 MAINTENANCE_MAP.md
 PROJECT2_SPEC.md
 SPEC.md
-android/P2_09_MATRIX.md
-android/P2_09_RUNTIME_BENCHMARK.md
+android/P2_10_MATRIX.md
 android/README.md
-android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileViewModel.kt
-android/app/src/test/java/com/pessoal/agenda/mobile/recommendation/PersonalRankingModelTest.kt
-docs/adr/0003-personal-ranking-runtime.md
-docs/models/personal-snooze-ranker/v1/MODEL_CARD.md
+android/app/src/androidTest/java/com/pessoal/agenda/mobile/ui/AgendaMobileAppTest.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/ui/HealthPrivacyScreen.kt
+android/app/src/main/res/values/strings.xml
+android/scripts/p2_10_static_gate.sh
+docs/privacy/PRIVACY_NOTICE.md
+docs/release/GOOGLE_PLAY_DECLARATIONS.md
+docs/release/REGULATORY_SCOPE.md
 ```
 
 ## Diff Resumido
 
 ```diff
- MAINTENANCE_MAP.md                                 |  5 +-
- PROJECT2_SPEC.md                                   | 31 ++++++++--
+ MAINTENANCE_MAP.md                                 |  3 +-
+ PROJECT2_SPEC.md                                   | 36 +++++++--
  SPEC.md                                            |  4 +-
- android/P2_09_MATRIX.md                            | 69 ++++++++++++++++++++++
- android/P2_09_RUNTIME_BENCHMARK.md                 | 21 +++++++
+ android/P2_10_MATRIX.md                            | 93 ++++++++++++++++++++++
  android/README.md                                  |  3 +-
- .../agenda/mobile/ui/AgendaMobileViewModel.kt      |  1 +
- .../recommendation/PersonalRankingModelTest.kt     | 23 ++++++++
- docs/adr/0003-personal-ranking-runtime.md          | 12 +++-
- .../models/personal-snooze-ranker/v1/MODEL_CARD.md |  7 +++
- 10 files changed, 164 insertions(+), 12 deletions(-)
+ .../agenda/mobile/ui/AgendaMobileAppTest.kt        |  6 ++
+ .../agenda/mobile/ui/HealthPrivacyScreen.kt        | 13 +++
+ android/app/src/main/res/values/strings.xml        |  2 +
+ android/scripts/p2_10_static_gate.sh               | 56 +++++++++++++
+ docs/privacy/PRIVACY_NOTICE.md                     | 66 +++++++++++++++
+ docs/release/GOOGLE_PLAY_DECLARATIONS.md           | 71 +++++++++++++++++
+ docs/release/REGULATORY_SCOPE.md                   | 47 +++++++++++
+ 12 files changed, 391 insertions(+), 9 deletions(-)
 ```
 
 ---

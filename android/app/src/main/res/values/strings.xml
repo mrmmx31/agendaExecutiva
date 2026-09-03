@@ -6,4 +6,6 @@
     <string name="alert_public_text">Abra o telefone para ver os detalhes</string>
     <string name="alert_action_complete">Concluir</string>
     <string name="alert_action_snooze">Adiar</string>
+    <string name="health_privacy_notice">Dados de saúde são opcionais, processados localmente e usados somente no relatório que você revisa. Nada é enviado automaticamente.</string>
+    <string name="health_non_medical_disclaimer">A Agenda não diagnostica, não prescreve e não substitui orientação de profissional de saúde.</string>
 </resources>

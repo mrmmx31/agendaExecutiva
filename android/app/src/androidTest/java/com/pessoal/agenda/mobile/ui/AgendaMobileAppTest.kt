@@ -18,6 +18,7 @@ import androidx.compose.ui.test.swipeUp
 import androidx.compose.runtime.mutableStateOf
 import com.pessoal.agenda.mobile.alert.SensoryChannel
 import com.pessoal.agenda.mobile.alert.SensoryProfile
+import com.pessoal.agenda.mobile.alert.AudioRoutePolicy
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
@@ -379,6 +380,35 @@ class AgendaMobileAppTest {
             setOf(SensoryChannel.VISUAL, SensoryChannel.PHONE_VIBRATION),
             saved?.enabledChannels,
         )
+    }
+
+    @Test
+    fun audioPreviewUsesDraftRouteWithoutEnablingGlobalAlerts() {
+        var testedRoute: AudioRoutePolicy? = null
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(
+                        visualAlertsEnabled = false,
+                        sensorySettings = SensorySettingsUiState(
+                            profile = SensoryProfile.installationDefault(),
+                        ),
+                    ),
+                    onSaveCapture = { _, _ -> }, onStartProtocol = {}, onCompleteStep = { _, _ -> },
+                    onSync = {}, onPair = { _, _ -> }, onCancelPairing = {},
+                    onPairingCompletionShown = {}, onFeedbackShown = {},
+                    onTestAudio = { testedRoute = it },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Configurações sensoriais").performClick()
+        compose.onNodeWithText("Fone").performClick()
+        compose.onNodeWithTag("sensory-settings-list")
+            .performScrollToNode(hasText("Testar áudio"))
+        compose.onNodeWithText("Testar áudio").assertIsEnabled().performClick()
+
+        assertEquals(AudioRoutePolicy.PREFER_HEADPHONES, testedRoute)
     }
 
     @Test

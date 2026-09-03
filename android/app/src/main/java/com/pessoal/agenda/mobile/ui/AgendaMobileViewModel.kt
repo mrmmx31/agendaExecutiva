@@ -588,7 +588,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         sensorySettings.value = current.copy(routeStatus = sensoryOutput.routeStatus(current.profile.audioRoute))
     }
 
-    fun toggleAudioTest() {
+    fun toggleAudioTest(routePolicy: com.pessoal.agenda.mobile.alert.AudioRoutePolicy) {
         audioTestJob?.let {
             it.cancel()
             audioTestJob = null
@@ -597,8 +597,12 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             return
         }
         val profile = sensorySettings.value.profile
-        if (!profile.globalEnabled || SensoryChannel.AUDIO !in profile.enabledChannels) {
-            feedback.value = "Ative os alertas e o canal de áudio antes do teste."
+        if (routePolicy in setOf(
+                com.pessoal.agenda.mobile.alert.AudioRoutePolicy.VIBRATION_ONLY,
+                com.pessoal.agenda.mobile.alert.AudioRoutePolicy.NONE,
+            )
+        ) {
+            feedback.value = "Escolha uma rota com áudio antes do teste."
             return
         }
         val now = Instant.now()
@@ -613,7 +617,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         audioTestJob = viewModelScope.launch {
             sensorySettings.value = sensorySettings.value.copy(audioTestRunning = true)
             try {
-                val result = withContext(Dispatchers.IO) { sensoryOutput.testTone(profile.audioRoute) }
+                val result = withContext(Dispatchers.IO) { sensoryOutput.testTone(routePolicy) }
                 result.routeStatus?.let { status ->
                     sensorySettings.value = sensorySettings.value.copy(routeStatus = status)
                 }

@@ -108,7 +108,7 @@ Implementado até a conclusão de `P2-09`:
 | Agendamento de alertas | `alert/scheduling/AlertWorkScheduler.kt`; nome único `agenda-alert-<uuid>` e tag `agenda-alert-evaluation` |
 | Notificação e ações Android | `alert/notification/`; canal visual v1, publisher, processor e receiver interno |
 | Saída sensorial Android | `alert/output/AndroidSensoryOutput.kt`; tom curto, vibração, foco transitório, rota por faixa e bloqueio de sobreposição |
-| Configuração sensorial | `ui/SensorySettingsScreen.kt` + `AgendaMobileViewModel.kt`; presets explícitos, pausa, silêncio, cooldown, teste e fallback |
+| Configuração sensorial | `ui/SensorySettingsScreen.kt` + `AgendaMobileViewModel.kt`; presets explícitos, pausa, silêncio, cooldown, prévia isolada com rota do rascunho restaurável e fallback |
 | Matriz P2-04 | `android/P2_04_MATRIX.md`; cenários, gates, resultados e limites do AVD |
 | Contrato Wear v1 | `android/wear-contract/`, `contracts/WEAR_V1.md` e `wear-alert-state.schema.json` |
 | Aplicativo Wear | `android/wear/`; mesmo `applicationId` e assinatura do telefone, sem segredo mestre |

@@ -30,9 +30,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pessoal.agenda.mobile.alert.AudioRoutePolicy
@@ -41,6 +44,14 @@ import com.pessoal.agenda.mobile.alert.SensoryChannel
 import com.pessoal.agenda.mobile.alert.SensoryProfile
 import com.pessoal.agenda.mobile.alert.SnoozePolicy
 import java.time.Instant
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+private val SensoryProfileSaver = Saver<SensoryProfile, String>(
+    save = { Json.encodeToString(it) },
+    restore = { encoded -> runCatching { Json.decodeFromString<SensoryProfile>(encoded) }.getOrNull() },
+)
 
 @Composable
 internal fun SensorySettingsScreen(
@@ -51,10 +62,12 @@ internal fun SensorySettingsScreen(
     onGlobalChanged: (Boolean) -> Unit,
     onSave: (SensoryProfile, SnoozePolicy) -> Unit,
     onPause: (Int?) -> Unit,
-    onTestAudio: () -> Unit,
+    onTestAudio: (AudioRoutePolicy) -> Unit,
     onRefreshRoute: () -> Unit,
 ) {
-    var draft by remember(state.profile) { mutableStateOf(state.profile) }
+    var draft by rememberSaveable(state.profile, stateSaver = SensoryProfileSaver) {
+        mutableStateOf(state.profile)
+    }
     var quietEnabled by remember(state.profile) { mutableStateOf(state.profile.quietHours != null) }
     var quietStart by remember(state.profile) { mutableStateOf(state.profile.quietHours?.startsAt ?: "22:30") }
     var quietEnd by remember(state.profile) { mutableStateOf(state.profile.quietHours?.endsAt ?: "07:00") }
@@ -75,7 +88,7 @@ internal fun SensorySettingsScreen(
         ?: false
 
     LazyColumn(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag("sensory-settings-list"),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -208,8 +221,8 @@ internal fun SensorySettingsScreen(
                     }
                 }
                 Button(
-                    onClick = onTestAudio,
-                    enabled = alertsEnabled && SensoryChannel.AUDIO in state.profile.enabledChannels && !busy,
+                    onClick = { onTestAudio(draft.audioRoute) },
+                    enabled = SensoryChannel.AUDIO in draft.enabledChannels && !busy,
                 ) {
                     Icon(
                         if (state.audioTestRunning) Icons.Outlined.Stop else Icons.AutoMirrored.Outlined.VolumeUp,

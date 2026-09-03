@@ -14,7 +14,7 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 | 4 | regressao funcional ponta a ponta em telefone/Wear virtuais | aprovado | suites comuns verdes e 14 passos pareados orquestrados por `p2_10_emulator_gate.sh` |
 | 5 | falhas virtuais: processo, rede, Data Layer, Doze e reinicio | aprovado | fixture duravel sobreviveu a rede desligada, processo, idle e reboot; API Wear possui retry limitado |
 | 6 | telefone fisico: instalacao, permissoes, Health Connect e exportacao | aprovado | fluxo isolado completo; origem sintética restrita ao Toolbox, exportações SAF validadas, revogação real e limpeza aprovadas |
-| 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | em execução | rota automática inspecionada sem reprodução; ensaios sensoriais permanecem pendentes |
+| 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | em execução | automática saiu na smartband, preferência de telefone passou e DND bloqueou; smartband foi silenciosa como fone, faltam fone real e concorrência controlada |
 | 8 | wearable fisico: entrega, acoes disponiveis e desconexao | aprovado com limites do hardware | texto/som e ações no telefone aprovados; ações/vibração/fila no pulso indisponíveis; alertas desligados não entregam |
 | 9 | bateria, memoria e temperatura em uso prolongado | em execução | baseline inicial coletado; janela de 24 horas e medição final pendentes |
 | 10 | aceite final, artefato assinado e decisao de distribuicao | bloqueado pelos gates 4-9 | preencher lacunas legais/publicacao ou declarar release apenas pessoal |

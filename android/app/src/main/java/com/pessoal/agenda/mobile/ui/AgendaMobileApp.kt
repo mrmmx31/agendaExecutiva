@@ -211,7 +211,7 @@ internal fun AgendaMobileScreen(
     onVisualAlertsChanged: (Boolean) -> Unit = {},
     onSaveSensorySettings: (com.pessoal.agenda.mobile.alert.SensoryProfile, com.pessoal.agenda.mobile.alert.SnoozePolicy) -> Unit = { _, _ -> },
     onPauseSensoryAlerts: (Int?) -> Unit = {},
-    onTestAudio: () -> Unit = {},
+    onTestAudio: (com.pessoal.agenda.mobile.alert.AudioRoutePolicy) -> Unit = {},
     onRefreshAudioRoute: () -> Unit = {},
     onProposeProtocolStep: (String, String) -> Unit = { _, _ -> },
     onHealthConsentChanged: (com.pessoal.agenda.mobile.health.HealthCategory, Boolean) -> Unit = { _, _ -> },

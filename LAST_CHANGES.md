@@ -7,39 +7,33 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | fix(android): revogar permissoes Health Connect |
-| Data | 2026-09-03 09:37:40 -0400 |
+| Mensagem | fix(android): isolar previa de audio |
+| Data | 2026-09-03 11:15:51 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
 MAINTENANCE_MAP.md
-PROJECT2_SPEC.md
-SPEC.md
 android/P2_10_MATRIX.md
-android/app/src/main/java/com/pessoal/agenda/mobile/health/HealthStore.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/health/connect/HealthConnectGateway.kt
+android/app/src/androidTest/java/com/pessoal/agenda/mobile/ui/AgendaMobileAppTest.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileApp.kt
 android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileViewModel.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/ui/HealthPrivacyScreen.kt
-android/app/src/test/java/com/pessoal/agenda/mobile/health/HealthStoreTest.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/ui/SensorySettingsScreen.kt
 docs/release/PHYSICAL_TEST_RESULTS.md
 ```
 
 ## Diff Resumido
 
 ```diff
- MAINTENANCE_MAP.md                                      |  2 +-
- PROJECT2_SPEC.md                                        | 17 +++++++++++++----
- SPEC.md                                                 |  4 ++--
- android/P2_10_MATRIX.md                                 |  4 ++--
- .../com/pessoal/agenda/mobile/health/HealthStore.kt     | 14 ++++++++++++++
- .../mobile/health/connect/HealthConnectGateway.kt       |  7 +++++++
- .../pessoal/agenda/mobile/ui/AgendaMobileViewModel.kt   | 13 +++++++++++--
- .../com/pessoal/agenda/mobile/ui/HealthPrivacyScreen.kt |  7 +++++++
- .../com/pessoal/agenda/mobile/health/HealthStoreTest.kt | 16 ++++++++++++++++
- docs/release/PHYSICAL_TEST_RESULTS.md                   | 13 +++++++------
- 10 files changed, 80 insertions(+), 17 deletions(-)
+ MAINTENANCE_MAP.md                                 |  2 +-
+ android/P2_10_MATRIX.md                            |  2 +-
+ .../agenda/mobile/ui/AgendaMobileAppTest.kt        | 30 ++++++++++++++++++++++
+ .../pessoal/agenda/mobile/ui/AgendaMobileApp.kt    |  2 +-
+ .../agenda/mobile/ui/AgendaMobileViewModel.kt      | 12 ++++++---
+ .../agenda/mobile/ui/SensorySettingsScreen.kt      | 23 +++++++++++++----
+ docs/release/PHYSICAL_TEST_RESULTS.md              | 10 ++++++--
+ 7 files changed, 67 insertions(+), 14 deletions(-)
 ```
 
 ---

@@ -36,8 +36,14 @@ fora do Git.
 | Verificação | Estado | Evidência |
 |---|---|---|
 | tela e rota sem reprodução | aprovado | rota efetiva exibida como automática do sistema |
-| reprodução cautelosa | pendente | depende de confirmação do proprietário |
-| fone, remoção, DND, chamada e mídia | pendente | observação física ainda necessária |
+| prévia isolada | aprovado após correção | tom de 700 ms e volume interno 0,35 agora pode ser testado sem ativar alertas; rascunho sobrevive a recriação da Activity |
+| automática do sistema | aprovado com ressalva | beep ouvido na ZL02CPRO; a escolha automática do Android não priorizou o telefone |
+| priorizar telefone | aprovado | `setPreferredDevice` aceito, saída efetiva exibida como Moto Edge 60 e beep ouvido no telefone |
+| priorizar fone com ZL02CPRO | falhou/intermitente | Android aceitou e exibiu a smartband como saída, mas a tentativa observada não produziu beep audível |
+| Não Perturbe | aprovado | tentativa bloqueada antes de pedir foco de áudio; estado normal restaurado imediatamente |
+| fone Bluetooth real | pendente | necessário para separar comportamento da Agenda da limitação da smartband |
+| fone com fio/USB e remoção | não testado | acessório não disponível na sessão |
+| chamada e mídia concorrente | pendente | exige ambiente controlado sem afetar comunicação real |
 
 ## Gate 8 - aprovado com limites do hardware
 

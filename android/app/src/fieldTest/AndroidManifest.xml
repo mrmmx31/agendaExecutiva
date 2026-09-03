@@ -8,6 +8,8 @@
             <intent-filter>
                 <action android:name="com.pessoal.agenda.mobile.fieldtest.PUBLISH_FIXTURE_ALERT" />
                 <action android:name="com.pessoal.agenda.mobile.fieldtest.PUBLISH_VIBRATION_RELAY_FIXTURE" />
+                <action android:name="com.pessoal.agenda.mobile.fieldtest.COMPLETE_LATEST_FIXTURE" />
+                <action android:name="com.pessoal.agenda.mobile.fieldtest.SNOOZE_LATEST_FIXTURE" />
             </intent-filter>
         </receiver>
     </application>

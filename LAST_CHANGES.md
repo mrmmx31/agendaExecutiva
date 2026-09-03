@@ -7,27 +7,27 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | docs(test): registrar política offline da smartband |
-| Data | 2026-09-03 08:38:36 -0400 |
+| Mensagem | test(android): automatizar ações físicas de alerta |
+| Data | 2026-09-03 08:46:17 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
-PROJECT2_SPEC.md
 android/P2_10_MATRIX.md
+android/app/src/fieldTest/AndroidManifest.xml
+android/app/src/fieldTest/java/com/pessoal/agenda/mobile/fieldtest/FieldTestAlertReceiver.kt
 docs/release/PHYSICAL_TEST_RESULTS.md
-docs/release/SMARTBAND_COMPATIBILITY.md
 ```
 
 ## Diff Resumido
 
 ```diff
- PROJECT2_SPEC.md                        |  4 +++-
- android/P2_10_MATRIX.md                 |  2 +-
- docs/release/PHYSICAL_TEST_RESULTS.md   | 14 ++++++++++----
- docs/release/SMARTBAND_COMPATIBILITY.md |  7 +++++++
- 4 files changed, 21 insertions(+), 6 deletions(-)
+ android/P2_10_MATRIX.md                            |  2 +-
+ android/app/src/fieldTest/AndroidManifest.xml      |  2 +
+ .../mobile/fieldtest/FieldTestAlertReceiver.kt     | 60 +++++++++++++++++++++-
+ docs/release/PHYSICAL_TEST_RESULTS.md              |  7 +++
+ 4 files changed, 68 insertions(+), 3 deletions(-)
 ```
 
 ---

@@ -14,6 +14,8 @@ import com.pessoal.agenda.mobile.alert.AlertOrigin
 import com.pessoal.agenda.mobile.alert.AlertRepeatPolicy
 import com.pessoal.agenda.mobile.alert.FunctionalCriticality
 import com.pessoal.agenda.mobile.alert.SensoryChannel
+import com.pessoal.agenda.mobile.alert.notification.AlertNotificationActionReceiver
+import com.pessoal.agenda.mobile.alert.notification.AndroidAlertNotificationPublisher
 import com.pessoal.agenda.mobile.alert.scheduling.AlertSchedulingCoordinator
 import com.pessoal.agenda.mobile.data.AlertStore
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
@@ -30,11 +32,21 @@ class FieldTestAlertReceiver : BroadcastReceiver() {
             publishVibrationRelayFixture(context.applicationContext)
             return
         }
-        if (intent.action != ACTION_PUBLISH_FIXTURE_ALERT) return
+        if (intent.action !in ASYNC_ACTIONS) return
         val result = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                publishFixture(context.applicationContext)
+                when (intent.action) {
+                    ACTION_PUBLISH_FIXTURE_ALERT -> publishFixture(context.applicationContext)
+                    ACTION_COMPLETE_LATEST_FIXTURE -> dispatchFixtureAction(
+                        context.applicationContext,
+                        AlertActionType.COMPLETE,
+                    )
+                    ACTION_SNOOZE_LATEST_FIXTURE -> dispatchFixtureAction(
+                        context.applicationContext,
+                        AlertActionType.SNOOZE,
+                    )
+                }
             } finally {
                 result.finish()
             }
@@ -52,6 +64,7 @@ class FieldTestAlertReceiver : BroadcastReceiver() {
                 enabledChannels = setOf(SensoryChannel.VISUAL),
                 quietHours = null,
                 pausedUntil = null,
+                cooldownMinutes = 1,
             ),
             settings.snoozePolicy,
         )
@@ -72,7 +85,39 @@ class FieldTestAlertReceiver : BroadcastReceiver() {
                 actions = setOf(AlertActionType.COMPLETE, AlertActionType.SNOOZE),
             ),
         )
+        context.getSharedPreferences(FIXTURE_PREFERENCES, Context.MODE_PRIVATE)
+            .edit()
+            .putString(LATEST_ALERT_ID, alertId)
+            .apply()
         AlertSchedulingCoordinator(context, store).schedule(alertId, now)
+    }
+
+    private suspend fun dispatchFixtureAction(context: Context, action: AlertActionType) {
+        val alertId = context.getSharedPreferences(FIXTURE_PREFERENCES, Context.MODE_PRIVATE)
+            .getString(LATEST_ALERT_ID, null)
+            ?: return
+        val now = Instant.now()
+        val target = Intent(context, AlertNotificationActionReceiver::class.java).apply {
+            this.action = when (action) {
+                AlertActionType.COMPLETE -> AndroidAlertNotificationPublisher.ACTION_COMPLETE
+                AlertActionType.SNOOZE -> AndroidAlertNotificationPublisher.ACTION_SNOOZE
+            }
+            putExtra(AndroidAlertNotificationPublisher.EXTRA_ALERT_ID, alertId)
+            putExtra(AndroidAlertNotificationPublisher.EXTRA_OPERATION_ID, UUID.randomUUID().toString())
+            putExtra(AndroidAlertNotificationPublisher.EXTRA_OCCURRED_AT, now.toString())
+            if (action == AlertActionType.SNOOZE) {
+                val snoozeMinutes = AlertStore(MobileDatabase.get(context))
+                    .ensureInstallationProfile()
+                    .snoozePolicy
+                    .presetMinutes
+                    .first()
+                putExtra(
+                    AndroidAlertNotificationPublisher.EXTRA_SNOOZE_UNTIL,
+                    now.plusSeconds(snoozeMinutes * 60L).toString(),
+                )
+            }
+        }
+        context.sendBroadcast(target)
     }
 
     @Suppress("DEPRECATION") // Legacy metadata is intentional: some companion apps ignore channel vibration.
@@ -124,6 +169,17 @@ class FieldTestAlertReceiver : BroadcastReceiver() {
             "com.pessoal.agenda.mobile.fieldtest.PUBLISH_FIXTURE_ALERT"
         const val ACTION_PUBLISH_VIBRATION_RELAY_FIXTURE =
             "com.pessoal.agenda.mobile.fieldtest.PUBLISH_VIBRATION_RELAY_FIXTURE"
+        const val ACTION_COMPLETE_LATEST_FIXTURE =
+            "com.pessoal.agenda.mobile.fieldtest.COMPLETE_LATEST_FIXTURE"
+        const val ACTION_SNOOZE_LATEST_FIXTURE =
+            "com.pessoal.agenda.mobile.fieldtest.SNOOZE_LATEST_FIXTURE"
+        val ASYNC_ACTIONS = setOf(
+            ACTION_PUBLISH_FIXTURE_ALERT,
+            ACTION_COMPLETE_LATEST_FIXTURE,
+            ACTION_SNOOZE_LATEST_FIXTURE,
+        )
+        const val FIXTURE_PREFERENCES = "fieldtest_alert_fixture"
+        const val LATEST_ALERT_ID = "latest_alert_id"
         const val LEGACY_VIBRATION_RELAY_CHANNEL_ID = "agenda_fieldtest_wearable_vibration_v1"
         const val LEGACY_VIBRATION_RELAY_NOTIFICATION_ID = 82_001
         const val VIBRATION_RELAY_CHANNEL_ID = "agenda_fieldtest_wearable_vibration_v2"

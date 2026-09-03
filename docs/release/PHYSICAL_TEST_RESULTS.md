@@ -52,6 +52,8 @@ observados no telefone e na pulseira.
 | alerta sonoro da ZL02CPRO | aprovado apenas no canal vibratório, embora a Agenda não tenha solicitado áudio |
 | vibração da ZL02CPRO | não suportada no ensaio; não ocorreu nem com o canal vibratório e a pulseira em `tocar e vibrar` |
 | ações exibidas pela pulseira | indisponíveis neste hardware; a pulseira exibiu somente o texto |
+| `Concluir` no telefone | aprovado; receptor real removeu a notificação e persistiu `COMPLETED`/`COMPLETE` |
+| `Adiar` no telefone | aprovado; receptor real removeu a notificação, persistiu `SNOOZE` e criou agendamento futuro |
 | desconexão/reconexão Bluetooth | aprovado; transporte e Da Fit retomaram, sem repetição agressiva |
 | alerta publicado durante desconexão | não reproduzido no pulso após reconectar; a pulseira mostrou somente `não conectado` |
 
@@ -69,6 +71,11 @@ na notificação do telefone; o espelhamento genérico do Da Fit não as transpo
 No ensaio desconectado, o alerta permaneceu funcional no telefone, mas não foi
 enfileirado pelo Da Fit para o pulso. A aplicação deve considerar esse
 espelhamento como entrega oportunista, nunca como sincronização confiável.
+As ações do telefone foram disparadas por um receptor protegido da variante
+`fieldTest`, que encaminha um `Intent` interno ao receptor de produção. Assim, o
+ensaio percorreu a mesma persistência e o mesmo cancelamento usados pelos botões,
+sem depender de coordenadas da interface nem capturar outras notificações do
+telefone.
 
 ## Gate 9
 

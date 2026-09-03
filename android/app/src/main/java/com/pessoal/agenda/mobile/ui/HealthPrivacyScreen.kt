@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -105,7 +106,7 @@ internal fun HealthPrivacyScreen(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().testTag("health-list"),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -174,7 +175,9 @@ internal fun HealthPrivacyScreen(
                 OutlinedButton(
                     onClick = { intakeEditor = null to IntakeInput(IntakeKind.MEDICATION, "", occurredAt = Instant.now().toString()) },
                     enabled = !busy && enabled[HealthCategory.MEDICATION] == true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { contentDescription = "Adicionar medicação" },
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                 ) { Icon(Icons.Outlined.Add, null); Text("Medicação") }
                 OutlinedButton(

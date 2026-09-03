@@ -7,6 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.system.measureTimeMillis
 
 class RecommendationEngineTest {
     private val engine = DeterministicRecommendationEngine(
@@ -173,6 +174,20 @@ class RecommendationEngineTest {
         assertEquals(first.options, second.options)
         assertEquals(RecommendationDecision.ENGINE_ID, first.engineId)
         assertEquals(RecommendationDecision.RULE_VERSION, first.ruleVersion)
+    }
+
+    @Test
+    fun tenThousandObservationsRemainWithinInteractiveBudget() {
+        val history = observations(10_000, RecommendationOptionCode.SNOOZE_30)
+        lateinit var decision: RecommendationDecision
+
+        val elapsedMillis = measureTimeMillis {
+            decision = requireNotNull(engine.recommend(context(), settings(enabled = true), history))
+        }
+
+        assertEquals(10_000, decision.sampleCount)
+        assertEquals(RecommendationOptionCode.SNOOZE_30, decision.options.first().optionCode)
+        assertTrue("Ranking levou ${elapsedMillis}ms", elapsedMillis < 1_000)
     }
 
     private fun context() = RecommendationContext(

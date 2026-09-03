@@ -132,7 +132,8 @@ class AgendaMobileAppTest {
         }
 
         compose.onNodeWithContentDescription("Saúde e privacidade").performClick()
-        compose.onAllNodesWithText("Medicação")[1].performClick()
+        compose.onNodeWithTag("health-list").performScrollToNode(hasContentDescription("Adicionar medicação"))
+        compose.onNodeWithContentDescription("Adicionar medicação").performClick()
         compose.onNodeWithText("Nome").performTextInput("Item fictício de interface")
         assertEquals(null, saved)
         compose.onNodeWithText("Salvar").performClick()

@@ -11,11 +11,13 @@
 | origem/janela | eventos locais minimizados, no máximo 90 dias |
 | mínimo | 12 eventos do mesmo propósito/contexto; abaixo disso usar fallback |
 | baseline | ordem cautelosa fixa da instalação |
-| ativação | não ativa personalização; somente baseline em P2-08 |
+| ativação | opt-in local; frequência após 12 amostras do contexto, sem modelo aprendido |
 | rollback | desligar personalização e retornar imediatamente à ordem fixa |
 
-Qualidade será comparada por correção manual, latência, adiamentos repetidos e
-alertas perdidos. Bateria, memória e latência serão medidas no gate de P2-09.
+Qualidade descritiva é acompanhada por correção manual, latência, adiamentos
+repetidos e alertas perdidos. P2-08 mede o custo da regra pura com histórico
+amplo; bateria, memória e latência do runtime aprendido serão medidas no gate de
+P2-09.
 
 ## Algoritmo reproduzível
 

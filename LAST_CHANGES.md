@@ -7,8 +7,8 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | feat(recommendation): entregar controle e inspecao local |
-| Data | 2026-09-02 22:23:43 -0400 |
+| Mensagem | test(recommendation): concluir matriz P2-08 |
+| Data | 2026-09-02 22:37:03 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
@@ -17,37 +17,27 @@
 MAINTENANCE_MAP.md
 PROJECT2_SPEC.md
 SPEC.md
+android/P2_08_MATRIX.md
 android/README.md
 android/app/src/androidTest/java/com/pessoal/agenda/mobile/ui/AgendaMobileAppTest.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/recommendation/RecommendationStatistics.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/recommendation/RecommendationStore.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileApp.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileViewModel.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/ui/RecommendationSettingsScreen.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/ui/theme/Theme.kt
-android/app/src/test/java/com/pessoal/agenda/mobile/recommendation/RecommendationStatisticsTest.kt
-android/contracts/RECOMMENDATION_V1.md
-docs/privacy/RECOMMENDATION_DATA_INVENTORY.md
+android/app/src/main/java/com/pessoal/agenda/mobile/ui/HealthPrivacyScreen.kt
+android/app/src/test/java/com/pessoal/agenda/mobile/recommendation/RecommendationEngineTest.kt
+docs/models/rules-v1.md
 ```
 
 ## Diff Resumido
 
 ```diff
- MAINTENANCE_MAP.md                                 |   5 +-
- PROJECT2_SPEC.md                                   |  32 +-
- SPEC.md                                            |   4 +-
- android/README.md                                  |   4 +-
- .../agenda/mobile/ui/AgendaMobileAppTest.kt        | 120 +++++++
- .../recommendation/RecommendationStatistics.kt     |  49 +++
- .../mobile/recommendation/RecommendationStore.kt   |  30 ++
- .../pessoal/agenda/mobile/ui/AgendaMobileApp.kt    |  49 ++-
- .../agenda/mobile/ui/AgendaMobileViewModel.kt      | 104 +++++-
- .../mobile/ui/RecommendationSettingsScreen.kt      | 365 +++++++++++++++++++++
- .../com/pessoal/agenda/mobile/ui/theme/Theme.kt    |  15 +
- .../recommendation/RecommendationStatisticsTest.kt |  71 ++++
- android/contracts/RECOMMENDATION_V1.md             |   8 +
- docs/privacy/RECOMMENDATION_DATA_INVENTORY.md      |   2 +
- 14 files changed, 835 insertions(+), 23 deletions(-)
+ MAINTENANCE_MAP.md                                 |  5 +-
+ PROJECT2_SPEC.md                                   | 49 ++++++++++-----
+ SPEC.md                                            |  4 +-
+ android/P2_08_MATRIX.md                            | 73 ++++++++++++++++++++++
+ android/README.md                                  |  3 +-
+ .../agenda/mobile/ui/AgendaMobileAppTest.kt        |  3 +-
+ .../agenda/mobile/ui/HealthPrivacyScreen.kt        |  7 ++-
+ .../recommendation/RecommendationEngineTest.kt     | 15 +++++
+ docs/models/rules-v1.md                            |  8 ++-
+ 9 files changed, 139 insertions(+), 28 deletions(-)
 ```
 
 ---

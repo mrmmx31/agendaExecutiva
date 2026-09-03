@@ -36,7 +36,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 78,3%, restando 21,7%; `P2-01` a `P2-07` concluídas e `P2-08` com 5 de 6 itens.
+- Projeto 2: implementação em 80%, restando 20%; `P2-01` a `P2-08` concluídas.
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -84,7 +84,7 @@ Não criar um módulo Java/Kotlin compartilhado entre Maven desktop e Android an
 
 ## 6. Componentes móveis planejados
 
-Implementado até o quinto item de `P2-08`:
+Implementado até o fechamento de `P2-08`:
 
 | Área | Local |
 |---|---|
@@ -121,6 +121,7 @@ Implementado até o quinto item de `P2-08`:
 | Motor determinístico | `recommendation/RecommendationEngine.kt` e `docs/models/rules-v1.md`; interface pura, baseline, mínimo por contexto e razões explicáveis |
 | Instrumentação minimizada | `recommendation/RecommendationTelemetry.kt`, `AlertStore.kt` e `OfflineRepository.kt`; grava após sucesso sem IDs operacionais ou texto |
 | Controle e inspeção local | `ui/RecommendationSettingsScreen.kt`, `RecommendationStatistics.kt` e estado no `AgendaMobileViewModel.kt`; opt-in, preferências, métricas, correção, limpeza e baseline |
+| Matriz P2-08 | `android/P2_08_MATRIX.md`; privacidade, regras, rollback, retenção, temas, custo e limites para P2-09 |
 | Matriz P2-05 | `android/P2_05_MATRIX.md`; conexão, ações conectadas, reconciliação offline, UI e limites |
 
 | Domínio | Android | Wear | Desktop |

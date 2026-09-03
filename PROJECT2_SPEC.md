@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 78,3% do Projeto 2 |
+| Status | Implementação em andamento; 80% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-07` estão concluídas e `P2-08` tem 5 de 6 itens. O avanço geral é 78,3% e restam 21,7%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-08` estão concluídas. O avanço geral é 80% e restam 20%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -711,7 +711,7 @@ Consentimentos, Health Connect, entradas manuais, retenção, relatório com pro
 
 Eventos sem texto sensível, regras explicáveis, catálogo, baseline e painel de correção/limpeza.
 
-**Status:** Em andamento, 83,3% (5 de 6 itens concluídos).
+**Status:** Concluído em 2026-09-02, 100% (6 de 6 itens concluídos).
 
 **Checklist de avanço:**
 
@@ -720,7 +720,7 @@ Eventos sem texto sensível, regras explicáveis, catálogo, baseline e painel d
 - [x] implementar `RecommendationEngine` determinístico, baseline cauteloso e mínimo por contexto;
 - [x] instrumentar alertas e protocolos sem texto, identificador operacional ou inferência de distração;
 - [x] entregar personalização opt-in, estatísticas locais, inspeção, correção, limpeza e retorno ao baseline;
-- [ ] aprovar matriz de privacidade, regras, retenção, temas, desempenho e documentação final.
+- [x] aprovar matriz de privacidade, regras, retenção, temas, desempenho e documentação final.
 
 **Evidência do primeiro item:** dois schemas JSON fechados e fixtures fictícias
 definem eventos categóricos minimizados e decisões com até três opções, versão da
@@ -758,6 +758,18 @@ determinismo. O model card
 documenta algoritmo e SHA-256 do fonte; nenhum método do motor recebe callback,
 store operacional, saúde ou texto.
 
+**Evidência do quarto item:** `RecommendationTelemetry` aceita somente os tipos
+fechados do contrato e consulta a capacidade escolhida explicitamente. Entrega,
+conclusão, adiamento e expiração de alerta, início de protocolo e conclusão de
+passo são registrados após a mutação durável; falha da telemetria não desfaz a
+ação principal. Repetições idempotentes não duplicam eventos. O Data Layer marca
+ações do relógio como `WATCH`; nenhum `alert_id`, `run_id`, `step_id`, título,
+rótulo ou texto atravessa a fronteira. Prazo é derivado do fim da janela válida,
+latência é limitada a 24 horas e adiamentos conhecidos viram códigos fechados.
+As suítes `AlertStoreTest` e `OfflineRepositoryTest` passaram com 15 testes,
+incluindo opt-out sem coleta, entrega, concluir, adiar, expirar, origem Wear,
+protocolo e isolamento de identidades.
+
 **Evidência do quinto item:** o atalho `Recomendações locais` abre uma tela
 dedicada com personalização inicialmente desligada, contexto de capacidade
 sempre explícito, preferências de adiamento/canal e retenção de 30, 90 ou 180
@@ -779,17 +791,20 @@ companion Google Pixel Watch; após estabilização, a tela abriu e respondeu se
 novo ANR. `WorkManager` também passou a ser inicializado fora da thread principal.
 Nenhum telefone físico, dado pessoal ou estímulo sensorial foi usado.
 
-**Evidência do quarto item:** `RecommendationTelemetry` aceita somente os tipos
-fechados do contrato e consulta a capacidade escolhida explicitamente. Entrega,
-conclusão, adiamento e expiração de alerta, início de protocolo e conclusão de
-passo são registrados após a mutação durável; falha da telemetria não desfaz a
-ação principal. Repetições idempotentes não duplicam eventos. O Data Layer marca
-ações do relógio como `WATCH`; nenhum `alert_id`, `run_id`, `step_id`, título,
-rótulo ou texto atravessa a fronteira. Prazo é derivado do fim da janela válida,
-latência é limitada a 24 horas e adiamentos conhecidos viram códigos fechados.
-As suítes `AlertStoreTest` e `OfflineRepositoryTest` passaram com 15 testes,
-incluindo opt-out sem coleta, entrega, concluir, adiar, expirar, origem Wear,
-protocolo e isolamento de identidades.
+**Evidência do sexto item:** a matriz rastreável está em
+[`android/P2_08_MATRIX.md`](android/P2_08_MATRIX.md). Contratos compartilhados e
+schemas passaram em Java, Kotlin e `jq`; busca estática no pacote de recomendação
+não encontrou nomes de tarefa/alerta/protocolo, saúde, localização, token ou
+credencial. O hash do `rules-v1` coincide com o fonte. O motor classificou 10 mil
+observações fictícias em 0,338 s no teste completo, abaixo do orçamento de 1 s.
+Treze dos 14 fluxos Compose passaram no lote; o único seletor antigo de saúde foi
+substituído por rolagem semântica estável e passou na repetição isolada. A matriz
+cobre opt-out, rollback, mínimo por contexto, limites de domínio, idempotência,
+retenção, correção, limpeza, métricas prudentes e tema. O gate final `test lint
+assembleDebug assembleDebugAndroidTest` concluiu 232 tarefas sem falha e lint sem
+erro. P2-08 não adiciona runtime de ML nem trabalho periódico de recomendação;
+bateria/memória de modelo ficam para P2-09. Nenhum dispositivo físico, dado
+pessoal ou estímulo sensorial foi usado.
 
 ### P2-09 — Personalização por modelo
 
@@ -842,5 +857,5 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Concluir `P2-08`: aprovar a matriz final de privacidade, regras, retenção, temas,
-desempenho e documentação.
+Iniciar `P2-09`: definir candidatos de runtime, dataset sintético de avaliação,
+shadow mode local e rollback de artefato antes de qualquer ativação aprendida.

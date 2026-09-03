@@ -33,6 +33,7 @@ class SharedContractFixtureTest {
         assertKeys("intake-log.valid.json", INTAKE_LOG_KEYS);
         assertKeys("symptom-log.valid.json", SYMPTOM_LOG_KEYS);
         assertKeys("health-summary.valid.json", HEALTH_SUMMARY_KEYS);
+        assertKeys("health-report.valid.json", HEALTH_REPORT_KEYS);
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").get("status").getAsString());
         assertEquals("APPLIED", fixture("sync-result.valid.json").get("status").getAsString());
@@ -44,6 +45,7 @@ class SharedContractFixtureTest {
         assertEquals("MANUAL", fixture("intake-log.valid.json").get("source").getAsString());
         assertEquals("MANUAL", fixture("symptom-log.valid.json").get("source").getAsString());
         assertEquals("HEART_RATE", fixture("health-summary.valid.json").get("category").getAsString());
+        assertEquals(1, fixture("health-report.valid.json").get("contract_version").getAsInt());
     }
 
     @Test
@@ -87,5 +89,6 @@ class SharedContractFixtureTest {
     private static final Set<String> INTAKE_LOG_KEYS = Set.of("contract_version", "entry_id", "kind", "name", "amount", "unit", "planned_at", "occurred_at", "time_zone", "context", "perceived_effect", "note", "source", "revision", "tombstone", "updated_at");
     private static final Set<String> SYMPTOM_LOG_KEYS = Set.of("contract_version", "entry_id", "kind", "label", "occurred_at", "time_zone", "intensity", "note", "source", "revision", "tombstone", "updated_at");
     private static final Set<String> HEALTH_SUMMARY_KEYS = Set.of("contract_version", "summary_id", "consent_id", "category", "period_start", "period_end", "coverage_start", "coverage_end", "sample_count", "metrics", "source_packages", "missing_reason", "imported_at");
+    private static final Set<String> HEALTH_REPORT_KEYS = Set.of("contract_version", "snapshot_id", "generated_at", "period_start", "period_end", "time_zone", "subject_label", "selected_categories", "permissions", "sources", "limitations", "excluded_entry_count", "entries");
     private static final Set<String> RESULT_STATES = Set.of("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE");
 }

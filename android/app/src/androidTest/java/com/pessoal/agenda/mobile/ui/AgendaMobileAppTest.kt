@@ -20,6 +20,13 @@ import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
 import com.pessoal.agenda.mobile.data.local.HealthConsentEntity
 import com.pessoal.agenda.mobile.health.HealthCategory
 import com.pessoal.agenda.mobile.health.IntakeInput
+import com.pessoal.agenda.mobile.health.report.HealthReportBuilder
+import com.pessoal.agenda.mobile.health.report.HealthReportEntry
+import com.pessoal.agenda.mobile.health.report.HealthReportEntryKind
+import com.pessoal.agenda.mobile.health.report.HealthReportFormat
+import com.pessoal.agenda.mobile.health.report.HealthReportPermission
+import com.pessoal.agenda.mobile.health.report.HealthReportReview
+import com.pessoal.agenda.mobile.health.report.HealthReportSnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -118,6 +125,50 @@ class AgendaMobileAppTest {
         assertEquals(null, saved)
         compose.onNodeWithText("Salvar").performClick()
         assertEquals("Item fictício de interface", saved?.name)
+    }
+
+    @Test
+    fun healthReportRequiresPreviewAndExplicitExportChoice() {
+        var generated: Pair<Int, Set<HealthCategory>>? = null
+        var exported: HealthReportFormat? = null
+        val consent = HealthConsentEntity(
+            id = "consent-id", category = HealthCategory.SYMPTOM.name,
+            purpose = "USER_REVIEWABLE_REPORT", enabled = true,
+            foregroundOnly = true, retentionDays = 365,
+            grantedAt = "2026-09-02T12:00:00Z", revokedAt = null,
+            updatedAt = "2026-09-02T12:00:00Z",
+        )
+        val snapshot = HealthReportSnapshot(
+            snapshotId = "b5000000-0000-4000-8000-000000000001",
+            generatedAt = "2026-09-02T15:00:00Z", periodStart = "2026-08-26T15:00:00Z",
+            periodEnd = "2026-09-02T15:00:00Z", timeZone = "America/Manaus",
+            subjectLabel = "Pessoa fictícia", selectedCategories = listOf("SYMPTOM"),
+            permissions = listOf(HealthReportPermission("SYMPTOM", true, true, 365)),
+            sources = listOf("MANUAL"), limitations = HealthReportBuilder.LIMITATIONS,
+            entries = listOf(HealthReportEntry(
+                "b5000000-0000-4000-8000-000000000002", HealthReportEntryKind.USER_OBSERVATION,
+                "SYMPTOM", "2026-09-01T14:00:00Z", title = "Evento fictício", sources = listOf("MANUAL"),
+            )),
+        )
+        compose.setContent {
+            AgendaMobileTheme {
+                HealthPrivacyScreen(
+                    state = HealthUiState(listOf(consent), report = HealthReportReview(snapshot, "Pessoa fictícia")),
+                    busy = false, onConsentChanged = { _, _ -> }, onSaveIntake = { _, _ -> },
+                    onDeleteIntake = {}, onSaveSymptom = { _, _ -> }, onDeleteSymptom = {},
+                    onImportHealth = {}, onGenerateReport = { days, categories -> generated = days to categories },
+                    onReportSubjectChanged = {}, onToggleReportEntry = {}, onExportReport = { exported = it },
+                )
+            }
+        }
+
+        repeat(4) { compose.onRoot().performTouchInput { swipeUp() } }
+        compose.onNodeWithText("Gerar prévia").performClick()
+        assertEquals(7 to setOf(HealthCategory.SYMPTOM), generated)
+        repeat(3) { compose.onRoot().performTouchInput { swipeUp() } }
+        compose.onNodeWithText("Evento fictício").assertIsDisplayed()
+        compose.onNodeWithText("PDF").performClick()
+        assertEquals(HealthReportFormat.PDF, exported)
     }
 
     @Test

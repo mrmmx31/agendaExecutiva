@@ -1,0 +1,29 @@
+{
+  "contract_version": 1,
+  "snapshot_id": "b5000000-0000-4000-8000-000000000001",
+  "generated_at": "2026-09-02T15:00:00Z",
+  "period_start": "2026-08-26T15:00:00Z",
+  "period_end": "2026-09-02T15:00:00Z",
+  "time_zone": "America/Manaus",
+  "subject_label": "Pessoa fictícia",
+  "selected_categories": ["HEART_RATE", "SYMPTOM"],
+  "permissions": [
+    { "category": "HEART_RATE", "enabled": true, "foreground_only": true, "retention_days": 365 },
+    { "category": "SYMPTOM", "enabled": true, "foreground_only": true, "retention_days": 365 }
+  ],
+  "sources": ["MANUAL", "com.example.fixture"],
+  "limitations": ["Relatório informativo fictício; não estabelece diagnóstico."],
+  "excluded_entry_count": 0,
+  "entries": [
+    {
+      "id": "b5000000-0000-4000-8000-000000000002",
+      "kind": "USER_OBSERVATION",
+      "category": "SYMPTOM",
+      "start_at": "2026-09-01T14:00:00Z",
+      "end_at": null,
+      "title": "Evento fictício",
+      "details": { "subjective_intensity": "3" },
+      "sources": ["MANUAL"]
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import android.app.Application
 import android.app.NotificationManager
 import android.content.pm.PackageManager
 import android.os.Build
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pessoal.agenda.mobile.data.AlertStore
@@ -41,6 +42,10 @@ import com.pessoal.agenda.mobile.health.HealthSummary
 import com.pessoal.agenda.mobile.health.connect.AndroidHealthConnectGateway
 import com.pessoal.agenda.mobile.health.connect.HealthConnectImportCoordinator
 import com.pessoal.agenda.mobile.health.connect.HealthConnectStatus
+import com.pessoal.agenda.mobile.health.report.HealthReportBuilder
+import com.pessoal.agenda.mobile.health.report.HealthReportExporter
+import com.pessoal.agenda.mobile.health.report.HealthReportFormat
+import com.pessoal.agenda.mobile.health.report.HealthReportReview
 import com.pessoal.agenda.mobile.data.local.HealthConsentEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -77,6 +82,7 @@ data class HealthUiState(
     val symptoms: List<VersionedHealthRecord<SymptomInput>> = emptyList(),
     val summaries: List<HealthSummary> = emptyList(),
     val connectStatus: HealthConnectStatus = HealthConnectStatus.UNAVAILABLE,
+    val report: HealthReportReview = HealthReportReview(),
 )
 
 data class SensorySettingsUiState(
@@ -105,6 +111,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     )
     private val healthConnect = AndroidHealthConnectGateway(application)
     private val healthImporter = HealthConnectImportCoordinator(healthConnect, healthStore)
+    private val healthReportBuilder = HealthReportBuilder()
     private val alertScheduling = AlertSchedulingCoordinator(application, alertStore)
     private val busy = MutableStateFlow(false)
     private val feedback = MutableStateFlow<String?>(null)
@@ -256,6 +263,41 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         execute(successMessage = "Resumos de saúde atualizados.") {
             healthImporter.importEnabled()
             refreshHealth()
+        }
+    }
+
+    fun generateHealthReport(days: Int, categories: Set<HealthCategory>) = execute(
+        successMessage = "Prévia do relatório gerada.",
+    ) {
+        val current = health.value
+        val snapshot = healthReportBuilder.build(
+            days = days, categories = categories, subjectLabel = current.report.subjectLabel,
+            consents = healthStore.consents(), summaries = healthStore.healthSummaries(),
+            intakes = healthStore.intakes(), symptoms = healthStore.symptoms(),
+        )
+        health.value = current.copy(report = HealthReportReview(snapshot, current.report.subjectLabel))
+    }
+
+    fun setHealthReportSubject(value: String) {
+        if (value.length <= 120) health.value = health.value.copy(report = health.value.report.copy(subjectLabel = value))
+    }
+
+    fun toggleHealthReportEntry(id: String) {
+        val report = health.value.report
+        val excluded = report.excludedEntryIds.toMutableSet().apply {
+            if (!add(id)) remove(id)
+        }
+        health.value = health.value.copy(report = report.copy(excludedEntryIds = excluded))
+    }
+
+    fun exportHealthReport(uri: Uri, format: HealthReportFormat) = execute(
+        successMessage = "Relatório ${format.name} salvo no destino escolhido.",
+    ) {
+        val snapshot = requireNotNull(health.value.report.reviewedSnapshot()) { "Gere uma prévia antes de exportar." }
+        val bytes = HealthReportExporter.export(snapshot, format)
+        withContext(Dispatchers.IO) {
+            val resolver = getApplication<Application>().contentResolver
+            requireNotNull(resolver.openOutputStream(uri, "wt")).use { it.write(bytes) }
         }
     }
 
@@ -451,6 +493,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             symptoms = healthStore.symptoms(),
             summaries = healthStore.healthSummaries(),
             connectStatus = healthConnect.status(),
+            report = health.value.report,
         )
     }
 

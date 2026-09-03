@@ -15,6 +15,8 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -23,6 +25,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,9 +48,12 @@ import com.pessoal.agenda.mobile.health.SymptomInput
 import com.pessoal.agenda.mobile.health.SubjectiveKind
 import com.pessoal.agenda.mobile.health.connect.AndroidHealthConnectGateway
 import com.pessoal.agenda.mobile.health.connect.HealthConnectStatus
+import com.pessoal.agenda.mobile.health.report.HealthReportEntryKind
+import com.pessoal.agenda.mobile.health.report.HealthReportFormat
 import java.time.Instant
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 internal fun HealthPrivacyScreen(
     state: HealthUiState,
     busy: Boolean,
@@ -55,11 +63,19 @@ internal fun HealthPrivacyScreen(
     onSaveSymptom: (String?, SymptomInput) -> Unit,
     onDeleteSymptom: (String) -> Unit,
     onImportHealth: () -> Unit,
+    onGenerateReport: (Int, Set<HealthCategory>) -> Unit,
+    onReportSubjectChanged: (String) -> Unit,
+    onToggleReportEntry: (String) -> Unit,
+    onExportReport: (HealthReportFormat) -> Unit,
 ) {
     var intakeEditor by remember { mutableStateOf<Pair<String?, IntakeInput>?>(null) }
     var symptomEditor by remember { mutableStateOf<Pair<String?, SymptomInput>?>(null) }
     var deletion by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
     val enabled = state.consents.associate { HealthCategory.valueOf(it.category) to it.enabled }
+    var reportDays by remember { mutableStateOf(7) }
+    var reportCategories by remember(state.consents) {
+        mutableStateOf(enabled.filterValues { it }.keys)
+    }
 
     intakeEditor?.let { (id, value) ->
         IntakeDialog(value, id != null, { intakeEditor = null }) {
@@ -198,6 +214,98 @@ internal fun HealthPrivacyScreen(
                 symptomEditor = record.id to record.value
             }, { deletion = record.id to true })
         }
+
+        item { SectionTitle("Relatório revisável") }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Período", fontWeight = FontWeight.Medium)
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    listOf(7, 30, 90).forEachIndexed { index, days ->
+                        SegmentedButton(
+                            selected = reportDays == days,
+                            onClick = { reportDays = days },
+                            shape = SegmentedButtonDefaults.itemShape(index, 3),
+                            label = { Text("$days dias") },
+                        )
+                    }
+                }
+                Text("Categorias", fontWeight = FontWeight.Medium)
+                HealthCategory.entries.forEach { category ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = category in reportCategories,
+                            onCheckedChange = { checked ->
+                                reportCategories = reportCategories.toMutableSet().apply {
+                                    if (checked) add(category) else remove(category)
+                                }
+                            },
+                        )
+                        Text(category.label())
+                    }
+                }
+                Button(
+                    onClick = { onGenerateReport(reportDays, reportCategories) },
+                    enabled = !busy && reportCategories.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Gerar prévia") }
+            }
+        }
+        state.report.snapshot?.let { snapshot ->
+            item {
+                OutlinedTextField(
+                    value = state.report.subjectLabel,
+                    onValueChange = onReportSubjectChanged,
+                    label = { Text("Identificação no relatório") },
+                    supportingText = { Text("Pode ficar vazia ou ser corrigida antes da exportação") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            item {
+                Text(
+                    "Prévia: ${snapshot.entries.size - state.report.excludedEntryIds.size} de ${snapshot.entries.size} linhas incluídas",
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    "Sensor, fato registrado e observação permanecem separados.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            items(snapshot.entries, key = { "report-${it.id}" }) { entry ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = entry.id !in state.report.excludedEntryIds,
+                        onCheckedChange = { onToggleReportEntry(entry.id) },
+                    )
+                    Column(Modifier.weight(1f)) {
+                        Text(entry.title, maxLines = 2)
+                        Text(
+                            "${entry.kind.label()} • ${HealthCategory.valueOf(entry.category).label()}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            item {
+                Text(
+                    "Este arquivo pode conter dados sensíveis. Revise as linhas e escolha conscientemente onde salvá-lo.",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HealthReportFormat.entries.forEach { format ->
+                        OutlinedButton(
+                            onClick = { onExportReport(format) },
+                            enabled = !busy,
+                            modifier = Modifier.weight(1f),
+                        ) { Text(format.name) }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -294,4 +402,9 @@ private fun HealthCategory.label() = when (this) {
     HealthCategory.ROUTINE_NOTE -> "Nota de rotina"
 }
 private fun IntakeKind.label() = if (this == IntakeKind.MEDICATION) "Medicação" else "Substância"
+private fun HealthReportEntryKind.label() = when (this) {
+    HealthReportEntryKind.SENSOR_AGGREGATE -> "Agregado de sensor"
+    HealthReportEntryKind.RECORDED_FACT -> "Fato registrado"
+    HealthReportEntryKind.USER_OBSERVATION -> "Observação do usuário"
+}
 private fun String.nullIfBlank() = trim().ifEmpty { null }

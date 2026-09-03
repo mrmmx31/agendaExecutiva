@@ -38,6 +38,8 @@ unidade, intensidade, pureza, interacao, causalidade ou diagnostico.
 - banco, backup e logs nunca recebem plaintext sensivel fora do limite de uso;
 - sync usa o canal TLS pareado e somente categorias consentidas;
 - exportacao exige previa e escolha explicita de destino;
+- JSON, CSV e PDF derivam do mesmo snapshot revisado e nao sao enviados automaticamente;
+- CSV neutraliza formulas e PDF pagina texto longo; o destino escolhido recebe arquivo sem senha;
 - Health Connect pede somente leitura das categorias ativas, no botao de importacao;
 - a janela inicial e de sete dias; historico ampliado e background nao sao solicitados;
 - revogar interrompe novas leituras sem afetar a Agenda operacional.

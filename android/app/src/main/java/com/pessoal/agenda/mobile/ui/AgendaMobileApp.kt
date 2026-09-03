@@ -83,6 +83,7 @@ import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
 import com.pessoal.agenda.mobile.data.local.SyncConflictEntity
 import com.pessoal.agenda.mobile.alert.SensoryChannel
+import com.pessoal.agenda.mobile.health.report.HealthReportFormat
 import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
 import java.time.Instant
 import java.time.ZoneId
@@ -113,6 +114,15 @@ fun AgendaMobileApp(
         PermissionController.createRequestPermissionResultContract(),
         viewModel::importHealthConnect,
     )
+    val jsonReportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(HealthReportFormat.JSON.mimeType)) {
+        it?.let { uri -> viewModel.exportHealthReport(uri, HealthReportFormat.JSON) }
+    }
+    val csvReportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(HealthReportFormat.CSV.mimeType)) {
+        it?.let { uri -> viewModel.exportHealthReport(uri, HealthReportFormat.CSV) }
+    }
+    val pdfReportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(HealthReportFormat.PDF.mimeType)) {
+        it?.let { uri -> viewModel.exportHealthReport(uri, HealthReportFormat.PDF) }
+    }
     AgendaMobileTheme {
         AgendaMobileScreen(
             state = state,
@@ -161,6 +171,17 @@ fun AgendaMobileApp(
             onSaveSymptom = viewModel::saveSymptom,
             onDeleteSymptom = viewModel::deleteSymptom,
             onImportHealth = { healthPermissionLauncher.launch(viewModel.healthPermissionsForEnabled()) },
+            onGenerateHealthReport = viewModel::generateHealthReport,
+            onHealthReportSubjectChanged = viewModel::setHealthReportSubject,
+            onToggleHealthReportEntry = viewModel::toggleHealthReportEntry,
+            onExportHealthReport = { format ->
+                val name = "agenda-saude.${format.extension}"
+                when (format) {
+                    HealthReportFormat.JSON -> jsonReportLauncher.launch(name)
+                    HealthReportFormat.CSV -> csvReportLauncher.launch(name)
+                    HealthReportFormat.PDF -> pdfReportLauncher.launch(name)
+                }
+            },
             initialPairingInvitation = initialPairingInvitation,
         )
     }
@@ -191,6 +212,10 @@ internal fun AgendaMobileScreen(
     onSaveSymptom: (String?, com.pessoal.agenda.mobile.health.SymptomInput) -> Unit = { _, _ -> },
     onDeleteSymptom: (String) -> Unit = {},
     onImportHealth: () -> Unit = {},
+    onGenerateHealthReport: (Int, Set<com.pessoal.agenda.mobile.health.HealthCategory>) -> Unit = { _, _ -> },
+    onHealthReportSubjectChanged: (String) -> Unit = {},
+    onToggleHealthReportEntry: (String) -> Unit = {},
+    onExportHealthReport: (HealthReportFormat) -> Unit = {},
 ) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var showPairing by rememberSaveable { mutableStateOf(false) }
@@ -312,6 +337,10 @@ internal fun AgendaMobileScreen(
                     onSaveSymptom = onSaveSymptom,
                     onDeleteSymptom = onDeleteSymptom,
                     onImportHealth = onImportHealth,
+                    onGenerateReport = onGenerateHealthReport,
+                    onReportSubjectChanged = onHealthReportSubjectChanged,
+                    onToggleReportEntry = onToggleHealthReportEntry,
+                    onExportReport = onExportHealthReport,
                 )
             } else if (showSensorySettings) {
                 SensorySettingsScreen(

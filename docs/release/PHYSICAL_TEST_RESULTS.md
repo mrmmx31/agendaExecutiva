@@ -36,7 +36,7 @@ fora do Git.
 | reprodução cautelosa | pendente | depende de confirmação do proprietário |
 | fone, remoção, DND, chamada e mídia | pendente | observação física ainda necessária |
 
-## Gate 8
+## Gate 8 - aprovado com limites do hardware
 
 O receptor ADB protegido e exclusivo de `fieldTest` materializou um alerta
 visual fictício. O Android registrou título, motivo e as ações `Concluir` e
@@ -56,6 +56,8 @@ observados no telefone e na pulseira.
 | `Adiar` no telefone | aprovado; receptor real removeu a notificação, persistiu `SNOOZE` e criou agendamento futuro |
 | desconexão/reconexão Bluetooth | aprovado; transporte e Da Fit retomaram, sem repetição agressiva |
 | alerta publicado durante desconexão | não reproduzido no pulso após reconectar; a pulseira mostrou somente `não conectado` |
+| alerta geral desligado | aprovado; notificações existentes removidas e nova fixture ficou com zero entregas |
+| protocolo `Vou sair` | aprovado no telefone; controles no pulso são indisponíveis na smartband e aprovados no AVD Wear OS |
 
 O fixture usado era exclusivamente visual: a Agenda não solicitou áudio nem
 vibração do telefone. No momento da observação, o Android estava com Não
@@ -76,6 +78,10 @@ As ações do telefone foram disparadas por um receptor protegido da variante
 ensaio percorreu a mesma persistência e o mesmo cancelamento usados pelos botões,
 sem depender de coordenadas da interface nem capturar outras notificações do
 telefone.
+O desligamento percorreu perfil, WorkManager, notificações visuais e limpeza do
+estado Wear. Com o perfil `globalEnabled=false`, uma nova definição permaneceu
+agendada no banco com zero entregas e não gerou estímulo no telefone ou no Da
+Fit.
 
 ## Gate 9
 
@@ -86,9 +92,8 @@ horas, bateria da pulseira e medição final continuam pendentes.
 
 ## Próxima interação mínima
 
-1. testar `Concluir` e `Adiar` pelo telefone com a pulseira conectada;
-2. executar um passo fictício de `Vou sair` com a pulseira apagada e acesa;
-3. desligar os alertas no telefone e confirmar ausência de novo estímulo;
-4. confirmar teste do áudio próprio da Agenda em volume baixo para o gate 7;
-5. retirar o cabo USB quando conveniente e manter telefone/computador na mesma
+1. confirmar teste do áudio próprio da Agenda em volume baixo para o gate 7;
+2. concluir fonte sintética Health Connect e exportações temporárias do gate 6;
+3. completar a janela e a medição final do gate 9;
+4. retirar o cabo USB quando conveniente e manter telefone/computador na mesma
    rede durante o restante da sessão.

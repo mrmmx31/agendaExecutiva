@@ -15,11 +15,11 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 | 5 | falhas virtuais: processo, rede, Data Layer, Doze e reinicio | aprovado | fixture duravel sobreviveu a rede desligada, processo, idle e reboot; API Wear possui retry limitado |
 | 6 | telefone fisico: instalacao, permissoes, Health Connect e exportacao | em execução | instalação isolada, permissão negada/concedida, captura e protocolo aprovados; Health Connect sintético e exportações SAF pendentes |
 | 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | em execução | rota automática inspecionada sem reprodução; ensaios sensoriais permanecem pendentes |
-| 8 | wearable fisico: entrega, acoes disponiveis e desconexao | em execução | texto/som e ações no telefone aprovados; ações/vibração no pulso indisponíveis e alerta offline não repetido; protocolo e alertas desligados pendentes |
+| 8 | wearable fisico: entrega, acoes disponiveis e desconexao | aprovado com limites do hardware | texto/som e ações no telefone aprovados; ações/vibração/fila no pulso indisponíveis; alertas desligados não entregam |
 | 9 | bateria, memoria e temperatura em uso prolongado | em execução | baseline inicial coletado; janela de 24 horas e medição final pendentes |
 | 10 | aceite final, artefato assinado e decisao de distribuicao | bloqueado pelos gates 4-9 | preencher lacunas legais/publicacao ou declarar release apenas pessoal |
 
-**Estado atual:** 50% do P2-10 (5 de 10); Projeto 2 em 95%.
+**Estado atual:** 60% do P2-10 (6 de 10); Projeto 2 em 96%.
 
 **Sessão física em andamento:** o detalhamento incremental, sem identificadores,
 fica em `docs/release/PHYSICAL_TEST_RESULTS.md`. Evidência parcial não altera o

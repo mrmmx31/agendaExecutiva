@@ -10,6 +10,8 @@
                 <action android:name="com.pessoal.agenda.mobile.fieldtest.PUBLISH_VIBRATION_RELAY_FIXTURE" />
                 <action android:name="com.pessoal.agenda.mobile.fieldtest.COMPLETE_LATEST_FIXTURE" />
                 <action android:name="com.pessoal.agenda.mobile.fieldtest.SNOOZE_LATEST_FIXTURE" />
+                <action android:name="com.pessoal.agenda.mobile.fieldtest.DISABLE_ALERTS" />
+                <action android:name="com.pessoal.agenda.mobile.fieldtest.PUBLISH_DISABLED_FIXTURE" />
             </intent-filter>
         </receiver>
     </application>

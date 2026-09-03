@@ -19,6 +19,7 @@ import com.pessoal.agenda.mobile.alert.notification.AndroidAlertNotificationPubl
 import com.pessoal.agenda.mobile.alert.scheduling.AlertSchedulingCoordinator
 import com.pessoal.agenda.mobile.data.AlertStore
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
+import com.pessoal.agenda.mobile.wear.AndroidWearStateCleaner
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -37,7 +38,12 @@ class FieldTestAlertReceiver : BroadcastReceiver() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 when (intent.action) {
-                    ACTION_PUBLISH_FIXTURE_ALERT -> publishFixture(context.applicationContext)
+                    ACTION_PUBLISH_FIXTURE_ALERT -> publishFixture(context.applicationContext, enableProfile = true)
+                    ACTION_PUBLISH_DISABLED_FIXTURE -> publishFixture(
+                        context.applicationContext,
+                        enableProfile = false,
+                    )
+                    ACTION_DISABLE_ALERTS -> disableAlerts(context.applicationContext)
                     ACTION_COMPLETE_LATEST_FIXTURE -> dispatchFixtureAction(
                         context.applicationContext,
                         AlertActionType.COMPLETE,
@@ -53,21 +59,23 @@ class FieldTestAlertReceiver : BroadcastReceiver() {
         }
     }
 
-    private suspend fun publishFixture(context: Context) {
+    private suspend fun publishFixture(context: Context, enableProfile: Boolean) {
         val now = Instant.now()
         val alertId = UUID.randomUUID().toString()
         val store = AlertStore(MobileDatabase.get(context))
         val settings = store.ensureInstallationProfile()
-        store.saveProfile(
-            settings.profile.copy(
-                globalEnabled = true,
-                enabledChannels = setOf(SensoryChannel.VISUAL),
-                quietHours = null,
-                pausedUntil = null,
-                cooldownMinutes = 1,
-            ),
-            settings.snoozePolicy,
-        )
+        if (enableProfile) {
+            store.saveProfile(
+                settings.profile.copy(
+                    globalEnabled = true,
+                    enabledChannels = setOf(SensoryChannel.VISUAL),
+                    quietHours = null,
+                    pausedUntil = null,
+                    cooldownMinutes = 1,
+                ),
+                settings.snoozePolicy,
+            )
+        }
         store.materialize(
             AlertDefinition(
                 contractVersion = AlertDefinition.CONTRACT_VERSION,
@@ -90,6 +98,19 @@ class FieldTestAlertReceiver : BroadcastReceiver() {
             .putString(LATEST_ALERT_ID, alertId)
             .apply()
         AlertSchedulingCoordinator(context, store).schedule(alertId, now)
+    }
+
+    private suspend fun disableAlerts(context: Context) {
+        val store = AlertStore(MobileDatabase.get(context))
+        val settings = store.ensureInstallationProfile()
+        store.saveProfile(settings.profile.copy(globalEnabled = false), settings.snoozePolicy)
+        AlertSchedulingCoordinator(context, store).pause()
+        AndroidAlertNotificationPublisher(context).cancelAllVisualAlerts()
+        context.getSystemService(NotificationManager::class.java).run {
+            cancel(LEGACY_VIBRATION_RELAY_NOTIFICATION_ID)
+            cancel(VIBRATION_RELAY_NOTIFICATION_ID)
+        }
+        AndroidWearStateCleaner(context).clearAll()
     }
 
     private suspend fun dispatchFixtureAction(context: Context, action: AlertActionType) {
@@ -173,10 +194,16 @@ class FieldTestAlertReceiver : BroadcastReceiver() {
             "com.pessoal.agenda.mobile.fieldtest.COMPLETE_LATEST_FIXTURE"
         const val ACTION_SNOOZE_LATEST_FIXTURE =
             "com.pessoal.agenda.mobile.fieldtest.SNOOZE_LATEST_FIXTURE"
+        const val ACTION_DISABLE_ALERTS =
+            "com.pessoal.agenda.mobile.fieldtest.DISABLE_ALERTS"
+        const val ACTION_PUBLISH_DISABLED_FIXTURE =
+            "com.pessoal.agenda.mobile.fieldtest.PUBLISH_DISABLED_FIXTURE"
         val ASYNC_ACTIONS = setOf(
             ACTION_PUBLISH_FIXTURE_ALERT,
             ACTION_COMPLETE_LATEST_FIXTURE,
             ACTION_SNOOZE_LATEST_FIXTURE,
+            ACTION_DISABLE_ALERTS,
+            ACTION_PUBLISH_DISABLED_FIXTURE,
         )
         const val FIXTURE_PREFERENCES = "fieldtest_alert_fixture"
         const val LATEST_ALERT_ID = "latest_alert_id"

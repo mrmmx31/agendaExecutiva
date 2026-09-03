@@ -7,13 +7,15 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | test(android): automatizar ações físicas de alerta |
-| Data | 2026-09-03 08:46:17 -0400 |
+| Mensagem | test(android): concluir gate físico da smartband |
+| Data | 2026-09-03 08:51:53 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
+PROJECT2_SPEC.md
+SPEC.md
 android/P2_10_MATRIX.md
 android/app/src/fieldTest/AndroidManifest.xml
 android/app/src/fieldTest/java/com/pessoal/agenda/mobile/fieldtest/FieldTestAlertReceiver.kt
@@ -23,11 +25,13 @@ docs/release/PHYSICAL_TEST_RESULTS.md
 ## Diff Resumido
 
 ```diff
- android/P2_10_MATRIX.md                            |  2 +-
+ PROJECT2_SPEC.md                                   | 16 +++++--
+ SPEC.md                                            |  2 +-
+ android/P2_10_MATRIX.md                            |  4 +-
  android/app/src/fieldTest/AndroidManifest.xml      |  2 +
- .../mobile/fieldtest/FieldTestAlertReceiver.kt     | 60 +++++++++++++++++++++-
- docs/release/PHYSICAL_TEST_RESULTS.md              |  7 +++
- 4 files changed, 68 insertions(+), 3 deletions(-)
+ .../mobile/fieldtest/FieldTestAlertReceiver.kt     | 51 +++++++++++++++++-----
+ docs/release/PHYSICAL_TEST_RESULTS.md              | 17 +++++---
+ 6 files changed, 67 insertions(+), 25 deletions(-)
 ```
 
 ---

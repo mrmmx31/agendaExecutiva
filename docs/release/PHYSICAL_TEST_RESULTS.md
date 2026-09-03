@@ -10,7 +10,7 @@ fora do Git.
 - variante: `com.pessoal.agenda.mobile.fieldtest`, versão 0.1.0-fieldtest;
 - wearable: Mertto ZL02D Sport, família ZL02CPro, firmware 2.0.9;
 - companheiro confirmado: Da Fit, com listener de notificações habilitado;
-- conexão ADB atual: USB; depuração Wi-Fi ativada, pareamento TLS pendente.
+- conexão ADB: TLS por Wi-Fi validado no mesmo aparelho; USB pode ser removido.
 
 ## Gate 6
 
@@ -63,5 +63,5 @@ horas, bateria da pulseira e medição final continuam pendentes.
 1. informar se o alerta fictício apareceu e vibrou na pulseira;
 2. informar se a pulseira mostrou algum botão/ação ou somente texto;
 3. confirmar teste de áudio em volume baixo;
-4. fornecer o código efêmero de pareamento Wi-Fi ou concluir por QR no Android
-   Studio para liberar o cabo USB.
+4. retirar o cabo USB quando conveniente e manter telefone/computador na mesma
+   rede durante o restante da sessão.

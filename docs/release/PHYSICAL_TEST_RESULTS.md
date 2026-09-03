@@ -40,15 +40,17 @@ fora do Git.
 
 O receptor ADB protegido e exclusivo de `fieldTest` materializou um alerta
 visual fictício. O Android registrou título, motivo e as ações `Concluir` e
-`Adiar`; Da Fit está autorizado a observar notificações. O alerta permanece
-ativo para confirmação visual no pulso.
+`Adiar`; Da Fit está autorizado a observar notificações. Dois formatos foram
+observados no telefone e na pulseira.
 
 | Verificação | Estado |
 |---|---|
 | fixture publicada sem desktop e sem áudio | aprovado |
 | ações Android presentes e não `localOnly` | aprovado |
 | texto recebido na ZL02CPRO | aprovado após habilitar `Outras notificações` no Da Fit |
-| vibração da ZL02CPRO | não percebida no canal visual; pulseira configurada para tocar e vibrar, sem DND ou silencioso |
+| vibração do telefone no canal vibratório | aprovado; dois pulsos percebidos |
+| alerta sonoro da ZL02CPRO | aprovado apenas no canal vibratório, embora a Agenda não tenha solicitado áudio |
+| vibração da ZL02CPRO | não suportada no ensaio; não ocorreu nem com o canal vibratório e a pulseira em `tocar e vibrar` |
 | ações exibidas pela pulseira | indisponíveis neste hardware; a pulseira exibiu somente o texto |
 | desconexão/reconexão Bluetooth | pendente |
 
@@ -57,8 +59,11 @@ vibração do telefone. No momento da observação, o Android estava com Não
 Perturbe desligado e sem fluxos relevantes silenciados. Assim, ausência de áudio
 nesse ensaio é esperada; ausência de vibração no pulso pertence à configuração
 ou capacidade do Da Fit/ZL02CPRO. Um segundo fixture exclusivo do APK
-`fieldTest`, com vibração Android e sem áudio, discrimina se o Da Fit exige um
-canal vibratório para também vibrar a pulseira. As ações continuam disponíveis
+`fieldTest` declarou vibração pelo canal atual e pelo metadado Android legado,
+sempre com `sound=null`. O telefone vibrou e a pulseira emitiu áudio, mas a
+pulseira não vibrou. Isso indica que o Da Fit trata a notificação vibratória como
+alerta sensorial e escolhe o efeito no wearable. A Agenda não consegue selecionar
+separadamente esse efeito na smartband fechada. As ações continuam disponíveis
 na notificação do telefone; o espelhamento genérico do Da Fit não as transportou.
 
 ## Gate 9
@@ -70,8 +75,7 @@ horas, bateria da pulseira e medição final continuam pendentes.
 
 ## Próxima interação mínima
 
-1. informar se o teste sem áudio vibrou no telefone e na pulseira;
-2. informar se a pulseira mostrou algum botão/ação ou somente texto;
-3. confirmar teste de áudio em volume baixo;
-4. retirar o cabo USB quando conveniente e manter telefone/computador na mesma
+1. autorizar uma desconexão/reconexão curta da pulseira para concluir o gate 8;
+2. confirmar teste do áudio próprio da Agenda em volume baixo para o gate 7;
+3. retirar o cabo USB quando conveniente e manter telefone/computador na mesma
    rede durante o restante da sessão.

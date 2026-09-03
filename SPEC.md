@@ -1465,4 +1465,4 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 **Documentos:** requisitos, arquitetura, fases e gates estão em `PROJECT2_SPEC.md`. O ponto de entrada para manutenção, catálogos, contratos e retomada de contexto está em `MAINTENANCE_MAP.md`.
 
-**Próxima ação:** obter autorização explícita, parear o Samsung por depuração sem fio e executar os gates físicos 6 a 9 do P2-10. A Mertto ZL02D/ZL02CPro 2.0.9 será validada como smartband Bluetooth por espelhamento, não como Wear OS; em seguida fechar aceite e decisão de distribuição.
+**Próxima ação:** concluir os gates físicos 6 a 9 no Moto Edge 60 autorizado e na Mertto ZL02D/ZL02CPro 2.0.9. O espelhamento já confirmou texto e alerta sonoro, sem vibração ou ações no pulso; faltam reconexão, áudio/rotas, exportações, Health Connect sintético e a janela de estabilidade antes do aceite e da decisão de distribuição.

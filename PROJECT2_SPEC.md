@@ -76,8 +76,9 @@ Dados de saúde, medicamentos e substâncias são dados sensíveis. A coleta ser
   `Sobre` informa a família ZL02CPro e firmware 2.0.9. É uma smartband Bluetooth
   dependente de aplicativo companheiro, sem Wear OS, ADB ou Data Layer. O trecho
   possivelmente único do identificador Bluetooth não é versionado. Para esse
-  hardware, entrega de texto/vibração será testada por espelhamento; ações no
-  pulso são capacidade a descobrir e nunca requisito presumido. O perfil e a
+  hardware, o ensaio por espelhamento entregou texto e alerta sonoro, mas não
+  vibração nem ações. O telefone preserva `Concluir` e `Adiar`; o efeito sensorial
+  no pulso é decidido pelo Da Fit. O perfil e a
   matriz de compatibilidade ficam em `docs/release/SMARTBAND_COMPATIBILITY.md`.
 
 ### 5.3 Ambiente inicial
@@ -86,7 +87,9 @@ Dados de saúde, medicamentos e substâncias são dados sensíveis. A coleta ser
 - AVD de telefone próprio: `Agenda_Phone_API_34`, Android 14/API 34 com Play Store.
 - AVD de relógio próprio: `Agenda_Wear_API_34`, Wear OS 5/API 34.
 - `adb` e emulador disponíveis.
-- Telefone físico Samsung `SM-A546E` detectado por USB, mas fica fora dos testes até o gate de dispositivo real. Como houve troca de tela e foi relatado toque ocasionalmente errático, o gate real exige diagnóstico do digitalizador antes de atribuir falhas à Agenda.
+- O Samsung `SM-A546E` permanece fora do gate. O Moto Edge 60 autorizado usa a
+  variante `.fieldtest`, armazenamento separado e ADB seguro por Wi-Fi; nenhum
+  dado da Agenda desktop é acessado.
 - Os dois AVDs iniciam, respondem via `adb` e estão pareados pelo assistente Wear do Android Studio.
 
 ## 6. Arquitetura de referência

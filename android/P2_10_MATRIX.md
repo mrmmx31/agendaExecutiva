@@ -13,10 +13,10 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 | 3 | APK release, permissoes, backup, logs, SDKs e segredos | aprovado | APKs nao depuraveis e `scripts/p2_10_static_gate.sh` verde; release ainda nao assinado |
 | 4 | regressao funcional ponta a ponta em telefone/Wear virtuais | aprovado | suites comuns verdes e 14 passos pareados orquestrados por `p2_10_emulator_gate.sh` |
 | 5 | falhas virtuais: processo, rede, Data Layer, Doze e reinicio | aprovado | fixture duravel sobreviveu a rede desligada, processo, idle e reboot; API Wear possui retry limitado |
-| 6 | telefone fisico: instalacao, permissoes, Health Connect e exportacao | bloqueado por autorizacao | usar perfil/dados de teste separados; nao acessar a Agenda pessoal |
-| 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | bloqueado por autorizacao | validar rota efetiva e fallback, sem prometer controle de outros apps |
-| 8 | wearable fisico: entrega, acoes disponiveis e desconexao | bloqueado por autorizacao | Mertto ZL02D/ZL02CPro 2.0.9 identificada como smartband BLE sem Wear OS; testar espelhamento, sem instalar APK Wear |
-| 9 | bateria, memoria e temperatura em uso prolongado | bloqueado por autorizacao/tempo | medir telefone por Android e bateria da smartband por observacao; memoria/temperatura da smartband nao sao expostas |
+| 6 | telefone fisico: instalacao, permissoes, Health Connect e exportacao | em execução | instalação isolada, permissão negada/concedida, captura e protocolo aprovados; Health Connect sintético e exportações SAF pendentes |
+| 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | em execução | rota automática inspecionada sem reprodução; ensaios sensoriais permanecem pendentes |
+| 8 | wearable fisico: entrega, acoes disponiveis e desconexao | em execução | texto e alerta sonoro espelhados; ações e vibração indisponíveis; reconexão pendente |
+| 9 | bateria, memoria e temperatura em uso prolongado | em execução | baseline inicial coletado; janela de 24 horas e medição final pendentes |
 | 10 | aceite final, artefato assinado e decisao de distribuicao | bloqueado pelos gates 4-9 | preencher lacunas legais/publicacao ou declarar release apenas pessoal |
 
 **Estado atual:** 50% do P2-10 (5 de 10); Projeto 2 em 95%.
@@ -124,8 +124,9 @@ Agenda desktop nem alteracao da rota global de outros aplicativos.
 firmware 2.0.9. As especificações disponíveis e a dependência de aplicativo
 companheiro a classificam como smartband Bluetooth sem Wear OS, Wi-Fi, ADB ou
 Data Layer. O APK Wear não será instalado nela. O gate 8 passa a medir
-espelhamento de texto/vibração e a registrar ações como disponíveis ou
-indisponíveis; `Concluir` e `Adiar` no pulso continuam cobertos pelo módulo Wear
+espelhamento sensorial e a registrar ações como disponíveis ou indisponíveis.
+O ensaio físico confirmou texto e alerta sonoro, mas não vibração nem ações;
+`Concluir` e `Adiar` no pulso continuam cobertos pelo módulo Wear
 OS em emulador e exigiriam Wear OS ou SDK oficial para validação física. O
 identificador potencialmente único mostrado em `Sobre` foi omitido do Git.
 

@@ -17,16 +17,18 @@ não deve entrar no Git, relatórios ou logs compartilhados.
 ## Consequência arquitetural
 
 O APK `wear` e a Wear Data Layer não funcionam nesse dispositivo. A Agenda deve
-emitir uma notificação Android normal no Samsung; o aplicativo companheiro da
-pulseira decide se encaminha texto e vibração. Não existe base para prometer que
+emitir uma notificação Android normal no telefone; o aplicativo companheiro da
+smartband decide se encaminha texto e qual efeito sensorial produz. Não existe
+base para prometer que
 ações Android sejam exibidas ou retornem eventos à Agenda.
 
-| Capacidade | Expectativa antes do teste físico |
+| Capacidade | Resultado físico no Da Fit/ZL02CPRO 2.0.9 |
 |---|---|
-| texto do alerta | provável por espelhamento |
-| vibração | provável, controlada pelo companheiro/pulseira |
-| `Concluir` no pulso | não presumir; provavelmente indisponível |
-| `Adiar` no pulso | não presumir; provavelmente indisponível |
+| texto do alerta | suportado por `Outras notificações` |
+| alerta sonoro no pulso | suportado quando a notificação Android declara vibração, mesmo com `sound=null` |
+| vibração no pulso | não ocorreu; o telefone vibrou, mas a pulseira somente tocou |
+| `Concluir` no pulso | indisponível; somente texto foi espelhado |
+| `Adiar` no pulso | indisponível; somente texto foi espelhado |
 | operação offline própria | indisponível sem app executável no wearable |
 | dados de saúde | fora do escopo sem API oficial e consentimento novo |
 
@@ -34,6 +36,12 @@ ações Android sejam exibidas ou retornem eventos à Agenda.
 no pulso permanece implementada no módulo Wear OS e validada em AVD; validação
 física dessa experiência exige futuramente um relógio Wear OS ou SDK oficial
 documentado para outro wearable.
+
+O modo de compatibilidade para smartbands fechadas deve ser opt-in e explicar
+que habilitar o alerta sensorial do companheiro também vibra o telefone. O efeito
+final no pulso pertence ao Da Fit: neste ensaio ele produziu áudio e ignorou a
+vibração configurada na pulseira. A aplicação não deve prometer seleção de áudio
+ou vibração independente nesse hardware.
 
 ## Gate físico cauteloso
 

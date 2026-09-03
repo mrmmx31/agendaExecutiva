@@ -75,12 +75,15 @@ class FieldTestAlertReceiver : BroadcastReceiver() {
         AlertSchedulingCoordinator(context, store).schedule(alertId, now)
     }
 
+    @Suppress("DEPRECATION") // Legacy metadata is intentional: some companion apps ignore channel vibration.
     private fun publishVibrationRelayFixture(context: Context) {
         if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) return
 
         val manager = context.getSystemService(NotificationManager::class.java)
+        manager.cancel(LEGACY_VIBRATION_RELAY_NOTIFICATION_ID)
+        manager.deleteNotificationChannel(LEGACY_VIBRATION_RELAY_CHANNEL_ID)
         manager.deleteNotificationChannel(VIBRATION_RELAY_CHANNEL_ID)
         manager.createNotificationChannel(
             NotificationChannel(
@@ -91,7 +94,7 @@ class FieldTestAlertReceiver : BroadcastReceiver() {
                 description = "Canal temporário do APK de teste, sem áudio"
                 setSound(null, null)
                 enableVibration(true)
-                vibrationPattern = longArrayOf(0, 350, 180, 350)
+                vibrationPattern = VIBRATION_RELAY_PATTERN
                 enableLights(false)
                 setShowBadge(false)
                 lockscreenVisibility = Notification.VISIBILITY_PRIVATE
@@ -109,6 +112,7 @@ class FieldTestAlertReceiver : BroadcastReceiver() {
                 )
                 .setCategory(Notification.CATEGORY_REMINDER)
                 .setVisibility(Notification.VISIBILITY_PRIVATE)
+                .setVibrate(VIBRATION_RELAY_PATTERN)
                 .setOnlyAlertOnce(false)
                 .setAutoCancel(true)
                 .build(),
@@ -120,7 +124,10 @@ class FieldTestAlertReceiver : BroadcastReceiver() {
             "com.pessoal.agenda.mobile.fieldtest.PUBLISH_FIXTURE_ALERT"
         const val ACTION_PUBLISH_VIBRATION_RELAY_FIXTURE =
             "com.pessoal.agenda.mobile.fieldtest.PUBLISH_VIBRATION_RELAY_FIXTURE"
-        const val VIBRATION_RELAY_CHANNEL_ID = "agenda_fieldtest_wearable_vibration_v1"
-        const val VIBRATION_RELAY_NOTIFICATION_ID = 82_001
+        const val LEGACY_VIBRATION_RELAY_CHANNEL_ID = "agenda_fieldtest_wearable_vibration_v1"
+        const val LEGACY_VIBRATION_RELAY_NOTIFICATION_ID = 82_001
+        const val VIBRATION_RELAY_CHANNEL_ID = "agenda_fieldtest_wearable_vibration_v2"
+        const val VIBRATION_RELAY_NOTIFICATION_ID = 82_002
+        val VIBRATION_RELAY_PATTERN = longArrayOf(0, 350, 180, 350)
     }
 }

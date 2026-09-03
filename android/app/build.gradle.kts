@@ -19,9 +19,17 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+        manifestPlaceholders["appLabel"] = "Agenda Sensorial"
     }
 
     buildTypes {
+        create("fieldTest") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".fieldtest"
+            versionNameSuffix = "-fieldtest"
+            manifestPlaceholders["appLabel"] = "Agenda Sensorial - Teste"
+            matchingFallbacks += listOf("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(

@@ -17,9 +17,17 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["appLabel"] = "Agenda Sensorial"
     }
 
     buildTypes {
+        create("fieldTest") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".fieldtest"
+            versionNameSuffix = "-fieldtest"
+            manifestPlaceholders["appLabel"] = "Agenda Sensorial - Teste"
+            matchingFallbacks += listOf("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

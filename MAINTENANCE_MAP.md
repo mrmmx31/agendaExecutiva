@@ -130,6 +130,7 @@ Implementado até a conclusão de `P2-09`:
 | Matriz e benchmark P2-09 | `android/P2_09_MATRIX.md` e `android/P2_09_RUNTIME_BENCHMARK.md`; privacidade, qualidade, integridade, custo, runtime, fallback e limites físicos |
 | Release e regulação P2-10 | `android/P2_10_MATRIX.md`, `android/scripts/p2_10_static_gate.sh`, `docs/privacy/PRIVACY_NOTICE.md` e `docs/release/`; progresso, APK/permissões, declarações e limites de distribuição |
 | Gates virtuais P2-10 | `android/scripts/p2_10_emulator_gate.sh`, `p2_10_resilience_gate.sh` e `P2_10ResilienceTest`; suites pareadas, rede, processo, idle, reboot e baseline sem aparelho físico |
+| Gate físico P2-10 | build `fieldTest`, `android/scripts/p2_10_physical_gate.sh` e `docs/release/PHYSICAL_TEST_RUNBOOK.md`; pacote isolado, trava de autorização e critérios 6-9 |
 | Matriz P2-05 | `android/P2_05_MATRIX.md`; conexão, ações conectadas, reconciliação offline, UI e limites |
 
 | Domínio | Android | Wear | Desktop |

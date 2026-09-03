@@ -7,8 +7,8 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | test(android): automatizar gates virtuais P2-10 |
-| Data | 2026-09-03 00:48:39 -0400 |
+| Mensagem | build(android): isolar variante de teste fisico |
+| Data | 2026-09-03 01:04:48 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
@@ -16,30 +16,30 @@
 ```
 MAINTENANCE_MAP.md
 PROJECT2_SPEC.md
-SPEC.md
 android/P2_10_MATRIX.md
 android/README.md
-android/app/src/androidTest/java/com/pessoal/agenda/mobile/P2_10ResilienceTest.kt
-android/app/src/androidTest/java/com/pessoal/agenda/mobile/wear/PhoneWearPairedGateTest.kt
-android/scripts/p2_10_emulator_gate.sh
-android/scripts/p2_10_resilience_gate.sh
-android/wear/src/androidTest/java/com/pessoal/agenda/wear/WearPairedGateTest.kt
+android/app/build.gradle.kts
+android/app/src/main/AndroidManifest.xml
+android/scripts/p2_10_physical_gate.sh
+android/wear/build.gradle.kts
+android/wear/src/main/AndroidManifest.xml
+docs/release/PHYSICAL_TEST_RUNBOOK.md
 ```
 
 ## Diff Resumido
 
 ```diff
- MAINTENANCE_MAP.md                                 |   3 +-
- PROJECT2_SPEC.md                                   |  26 +++--
- SPEC.md                                            |   4 +-
- android/P2_10_MATRIX.md                            |  26 ++++-
- android/README.md                                  |   3 +-
- .../pessoal/agenda/mobile/P2_10ResilienceTest.kt   | 101 +++++++++++++++++++
- .../agenda/mobile/wear/PhoneWearPairedGateTest.kt  |  11 ++
- android/scripts/p2_10_emulator_gate.sh             |  73 ++++++++++++++
- android/scripts/p2_10_resilience_gate.sh           | 112 +++++++++++++++++++++
- .../com/pessoal/agenda/wear/WearPairedGateTest.kt  |  11 ++
- 10 files changed, 354 insertions(+), 16 deletions(-)
+ MAINTENANCE_MAP.md                        |   1 +
+ PROJECT2_SPEC.md                          |   9 +++
+ android/P2_10_MATRIX.md                   |  16 ++++
+ android/README.md                         |   1 +
+ android/app/build.gradle.kts              |   8 ++
+ android/app/src/main/AndroidManifest.xml  |   2 +-
+ android/scripts/p2_10_physical_gate.sh    |  88 +++++++++++++++++++++
+ android/wear/build.gradle.kts             |   8 ++
+ android/wear/src/main/AndroidManifest.xml |   2 +-
+ docs/release/PHYSICAL_TEST_RUNBOOK.md     | 126 ++++++++++++++++++++++++++++++
+ 10 files changed, 259 insertions(+), 2 deletions(-)
 ```
 
 ---

@@ -946,6 +946,15 @@ orquestrador trata a indisponibilidade transitória da API Wear após boot com
 retry limitado e sempre restaura rede/bateria/idle. Nenhum estímulo foi emitido
 e o telefone físico não recebeu comando.
 
+**Preparação para dispositivo físico:** o build `fieldTest` de telefone e Wear
+usa o pacote isolado `com.pessoal.agenda.mobile.fieldtest`, rótulo próprio e
+armazenamento/Keystore/permissões separados da Agenda normal. O runbook físico
+define critérios e interrupção dos gates 6 a 9. O script correspondente recusa
+execução antes de ADB sem autorização textual, serial físico e stage válidos;
+se autorizado, o pre-flight não instala nem limpa nada. Os dois APKs isolados,
+as três variantes unitárias, lint, debug/test APKs e release estático passaram.
+Essa preparação não altera o percentual sem evidência física.
+
 ## 21. Gates obrigatórios
 
 1. Não iniciar saúde antes de sync e exclusão estarem testados.

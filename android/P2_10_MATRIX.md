@@ -94,6 +94,12 @@ virtual de memoria/jobs/bateria. Nenhum canal sensorial foi acionado.
 
 ## Plano dos gates fisicos
 
+O procedimento detalhado esta em `docs/release/PHYSICAL_TEST_RUNBOOK.md`. A
+variante `fieldTest` usa pacote e armazenamento separados, e
+`p2_10_physical_gate.sh` encerra antes de qualquer ADB sem autorizacao textual,
+serial fisico explicito e stage valido. Telefone e Wear podem ser preparados
+separadamente; nada e instalado durante o pre-flight.
+
 - criar backup e perfil de teste antes da instalacao;
 - registrar modelo/Android/Wear OS e versoes, sem versionar numero de serie;
 - usar somente tarefas e relatorios ficticios no primeiro percurso;
@@ -109,3 +115,13 @@ virtual de memoria/jobs/bateria. Nenhum canal sensorial foi acionado.
 
 O gate fisico nao autoriza coleta continua de sensor, uso de dados pessoais da
 Agenda desktop nem alteracao da rota global de outros aplicativos.
+
+**Preparacao validada sem dispositivo:** os APKs `fieldTest` de telefone e Wear
+foram montados em 77 tarefas e inspecionados com `apkanalyzer`: ambos usam
+`com.pessoal.agenda.mobile.fieldtest`, versao `0.1.0-fieldtest`, rotulo
+`Agenda Sensorial - Teste` e assinatura/debug apenas de laboratorio. O gate
+completo das variantes normal, release e `fieldTest` passou em 325 tarefas; os
+APKs release foram regenerados e o gate estatico continuou verde. Tres ensaios
+de recusa confirmaram que o script fisico termina antes de ADB sem autorizacao,
+serial ou com serial de emulador. Essa preparacao reduz risco, mas nao conta como
+evidencia dos gates 6 a 9.

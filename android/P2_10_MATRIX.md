@@ -15,8 +15,8 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 | 5 | falhas virtuais: processo, rede, Data Layer, Doze e reinicio | aprovado | fixture duravel sobreviveu a rede desligada, processo, idle e reboot; API Wear possui retry limitado |
 | 6 | telefone fisico: instalacao, permissoes, Health Connect e exportacao | bloqueado por autorizacao | usar perfil/dados de teste separados; nao acessar a Agenda pessoal |
 | 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | bloqueado por autorizacao | validar rota efetiva e fallback, sem prometer controle de outros apps |
-| 8 | relogio fisico: entrega, concluir, adiar, desconexao e reconciliacao | bloqueado por autorizacao | confirmar modelo Wear OS e pareamento antes de instalar |
-| 9 | bateria, memoria e temperatura em uso prolongado | bloqueado por autorizacao/tempo | baseline e janela definida abaixo; medir telefone e relogio reais |
+| 8 | wearable fisico: entrega, acoes disponiveis e desconexao | bloqueado por autorizacao | Mertto ZL02D/ZL02CPro 2.0.9 identificada como smartband BLE sem Wear OS; testar espelhamento, sem instalar APK Wear |
+| 9 | bateria, memoria e temperatura em uso prolongado | bloqueado por autorizacao/tempo | medir telefone por Android e bateria da smartband por observacao; memoria/temperatura da smartband nao sao expostas |
 | 10 | aceite final, artefato assinado e decisao de distribuicao | bloqueado pelos gates 4-9 | preencher lacunas legais/publicacao ou declarar release apenas pessoal |
 
 **Estado atual:** 50% do P2-10 (5 de 10); Projeto 2 em 95%.
@@ -115,6 +115,15 @@ separadamente; nada e instalado durante o pre-flight.
 
 O gate fisico nao autoriza coleta continua de sensor, uso de dados pessoais da
 Agenda desktop nem alteracao da rota global de outros aplicativos.
+
+**Perfil do wearable real:** a Mertto ZL02D Sport informa família ZL02CPro e
+firmware 2.0.9. As especificações disponíveis e a dependência de aplicativo
+companheiro a classificam como smartband Bluetooth sem Wear OS, Wi-Fi, ADB ou
+Data Layer. O APK Wear não será instalado nela. O gate 8 passa a medir
+espelhamento de texto/vibração e a registrar ações como disponíveis ou
+indisponíveis; `Concluir` e `Adiar` no pulso continuam cobertos pelo módulo Wear
+OS em emulador e exigiriam Wear OS ou SDK oficial para validação física. O
+identificador potencialmente único mostrado em `Sobre` foi omitido do Git.
 
 **Preparacao validada sem dispositivo:** os APKs `fieldTest` de telefone e Wear
 foram montados em 77 tarefas e inspecionados com `apkanalyzer`: ambos usam

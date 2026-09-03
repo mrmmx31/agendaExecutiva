@@ -72,6 +72,13 @@ Dados de saúde, medicamentos e substâncias são dados sensíveis. A coleta ser
 - Módulo Wear OS dedicado quando forem necessários estado offline próprio, Tile, resposta mais confiável ou interface específica.
 - A Data Layer API será usada somente entre Android e Wear OS; não serão criados sockets Bluetooth próprios. A API pode transmitir diretamente quando há conexão e manter itens para sincronização posterior: [visão geral](https://developer.android.com/training/wearables/data/overview) e [DataItem](https://developer.android.com/training/wearables/data/data-items).
 - Se o relógio não executar Wear OS, a fase de descoberta deve registrar fabricante, sistema e capacidades. Nesse caso, o MVP fica limitado ao espelhamento oferecido pelo sistema até existir SDK oficial compatível.
+- Dispositivo real identificado em 03/09/2026: Mertto ZL02D Sport, cuja tela
+  `Sobre` informa a família ZL02CPro e firmware 2.0.9. É uma smartband Bluetooth
+  dependente de aplicativo companheiro, sem Wear OS, ADB ou Data Layer. O trecho
+  possivelmente único do identificador Bluetooth não é versionado. Para esse
+  hardware, entrega de texto/vibração será testada por espelhamento; ações no
+  pulso são capacidade a descobrir e nunca requisito presumido. O perfil e a
+  matriz de compatibilidade ficam em `docs/release/SMARTBAND_COMPATIBILITY.md`.
 
 ### 5.3 Ambiente inicial
 
@@ -921,7 +928,9 @@ Telefone e relógio físicos, bateria, permissões, áudio, perda de conexão, e
 - [x] aprovar processo morto, rede/Data Layer interrompidos, Doze e reinício nos AVDs;
 - [ ] validar instalação, permissões, Health Connect e exportação em telefone físico autorizado;
 - [ ] validar áudio e fallback físicos com fones, DND, chamada e mídia concorrente;
-- [ ] validar entrega e ações conectadas/desconectadas em relógio físico autorizado;
+- [ ] validar espelhamento conectado/desconectado na Mertto ZL02D e registrar
+  ações como suportadas ou indisponíveis; manter ações completas validadas no
+  módulo Wear OS;
 - [ ] medir bateria, memória e temperatura em janela prolongada nos dispositivos reais;
 - [ ] fechar aceite, assinatura, declarações de loja e decisão de distribuição.
 

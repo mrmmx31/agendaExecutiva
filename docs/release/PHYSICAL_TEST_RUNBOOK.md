@@ -39,6 +39,15 @@ Trocar o stage para `install`. O script monta e instala somente a variante
 bateria, Bluetooth, audio ou Health Connect. Se houver serial Wear autorizado,
 instala o APK correspondente com o mesmo pacote/assinatura.
 
+### Conexao do Samsung sem ocupar USB
+
+Em Android 11 ou superior, computador e telefone podem usar a mesma rede Wi-Fi.
+Ativar `Opcoes do desenvolvedor > Depuracao sem fio` e parear por QR code ou
+codigo no Device Manager do Android Studio. Depois do pareamento, o cabo USB nao
+e necessario. Em Android 10 ou inferior, ADB por TCP/IP exige conexao USB
+inicial. A smartband nao usa ADB nem precisa ocupar a porta USB; deve ser
+carregada separadamente e continuar pareada ao aplicativo companheiro.
+
 ## Gate 6 - telefone, permissao e relatorio
 
 Pre-condicoes: backup normal do telefone concluido; bateria acima de 40%; app
@@ -82,21 +91,28 @@ nao controla a rota de WhatsApp ou outro app. Aprovar se a rota efetiva/fallback
 for informada, DND e foco forem respeitados, o teste cancelar e nenhuma escolha
 global permanecer alterada.
 
-## Gate 8 - Wear fisico
+## Gate 8 - wearable fisico
 
-Primeiro confirmar que o relogio usa Wear OS e suporta Data Layer. Com os dois
-apps `.fieldtest` instalados:
+O wearable disponível é a Mertto ZL02D Sport, identificada em `Sobre` como
+família ZL02CPro, firmware 2.0.9. Ela não executa Wear OS: não informar serial
+Wear, não instalar APK Wear e não tentar ADB. Confirmar qual aplicativo
+companheiro está pareado e conceder acesso somente às notificações fictícias da
+`Agenda Sensorial - Teste`.
 
-1. publicar alerta ficticio e verificar texto, `Concluir` e `Adiar`;
-2. concluir e confirmar convergencia unica no telefone;
-3. adiar com preset recebido e confirmar horario no telefone;
-4. desligar a conexao entre telefone/relogio, agir offline e confirmar outbox;
-5. reconectar e confirmar aplicacao/ack idempotentes;
-6. executar um passo ficticio de `Vou sair` com tela do relogio apagada/acesa;
-7. desligar alertas no telefone e confirmar ausencia de novo estimulo Wear.
+1. publicar alerta ficticio e verificar texto e vibracao espelhados;
+2. observar se a pulseira mostra ações; registrar `suportado` ou `indisponível`,
+   sem presumir que botões Android sejam encaminhados pelo app companheiro;
+3. usar `Concluir` e `Adiar` no telefone e verificar que a notificação refletida
+   desaparece ou muda sem duplicação;
+4. desligar Bluetooth, publicar um alerta e confirmar que o telefone continua
+   funcional sem repetição agressiva na pulseira;
+5. reconectar e verificar a política real do companheiro para alertas perdidos;
+6. executar um passo fictício de `Vou sair` com a pulseira apagada/acesa;
+7. desligar alertas no telefone e confirmar ausência de novo estímulo.
 
-Nao ativar sensor corporal no relogio. Dados de saude continuam vindo do Health
-Connect no telefone.
+Não capturar tráfego BLE, não fazer engenharia reversa do protocolo proprietário
+e não importar dados de saúde do aplicativo companheiro sem API oficial e novo
+consentimento. Dados de saúde continuam vindo do Health Connect no telefone.
 
 ## Gate 9 - bateria, memoria e temperatura
 
@@ -123,4 +139,3 @@ proprietario. Nao desinstalar nem limpar `com.pessoal.agenda.mobile`. Resumir na
 matriz somente aparelho/modelo sem serial, versoes, resultado e desvios sem dado
 pessoal. O gate 10 continua exigindo decisao separada entre uso pessoal e
 distribuicao publica.
-

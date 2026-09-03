@@ -1457,7 +1457,7 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 **Status:** Especificado em 31/08/2026; implementação 95%, com 5% restantes. `P2-01` a `P2-09` estão concluídas e `P2-10` tem 5 de 10 gates.
 
-**Visão:** estender a Agenda para Android e Wear OS, mantendo o desktop como superfície de organização, o smartphone como nó móvel offline e o smartwatch como superfície curta de percepção e resposta. Alertas devem oferecer `Concluir` e `Adiar`; capturas e protocolos devem funcionar fora do notebook e convergir depois.
+**Visão:** estender a Agenda para Android e Wear OS, mantendo o desktop como superfície de organização, o smartphone como nó móvel offline e o smartwatch como superfície curta de percepção e resposta. Alertas devem oferecer `Concluir` e `Adiar` quando o wearable tiver Wear OS ou API oficial; smartbands fechadas recebem o melhor espelhamento suportado e mantêm essas ações no telefone. Capturas e protocolos devem funcionar fora do notebook e convergir depois.
 
 **Escopo adicional:** áudio configurável da própria Agenda, fluxo `Vou sair`, Health Connect opt-in, registros voluntários de medicamentos/substâncias/sintomas, relatório revisável para acompanhamento médico e personalização evolutiva local-first.
 
@@ -1465,4 +1465,4 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 **Documentos:** requisitos, arquitetura, fases e gates estão em `PROJECT2_SPEC.md`. O ponto de entrada para manutenção, catálogos, contratos e retomada de contexto está em `MAINTENANCE_MAP.md`.
 
-**Próxima ação:** obter autorização explícita e executar os gates físicos 6 a 9 do P2-10; em seguida fechar aceite e decisão de distribuição.
+**Próxima ação:** obter autorização explícita, parear o Samsung por depuração sem fio e executar os gates físicos 6 a 9 do P2-10. A Mertto ZL02D/ZL02CPro 2.0.9 será validada como smartband Bluetooth por espelhamento, não como Wear OS; em seguida fechar aceite e decisão de distribuição.

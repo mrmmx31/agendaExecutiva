@@ -66,6 +66,7 @@ class AlertNotificationPublisherTest {
         val posted = waitForNotification(ALERT_ID)
         val channel = requireNotNull(manager.getNotificationChannel(AndroidAlertNotificationPublisher.CHANNEL_ID))
         assertEquals(Notification.VISIBILITY_PRIVATE, posted.notification.visibility)
+        assertEquals(0, posted.notification.flags and Notification.FLAG_LOCAL_ONLY)
         assertEquals(2, posted.notification.actions.size)
         assertNull(channel.sound)
         assertFalse(channel.shouldVibrate())

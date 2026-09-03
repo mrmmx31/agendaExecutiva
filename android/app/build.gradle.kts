@@ -27,6 +27,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
+        buildConfigField("String", "HEALTH_DATA_ORIGIN_FILTER", "\"\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -50,6 +51,11 @@ android {
             applicationIdSuffix = ".fieldtest"
             versionNameSuffix = "-fieldtest"
             manifestPlaceholders["appLabel"] = "Agenda Sensorial - Teste"
+            buildConfigField(
+                "String",
+                "HEALTH_DATA_ORIGIN_FILTER",
+                "\"androidx.health.connect.client.devtool\"",
+            )
             matchingFallbacks += listOf("debug")
         }
         release {

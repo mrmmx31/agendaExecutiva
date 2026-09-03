@@ -7,9 +7,11 @@ import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.metadata.DataOrigin
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import com.pessoal.agenda.mobile.BuildConfig
 import com.pessoal.agenda.mobile.health.HealthCategory
 import com.pessoal.agenda.mobile.health.HealthMetric
 import com.pessoal.agenda.mobile.health.HealthMetricName
@@ -41,7 +43,10 @@ interface HealthConnectGateway {
     ): List<ImportedHealthSummary>
 }
 
-class AndroidHealthConnectGateway(private val context: Context) : HealthConnectGateway {
+class AndroidHealthConnectGateway(
+    private val context: Context,
+    private val dataOrigins: Set<DataOrigin> = configuredDataOrigins(BuildConfig.HEALTH_DATA_ORIGIN_FILTER),
+) : HealthConnectGateway {
     private val client: HealthConnectClient by lazy { HealthConnectClient.getOrCreate(context) }
 
     override fun status(): HealthConnectStatus = when (HealthConnectClient.getSdkStatus(context)) {
@@ -83,7 +88,11 @@ class AndroidHealthConnectGateway(private val context: Context) : HealthConnectG
 
     private suspend fun readHeartRate(start: Instant, end: Instant): ImportedHealthSummary {
         val records = client.readRecords(
-            ReadRecordsRequest(HeartRateRecord::class, TimeRangeFilter.between(start, end)),
+            ReadRecordsRequest(
+                HeartRateRecord::class,
+                TimeRangeFilter.between(start, end),
+                dataOriginFilter = dataOrigins,
+            ),
         ).records
         val samples = records.flatMap(HeartRateRecord::samples)
         val values = samples.map { it.beatsPerMinute.toDouble() }
@@ -98,7 +107,11 @@ class AndroidHealthConnectGateway(private val context: Context) : HealthConnectG
 
     private suspend fun readRestingHeartRate(start: Instant, end: Instant): ImportedHealthSummary {
         val records = client.readRecords(
-            ReadRecordsRequest(RestingHeartRateRecord::class, TimeRangeFilter.between(start, end)),
+            ReadRecordsRequest(
+                RestingHeartRateRecord::class,
+                TimeRangeFilter.between(start, end),
+                dataOriginFilter = dataOrigins,
+            ),
         ).records
         val values = records.map { it.beatsPerMinute.toDouble() }
         return summary(
@@ -112,10 +125,18 @@ class AndroidHealthConnectGateway(private val context: Context) : HealthConnectG
 
     private suspend fun readSleep(start: Instant, end: Instant): ImportedHealthSummary {
         val records = client.readRecords(
-            ReadRecordsRequest(SleepSessionRecord::class, TimeRangeFilter.between(start, end)),
+            ReadRecordsRequest(
+                SleepSessionRecord::class,
+                TimeRangeFilter.between(start, end),
+                dataOriginFilter = dataOrigins,
+            ),
         ).records
         val total = client.aggregate(
-            AggregateRequest(setOf(SleepSessionRecord.SLEEP_DURATION_TOTAL), TimeRangeFilter.between(start, end)),
+            AggregateRequest(
+                setOf(SleepSessionRecord.SLEEP_DURATION_TOTAL),
+                TimeRangeFilter.between(start, end),
+                dataOriginFilter = dataOrigins,
+            ),
         )[SleepSessionRecord.SLEEP_DURATION_TOTAL]
         return summary(
             category = HealthCategory.SLEEP, start = start, end = end,
@@ -128,10 +149,18 @@ class AndroidHealthConnectGateway(private val context: Context) : HealthConnectG
 
     private suspend fun readSteps(start: Instant, end: Instant): ImportedHealthSummary {
         val records = client.readRecords(
-            ReadRecordsRequest(StepsRecord::class, TimeRangeFilter.between(start, end)),
+            ReadRecordsRequest(
+                StepsRecord::class,
+                TimeRangeFilter.between(start, end),
+                dataOriginFilter = dataOrigins,
+            ),
         ).records
         val total = client.aggregate(
-            AggregateRequest(setOf(StepsRecord.COUNT_TOTAL), TimeRangeFilter.between(start, end)),
+            AggregateRequest(
+                setOf(StepsRecord.COUNT_TOTAL),
+                TimeRangeFilter.between(start, end),
+                dataOriginFilter = dataOrigins,
+            ),
         )[StepsRecord.COUNT_TOTAL]
         return summary(
             category = HealthCategory.ACTIVITY, start = start, end = end,
@@ -186,3 +215,9 @@ class AndroidHealthConnectGateway(private val context: Context) : HealthConnectG
         }
     }
 }
+
+internal fun configuredDataOrigins(raw: String): Set<DataOrigin> = raw
+    .split(',')
+    .map(String::trim)
+    .filter(String::isNotEmpty)
+    .mapTo(linkedSetOf()) { DataOrigin(it) }

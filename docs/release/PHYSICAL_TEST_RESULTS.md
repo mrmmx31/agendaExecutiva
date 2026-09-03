@@ -25,7 +25,8 @@ fora do Git.
 | protocolo offline | aprovado | quatro passos fictícios concluídos; fila avançou sem crash |
 | Health Connect negado | aprovado | leitura cardíaca permaneceu `granted=false` |
 | registro sensível local | aprovado | fixture criada, corrigida, confirmada e excluída |
-| concessão Health com dado sintético | pendente | não ler dados pessoais; exige fonte sintética isolada |
+| isolamento Health sintético | preparado | `fieldTest` filtra leituras e agregações exclusivamente para o pacote oficial Health Connect Toolbox; produção mantém origens consentidas |
+| concessão Health com dado sintético | pendente | instalar Toolbox oficial, inserir fixture e conceder somente as permissões necessárias |
 | prévia e exportação JSON/CSV/PDF | pendente | exige seleção visual de destino temporário |
 
 ## Gate 7

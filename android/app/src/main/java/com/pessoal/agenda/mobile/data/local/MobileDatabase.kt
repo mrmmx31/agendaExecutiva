@@ -28,8 +28,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         HealthSymptomLogEntity::class,
         HealthChangeAuditEntity::class,
         HealthSummaryEntity::class,
+        RecommendationEventEntity::class,
+        RecommendationDecisionEntity::class,
+        RecommendationSettingsEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 abstract class MobileDatabase : RoomDatabase() {
@@ -49,6 +52,7 @@ abstract class MobileDatabase : RoomDatabase() {
                 MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
                 MIGRATION_6_7,
                 MIGRATION_7_8,
+                MIGRATION_8_9,
             ).build().also { instance = it }
         }
 
@@ -274,6 +278,43 @@ abstract class MobileDatabase : RoomDatabase() {
                 """.trimIndent())
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_health_summaries_category ON health_summaries(category)")
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_health_summaries_importedAt ON health_summaries(importedAt)")
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS recommendation_events (
+                        id TEXT NOT NULL PRIMARY KEY, contractVersion INTEGER NOT NULL,
+                        eventType TEXT NOT NULL, occurredAt TEXT NOT NULL,
+                        localHour INTEGER NOT NULL, dayOfWeek INTEGER NOT NULL,
+                        sourceDevice TEXT NOT NULL, activeContext TEXT NOT NULL,
+                        capacityContext TEXT NOT NULL, alertKind TEXT, deadlineBucket TEXT,
+                        channel TEXT, responseLatencySeconds INTEGER, snoozeMinutes INTEGER,
+                        recommendationId TEXT, optionCode TEXT, correctedAt TEXT
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_recommendation_events_occurredAt ON recommendation_events(occurredAt)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_recommendation_events_eventType_activeContext ON recommendation_events(eventType, activeContext)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS recommendation_decisions (
+                        id TEXT NOT NULL PRIMARY KEY, contractVersion INTEGER NOT NULL,
+                        generatedAt TEXT NOT NULL, engineId TEXT NOT NULL,
+                        ruleVersion TEXT NOT NULL, purpose TEXT NOT NULL,
+                        sampleCount INTEGER NOT NULL, minimumSamples INTEGER NOT NULL,
+                        fallback INTEGER NOT NULL, optionsJson TEXT NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_recommendation_decisions_generatedAt ON recommendation_decisions(generatedAt)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_recommendation_decisions_purpose ON recommendation_decisions(purpose)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS recommendation_settings (
+                        id TEXT NOT NULL PRIMARY KEY, personalizationEnabled INTEGER NOT NULL,
+                        retentionDays INTEGER NOT NULL, capacityContext TEXT NOT NULL,
+                        preferredSnoozeMinutes INTEGER, preferredChannel TEXT,
+                        updatedAt TEXT NOT NULL
+                    )
+                """.trimIndent())
             }
         }
     }

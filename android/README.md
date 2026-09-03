@@ -56,14 +56,15 @@ ANDROID_SERIAL=emulator-5556 ./gradlew connectedDebugAndroidTest
 - Data Layer pareado aprovado para estado, `Concluir`, `Adiar` e reconciliação depois de o app do telefone ser reaberto; matriz em [`P2_05_MATRIX.md`](P2_05_MATRIX.md).
 - Room Android v5 mantém revisão Wear; Room próprio do relógio persiste alerta e outbox antes do feedback.
 - P2-06 entrega `Vou sair`, escolha determinística, passo atual e confirmação offline no Wear e sugestões estruturais que exigem revisão; o percurso pareado está aprovado em [`P2_06_MATRIX.md`](P2_06_MATRIX.md).
-- P2-07 possui contratos, inventário de privacidade e Room v7 com payloads AES-GCM protegidos pelo Keystore; nenhuma permissão Health Connect foi declarada.
+- P2-07 possui contratos, inventário de privacidade, Room v8 e payloads AES-GCM protegidos pelo Keystore; permissões Health Connect são granulares e pedidas somente no fluxo explícito de importação.
 - `Saúde e privacidade` oferece oito opt-ins e formulários locais para medicação, substância, sintoma/evento e nota de rotina, com correção e exclusão explícita.
+- P2-08 possui contratos minimizados e Room v9 para eventos, decisões e configurações locais; personalização começa desligada e o histórico não entra no sync.
 
 ## Limites
 
 - Package: `com.pessoal.agenda.mobile`.
 - Banco: `agenda-mobile.db`, separado do SQLite desktop.
-- Banco atual: Room v7 no telefone e v2 no relógio, com schemas exportados e migrações explícitas.
+- Banco atual: Room v9 no telefone e v2 no relógio, com schemas exportados e migrações explícitas.
 - Contrato atual: v1, catalogado em `contracts/README.md`.
 - O Data Layer transporta somente estados e ações mínimas v1 de alertas e do passo atual do protocolo; dados sensíveis não fazem parte desses payloads.
 - Backup e transferência de dados Android estão desativados.

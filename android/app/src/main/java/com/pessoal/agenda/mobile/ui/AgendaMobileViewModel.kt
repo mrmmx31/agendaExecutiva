@@ -35,6 +35,7 @@ import com.pessoal.agenda.mobile.wear.AndroidWearProtocolPublisher
 import com.pessoal.agenda.mobile.health.AndroidKeystoreHealthDataCipher
 import com.pessoal.agenda.mobile.health.HealthCategory
 import com.pessoal.agenda.mobile.health.HealthStore
+import com.pessoal.agenda.mobile.recommendation.RecommendationStore
 import com.pessoal.agenda.mobile.health.IntakeInput
 import com.pessoal.agenda.mobile.health.SymptomInput
 import com.pessoal.agenda.mobile.health.VersionedHealthRecord
@@ -109,6 +110,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         MobileDatabase.get(application),
         AndroidKeystoreHealthDataCipher(),
     )
+    private val recommendationStore = RecommendationStore(MobileDatabase.get(application))
     private val healthConnect = AndroidHealthConnectGateway(application)
     private val healthImporter = HealthConnectImportCoordinator(healthConnect, healthStore)
     private val healthReportBuilder = HealthReportBuilder()
@@ -181,6 +183,8 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
                 repository.initializeFictitiousData()
                 healthStore.initializeConsentCatalog()
                 healthStore.enforceRetention()
+                recommendationStore.ensureSettings()
+                recommendationStore.enforceRetention()
                 refreshHealth()
                 val storedProfile = alertStore.ensureInstallationProfile()
                 visualAlertsEnabled.value = storedProfile.profile.globalEnabled && notificationsAllowed()

@@ -34,7 +34,7 @@ class MobileDatabaseMigrationTest {
 
         helper.runMigrationsAndValidate(
             TEST_DATABASE,
-            8,
+            9,
             true,
             MobileDatabase.MIGRATION_1_2,
             MobileDatabase.MIGRATION_2_3,
@@ -43,6 +43,7 @@ class MobileDatabaseMigrationTest {
             MobileDatabase.MIGRATION_5_6,
             MobileDatabase.MIGRATION_6_7,
             MobileDatabase.MIGRATION_7_8,
+            MobileDatabase.MIGRATION_8_9,
         ).use { database ->
             database.query("SELECT value FROM mobile_metadata WHERE `key`='contract_version'").use { cursor ->
                 cursor.moveToFirst()
@@ -78,10 +79,11 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            QUEUE_DATABASE, 8, true, MobileDatabase.MIGRATION_2_3,
+            QUEUE_DATABASE, 9, true, MobileDatabase.MIGRATION_2_3,
             MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5, MobileDatabase.MIGRATION_5_6,
             MobileDatabase.MIGRATION_6_7,
             MobileDatabase.MIGRATION_7_8,
+            MobileDatabase.MIGRATION_8_9,
         ).use { database ->
             database.query("SELECT status, attemptCount, updatedAt FROM pending_operations").use { cursor ->
                 cursor.moveToFirst()
@@ -97,8 +99,9 @@ class MobileDatabaseMigrationTest {
         helper.createDatabase(ALERT_DATABASE, 3).close()
 
         helper.runMigrationsAndValidate(
-            ALERT_DATABASE, 8, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
+            ALERT_DATABASE, 9, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
             MobileDatabase.MIGRATION_5_6, MobileDatabase.MIGRATION_6_7, MobileDatabase.MIGRATION_7_8,
+            MobileDatabase.MIGRATION_8_9,
         ).use { database ->
             database.query("SELECT COUNT(*) FROM alert_definitions").use { cursor ->
                 cursor.moveToFirst()
@@ -121,6 +124,40 @@ class MobileDatabaseMigrationTest {
             }
             database.query("SELECT ciphertext, iv, revision, tombstone FROM health_intake_logs LIMIT 0").close()
             database.query("SELECT category, ciphertext, iv FROM health_summaries LIMIT 0").close()
+            database.query("SELECT eventType, occurredAt, correctedAt FROM recommendation_events LIMIT 0").close()
+            database.query("SELECT purpose, optionsJson FROM recommendation_decisions LIMIT 0").close()
+            database.query("SELECT personalizationEnabled, retentionDays FROM recommendation_settings LIMIT 0").close()
+        }
+    }
+
+    @Test
+    fun migrateHealthDatabaseToLocalRecommendationStorage() {
+        helper.createDatabase(RECOMMENDATION_DATABASE, 8).use { database ->
+            database.execSQL(
+                "INSERT INTO mobile_metadata (`key`, value, updatedAt) VALUES (?, ?, ?)",
+                arrayOf("fixture", "preserved", "2026-09-02T12:00:00Z"),
+            )
+        }
+
+        helper.runMigrationsAndValidate(
+            RECOMMENDATION_DATABASE, 9, true, MobileDatabase.MIGRATION_8_9,
+        ).use { database ->
+            database.query("SELECT value FROM mobile_metadata WHERE `key`='fixture'").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("preserved", cursor.getString(0))
+            }
+            database.query("SELECT COUNT(*) FROM recommendation_events").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+            database.query("SELECT COUNT(*) FROM recommendation_decisions").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+            database.query("SELECT COUNT(*) FROM recommendation_settings").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
         }
     }
 
@@ -128,5 +165,6 @@ class MobileDatabaseMigrationTest {
         const val TEST_DATABASE = "agenda-mobile-migration-test.db"
         const val QUEUE_DATABASE = "agenda-mobile-queue-migration-test.db"
         const val ALERT_DATABASE = "agenda-mobile-alert-migration-test.db"
+        const val RECOMMENDATION_DATABASE = "agenda-mobile-recommendation-migration-test.db"
     }
 }

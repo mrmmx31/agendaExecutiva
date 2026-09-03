@@ -10,6 +10,51 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface OfflineDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertRecommendationSettings(value: RecommendationSettingsEntity): Long
+
+    @Upsert
+    suspend fun upsertRecommendationSettings(value: RecommendationSettingsEntity)
+
+    @Query("SELECT * FROM recommendation_settings WHERE id=:id")
+    suspend fun recommendationSettings(id: String): RecommendationSettingsEntity?
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertRecommendationEvent(value: RecommendationEventEntity)
+
+    @Query("SELECT * FROM recommendation_events WHERE id=:id")
+    suspend fun recommendationEvent(id: String): RecommendationEventEntity?
+
+    @Query("SELECT * FROM recommendation_events ORDER BY occurredAt DESC")
+    suspend fun recommendationEvents(): List<RecommendationEventEntity>
+
+    @Query("SELECT COUNT(*) FROM recommendation_events")
+    suspend fun recommendationEventCount(): Int
+
+    @Query("DELETE FROM recommendation_events WHERE occurredAt<:cutoff")
+    suspend fun deleteRecommendationEventsBefore(cutoff: String): Int
+
+    @Query("DELETE FROM recommendation_events")
+    suspend fun deleteRecommendationEvents(): Int
+
+    @Upsert
+    suspend fun upsertRecommendationEvent(value: RecommendationEventEntity)
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertRecommendationDecision(value: RecommendationDecisionEntity)
+
+    @Query("SELECT * FROM recommendation_decisions ORDER BY generatedAt DESC")
+    suspend fun recommendationDecisions(): List<RecommendationDecisionEntity>
+
+    @Query("SELECT COUNT(*) FROM recommendation_decisions")
+    suspend fun recommendationDecisionCount(): Int
+
+    @Query("DELETE FROM recommendation_decisions WHERE generatedAt<:cutoff")
+    suspend fun deleteRecommendationDecisionsBefore(cutoff: String): Int
+
+    @Query("DELETE FROM recommendation_decisions")
+    suspend fun deleteRecommendationDecisions(): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertHealthConsent(value: HealthConsentEntity): Long
 
     @Upsert

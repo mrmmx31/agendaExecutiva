@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/personal-ranking-dataset.schema.json",
+  "title": "Local personal ranking dataset v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "dataset_id", "purpose", "source", "generated_at", "samples"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "dataset_id": { "type": "string", "format": "uuid" },
+    "purpose": { "const": "SNOOZE_PRESET" },
+    "source": { "enum": ["LOCAL_EVENTS", "SYNTHETIC_FIXTURE"] },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "samples": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["day_part", "day_group", "source_device", "active_context", "capacity_context", "alert_kind", "deadline_bucket", "chosen_option"],
+        "properties": {
+          "day_part": { "enum": ["MORNING", "AFTERNOON", "EVENING", "NIGHT"] },
+          "day_group": { "enum": ["WEEKDAY", "WEEKEND"] },
+          "source_device": { "enum": ["PHONE", "WATCH"] },
+          "active_context": { "enum": ["NONE", "FOCUS", "PROTOCOL"] },
+          "capacity_context": { "enum": ["STANDARD", "REDUCED_EXPLICIT", "PARALLEL_EXPLICIT"] },
+          "alert_kind": { "enum": ["TASK", "FOCUS", "PROTOCOL", "ROUTINE", "OTHER"] },
+          "deadline_bucket": { "enum": ["OVERDUE", "UNDER_15_MIN", "UNDER_1_HOUR", "TODAY", "LATER", "NONE"] },
+          "chosen_option": { "enum": ["SNOOZE_5", "SNOOZE_10", "SNOOZE_15", "SNOOZE_30", "SNOOZE_60"] }
+        }
+      }
+    }
+  }
+}
+

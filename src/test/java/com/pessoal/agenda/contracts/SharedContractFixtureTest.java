@@ -36,6 +36,8 @@ class SharedContractFixtureTest {
         assertKeys("health-report.valid.json", HEALTH_REPORT_KEYS);
         assertKeys("recommendation-event.valid.json", RECOMMENDATION_EVENT_KEYS);
         assertKeys("recommendation-decision.valid.json", RECOMMENDATION_DECISION_KEYS);
+        assertKeys("personal-ranking-dataset.valid.json", PERSONAL_RANKING_DATASET_KEYS);
+        assertKeys("personal-model-manifest.valid.json", PERSONAL_MODEL_MANIFEST_KEYS);
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").get("status").getAsString());
         assertEquals("APPLIED", fixture("sync-result.valid.json").get("status").getAsString());
@@ -50,6 +52,15 @@ class SharedContractFixtureTest {
         assertEquals(1, fixture("health-report.valid.json").get("contract_version").getAsInt());
         assertEquals("ALERT_SNOOZED", fixture("recommendation-event.valid.json").get("event_type").getAsString());
         assertTrue(fixture("recommendation-decision.valid.json").get("fallback").getAsBoolean());
+        JsonObject dataset = fixture("personal-ranking-dataset.valid.json");
+        assertEquals("SYNTHETIC_FIXTURE", dataset.get("source").getAsString());
+        assertEquals(12, dataset.getAsJsonArray("samples").size());
+        dataset.getAsJsonArray("samples").forEach(sample ->
+                assertEquals(PERSONAL_RANKING_SAMPLE_KEYS, sample.getAsJsonObject().keySet()));
+        JsonObject manifest = fixture("personal-model-manifest.valid.json");
+        assertEquals("SHADOW", manifest.get("status").getAsString());
+        assertEquals("AUDITABLE_LINEAR_KOTLIN", manifest.get("runtime").getAsString());
+        assertEquals(PERSONAL_MODEL_METRIC_KEYS, manifest.getAsJsonObject("metrics").keySet());
     }
 
     @Test
@@ -96,5 +107,9 @@ class SharedContractFixtureTest {
     private static final Set<String> HEALTH_REPORT_KEYS = Set.of("contract_version", "snapshot_id", "generated_at", "period_start", "period_end", "time_zone", "subject_label", "selected_categories", "permissions", "sources", "limitations", "excluded_entry_count", "entries");
     private static final Set<String> RECOMMENDATION_EVENT_KEYS = Set.of("contract_version", "event_id", "event_type", "occurred_at", "local_hour", "day_of_week", "source_device", "active_context", "capacity_context", "alert_kind", "deadline_bucket", "channel", "response_latency_seconds", "snooze_minutes", "recommendation_id", "option_code");
     private static final Set<String> RECOMMENDATION_DECISION_KEYS = Set.of("contract_version", "recommendation_id", "generated_at", "engine_id", "rule_version", "purpose", "sample_count", "minimum_samples", "fallback", "options");
+    private static final Set<String> PERSONAL_RANKING_DATASET_KEYS = Set.of("contract_version", "dataset_id", "purpose", "source", "generated_at", "samples");
+    private static final Set<String> PERSONAL_RANKING_SAMPLE_KEYS = Set.of("day_part", "day_group", "source_device", "active_context", "capacity_context", "alert_kind", "deadline_bucket", "chosen_option");
+    private static final Set<String> PERSONAL_MODEL_MANIFEST_KEYS = Set.of("contract_version", "model_id", "model_version", "purpose", "runtime", "feature_contract_version", "artifact_format", "artifact_sha256", "trained_at", "training_sample_count", "status", "metrics", "rollback_model_id");
+    private static final Set<String> PERSONAL_MODEL_METRIC_KEYS = Set.of("evaluation_sample_count", "top1_accuracy", "baseline_top1_accuracy");
     private static final Set<String> RESULT_STATES = Set.of("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE");
 }

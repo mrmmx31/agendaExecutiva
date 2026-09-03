@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 80% do Projeto 2 |
+| Status | Implementação em andamento; 81,7% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -565,7 +565,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-08` estão concluídas. O avanço geral é 80% e restam 20%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-08` estão concluídas e `P2-09` tem 1 de 6 itens. O avanço geral é 81,7% e restam 18,3%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -810,6 +810,29 @@ pessoal ou estímulo sensorial foi usado.
 
 Somente após volume mínimo: benchmark LiteRT/ONNX, avaliação offline, shadow mode, ativação opt-in e rollback.
 
+**Status:** Em andamento, 16,7% (1 de 6 itens concluído).
+
+**Checklist de avanço:**
+
+- [x] fechar runtime inicial, contrato de features/artefato, inventário de dados e dataset sintético;
+- [ ] implementar treino e avaliação offline reproduzíveis contra o `rules-v1`;
+- [ ] executar o modelo em shadow mode sem alterar opções exibidas;
+- [ ] persistir artefato com integridade, compatibilidade e rollback atômico;
+- [ ] entregar opt-in de ativação, inspeção e métricas de recursos;
+- [ ] aprovar matriz final de privacidade, qualidade, falha, bateria, temas e documentação.
+
+**Evidência do primeiro item:** o ADR 0003 escolhe para o primeiro candidato um
+classificador linear multiclasse auditável em Kotlin, atrás de interface de
+runtime, e mantém LiteRT Play Services e ONNX Runtime como adapters futuros
+sujeitos a benchmark. `PERSONAL_MODEL_V1.md`, o inventário e o model card
+restringem v1 a presets de adiamento, treino/inferência local, 60 amostras para
+artefato, 12 por contexto e início obrigatório em `SHADOW`. Dois schemas fecham
+dataset e manifesto; fixtures com 12 observações exclusivamente sintéticas são
+lidas pelas suítes Java e Kotlin. `jq` aprovou todos os JSONs e uma verificação
+por nomes exatos não encontrou saúde, texto, IDs operacionais, localização,
+token ou credencial. Nenhuma dependência, permissão, coleta ou dado real foi
+adicionado.
+
 ### P2-10 — Dispositivos reais e revisão regulatória
 
 Telefone e relógio físicos, bateria, permissões, áudio, perda de conexão, exportação para médico e revisão do enquadramento antes de qualquer alegação clínica.
@@ -857,5 +880,5 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Iniciar `P2-09`: definir candidatos de runtime, dataset sintético de avaliação,
-shadow mode local e rollback de artefato antes de qualquer ativação aprendida.
+Implementar o treinador/evaluador offline reproduzível do P2-09 e comparar o
+classificador linear com o `rules-v1` sem ativar sua saída na interface.

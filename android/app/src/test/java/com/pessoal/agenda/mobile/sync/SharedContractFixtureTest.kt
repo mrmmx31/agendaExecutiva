@@ -31,6 +31,8 @@ class SharedContractFixtureTest {
         assertKeys("health-report.valid.json", HEALTH_REPORT_KEYS)
         assertKeys("recommendation-event.valid.json", RECOMMENDATION_EVENT_KEYS)
         assertKeys("recommendation-decision.valid.json", RECOMMENDATION_DECISION_KEYS)
+        assertKeys("personal-ranking-dataset.valid.json", PERSONAL_RANKING_DATASET_KEYS)
+        assertKeys("personal-model-manifest.valid.json", PERSONAL_MODEL_MANIFEST_KEYS)
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").requiredText("status"))
         assertEquals("APPLIED", fixture("sync-result.valid.json").requiredText("status"))
@@ -45,6 +47,15 @@ class SharedContractFixtureTest {
         assertEquals("1", fixture("health-report.valid.json").requiredText("contract_version"))
         assertEquals("ALERT_SNOOZED", fixture("recommendation-event.valid.json").requiredText("event_type"))
         assertTrue(fixture("recommendation-decision.valid.json").requiredText("fallback").toBoolean())
+        val dataset = fixture("personal-ranking-dataset.valid.json")
+        assertEquals("SYNTHETIC_FIXTURE", dataset.requiredText("source"))
+        val samples = requireNotNull(dataset["samples"] as? kotlinx.serialization.json.JsonArray)
+        assertEquals(12, samples.size)
+        samples.forEach { assertEquals(PERSONAL_RANKING_SAMPLE_KEYS, (it as JsonObject).keys) }
+        val manifest = fixture("personal-model-manifest.valid.json")
+        assertEquals("SHADOW", manifest.requiredText("status"))
+        assertEquals("AUDITABLE_LINEAR_KOTLIN", manifest.requiredText("runtime"))
+        assertEquals(PERSONAL_MODEL_METRIC_KEYS, (manifest["metrics"] as JsonObject).keys)
     }
 
     @Test
@@ -92,6 +103,10 @@ class SharedContractFixtureTest {
         val HEALTH_REPORT_KEYS = setOf("contract_version", "snapshot_id", "generated_at", "period_start", "period_end", "time_zone", "subject_label", "selected_categories", "permissions", "sources", "limitations", "excluded_entry_count", "entries")
         val RECOMMENDATION_EVENT_KEYS = setOf("contract_version", "event_id", "event_type", "occurred_at", "local_hour", "day_of_week", "source_device", "active_context", "capacity_context", "alert_kind", "deadline_bucket", "channel", "response_latency_seconds", "snooze_minutes", "recommendation_id", "option_code")
         val RECOMMENDATION_DECISION_KEYS = setOf("contract_version", "recommendation_id", "generated_at", "engine_id", "rule_version", "purpose", "sample_count", "minimum_samples", "fallback", "options")
+        val PERSONAL_RANKING_DATASET_KEYS = setOf("contract_version", "dataset_id", "purpose", "source", "generated_at", "samples")
+        val PERSONAL_RANKING_SAMPLE_KEYS = setOf("day_part", "day_group", "source_device", "active_context", "capacity_context", "alert_kind", "deadline_bucket", "chosen_option")
+        val PERSONAL_MODEL_MANIFEST_KEYS = setOf("contract_version", "model_id", "model_version", "purpose", "runtime", "feature_contract_version", "artifact_format", "artifact_sha256", "trained_at", "training_sample_count", "status", "metrics", "rollback_model_id")
+        val PERSONAL_MODEL_METRIC_KEYS = setOf("evaluation_sample_count", "top1_accuracy", "baseline_top1_accuracy")
         val RESULT_STATES = setOf("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE")
     }
 }

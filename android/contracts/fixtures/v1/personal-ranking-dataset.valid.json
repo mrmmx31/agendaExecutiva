@@ -1,0 +1,22 @@
+{
+  "contract_version": 1,
+  "dataset_id": "d7000000-0000-4000-8000-000000000001",
+  "purpose": "SNOOZE_PRESET",
+  "source": "SYNTHETIC_FIXTURE",
+  "generated_at": "2026-09-03T12:00:00Z",
+  "samples": [
+    { "day_part": "MORNING", "day_group": "WEEKDAY", "source_device": "PHONE", "active_context": "NONE", "capacity_context": "STANDARD", "alert_kind": "ROUTINE", "deadline_bucket": "TODAY", "chosen_option": "SNOOZE_10" },
+    { "day_part": "MORNING", "day_group": "WEEKDAY", "source_device": "WATCH", "active_context": "PROTOCOL", "capacity_context": "REDUCED_EXPLICIT", "alert_kind": "PROTOCOL", "deadline_bucket": "UNDER_15_MIN", "chosen_option": "SNOOZE_5" },
+    { "day_part": "AFTERNOON", "day_group": "WEEKDAY", "source_device": "PHONE", "active_context": "FOCUS", "capacity_context": "STANDARD", "alert_kind": "FOCUS", "deadline_bucket": "UNDER_1_HOUR", "chosen_option": "SNOOZE_15" },
+    { "day_part": "AFTERNOON", "day_group": "WEEKDAY", "source_device": "WATCH", "active_context": "NONE", "capacity_context": "PARALLEL_EXPLICIT", "alert_kind": "TASK", "deadline_bucket": "LATER", "chosen_option": "SNOOZE_30" },
+    { "day_part": "EVENING", "day_group": "WEEKDAY", "source_device": "PHONE", "active_context": "NONE", "capacity_context": "REDUCED_EXPLICIT", "alert_kind": "OTHER", "deadline_bucket": "NONE", "chosen_option": "SNOOZE_60" },
+    { "day_part": "NIGHT", "day_group": "WEEKDAY", "source_device": "PHONE", "active_context": "NONE", "capacity_context": "STANDARD", "alert_kind": "TASK", "deadline_bucket": "OVERDUE", "chosen_option": "SNOOZE_5" },
+    { "day_part": "MORNING", "day_group": "WEEKEND", "source_device": "PHONE", "active_context": "PROTOCOL", "capacity_context": "STANDARD", "alert_kind": "PROTOCOL", "deadline_bucket": "TODAY", "chosen_option": "SNOOZE_15" },
+    { "day_part": "AFTERNOON", "day_group": "WEEKEND", "source_device": "WATCH", "active_context": "FOCUS", "capacity_context": "PARALLEL_EXPLICIT", "alert_kind": "FOCUS", "deadline_bucket": "UNDER_15_MIN", "chosen_option": "SNOOZE_10" },
+    { "day_part": "EVENING", "day_group": "WEEKEND", "source_device": "PHONE", "active_context": "NONE", "capacity_context": "REDUCED_EXPLICIT", "alert_kind": "ROUTINE", "deadline_bucket": "LATER", "chosen_option": "SNOOZE_30" },
+    { "day_part": "NIGHT", "day_group": "WEEKEND", "source_device": "WATCH", "active_context": "NONE", "capacity_context": "STANDARD", "alert_kind": "OTHER", "deadline_bucket": "NONE", "chosen_option": "SNOOZE_60" },
+    { "day_part": "MORNING", "day_group": "WEEKDAY", "source_device": "PHONE", "active_context": "FOCUS", "capacity_context": "PARALLEL_EXPLICIT", "alert_kind": "TASK", "deadline_bucket": "UNDER_1_HOUR", "chosen_option": "SNOOZE_15" },
+    { "day_part": "EVENING", "day_group": "WEEKDAY", "source_device": "WATCH", "active_context": "PROTOCOL", "capacity_context": "REDUCED_EXPLICIT", "alert_kind": "PROTOCOL", "deadline_bucket": "OVERDUE", "chosen_option": "SNOOZE_5" }
+  ]
+}
+

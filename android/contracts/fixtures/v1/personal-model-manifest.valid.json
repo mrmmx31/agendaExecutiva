@@ -1,0 +1,20 @@
+{
+  "contract_version": 1,
+  "model_id": "personal-snooze-ranker",
+  "model_version": "synthetic-fixture-v1",
+  "purpose": "SNOOZE_PRESET",
+  "runtime": "AUDITABLE_LINEAR_KOTLIN",
+  "feature_contract_version": 1,
+  "artifact_format": "AGENDA_LINEAR_JSON_V1",
+  "artifact_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "trained_at": "2026-09-03T12:00:00Z",
+  "training_sample_count": 60,
+  "status": "SHADOW",
+  "metrics": {
+    "evaluation_sample_count": 12,
+    "top1_accuracy": 0.5,
+    "baseline_top1_accuracy": 0.4166666667
+  },
+  "rollback_model_id": null
+}
+

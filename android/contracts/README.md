@@ -32,6 +32,8 @@ mesma versão.
 | `health-report.schema.json` | snapshot revisável e reproduzível para exportação explícita |
 | `recommendation-event.schema.json` | evento local categórico sem texto sensível |
 | `recommendation-decision.schema.json` | opções ordenadas com razão e fallback explícitos |
+| `personal-ranking-dataset.schema.json` | amostras categóricas minimizadas para treino e avaliação local |
+| `personal-model-manifest.schema.json` | identidade, runtime, integridade, métricas e estado do artefato |
 
 O pareamento e o modelo de ameaça da fase seguinte estão em
 `PAIRING_V1.md` e `THREAT_MODEL_P2_03.md`.
@@ -39,6 +41,7 @@ O pareamento e o modelo de ameaça da fase seguinte estão em
 Os limites sensoriais e as formas das ações estão em `ALERTS_V1.md`.
 O transporte e os limites do relógio estão em `WEAR_V1.md`.
 Os eventos e razões do motor local estão em `RECOMMENDATION_V1.md`.
+O modelo aprendido, seus estados e rollback estão em `PERSONAL_MODEL_V1.md`.
 O inventário e a fronteira de proteção de saúde estão em
 `../../docs/privacy/HEALTH_DATA_INVENTORY.md` e
 `../../docs/adr/0001-health-data-security-boundary.md`.

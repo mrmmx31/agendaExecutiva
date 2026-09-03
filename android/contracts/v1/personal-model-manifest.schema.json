@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/personal-model-manifest.schema.json",
+  "title": "Local personal model manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "model_id", "model_version", "purpose", "runtime", "feature_contract_version", "artifact_format", "artifact_sha256", "trained_at", "training_sample_count", "status", "metrics", "rollback_model_id"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "model_id": { "const": "personal-snooze-ranker" },
+    "model_version": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9._-]+$" },
+    "purpose": { "const": "SNOOZE_PRESET" },
+    "runtime": { "enum": ["AUDITABLE_LINEAR_KOTLIN", "LITERT_PLAY_SERVICES", "ONNX_RUNTIME"] },
+    "feature_contract_version": { "const": 1 },
+    "artifact_format": { "enum": ["AGENDA_LINEAR_JSON_V1", "TFLITE", "ONNX"] },
+    "artifact_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "trained_at": { "type": "string", "format": "date-time" },
+    "training_sample_count": { "type": "integer", "minimum": 60 },
+    "status": { "enum": ["SHADOW", "ACTIVE", "ROLLED_BACK"] },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evaluation_sample_count", "top1_accuracy", "baseline_top1_accuracy"],
+      "properties": {
+        "evaluation_sample_count": { "type": "integer", "minimum": 1 },
+        "top1_accuracy": { "type": "number", "minimum": 0, "maximum": 1 },
+        "baseline_top1_accuracy": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "rollback_model_id": { "type": ["string", "null"], "maxLength": 64 }
+  }
+}
+

@@ -47,9 +47,16 @@ ativo para confirmação visual no pulso.
 |---|---|
 | fixture publicada sem desktop e sem áudio | aprovado |
 | ações Android presentes e não `localOnly` | aprovado |
-| texto/vibração recebidos na ZL02CPRO | aguardando observação |
+| texto recebido na ZL02CPRO | aprovado após habilitar `Outras notificações` no Da Fit |
+| vibração da ZL02CPRO | não percebida; revisar DND/vibração no Da Fit e na pulseira |
 | ações exibidas pela pulseira | aguardando observação |
 | desconexão/reconexão Bluetooth | pendente |
+
+O fixture usado era exclusivamente visual: a Agenda não solicitou áudio nem
+vibração do telefone. No momento da observação, o Android estava com Não
+Perturbe desligado e sem fluxos relevantes silenciados. Assim, ausência de áudio
+nesse ensaio é esperada; ausência de vibração no pulso pertence à configuração
+ou capacidade do Da Fit/ZL02CPRO e precisa de nova tentativa controlada.
 
 ## Gate 9
 

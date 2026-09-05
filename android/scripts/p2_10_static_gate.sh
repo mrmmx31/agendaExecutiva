@@ -23,6 +23,8 @@ xmllint --noout "$APP_MANIFEST" "$WEAR_MANIFEST" \
   "$ANDROID/wear/src/main/res/xml/data_extraction_rules.xml"
 
 require_text "$APP_MANIFEST" 'android:allowBackup="false"'
+require_text "$APP_MANIFEST" '<uses-permission android:name="android.permission.CAMERA" />'
+require_text "$APP_MANIFEST" '<uses-feature android:name="android.hardware.camera" android:required="false" />'
 require_text "$WEAR_MANIFEST" 'android:allowBackup="false"'
 require_text "$APP_MANIFEST" 'android:usesCleartextTraffic="false"'
 require_text "$ROOT/docs/privacy/PRIVACY_NOTICE.md" 'controlador: `A DEFINIR`'
@@ -31,11 +33,14 @@ require_text "$ANDROID/app/src/main/res/values/strings.xml" 'A Agenda não diagn
 [[ "$(apkanalyzer manifest debuggable "$APP_APK" 2>/dev/null)" == "false" ]] || fail "APK telefone e debugavel"
 [[ "$(apkanalyzer manifest debuggable "$WEAR_APK" 2>/dev/null)" == "false" ]] || fail "APK Wear e debugavel"
 
-allowed_permissions='^(android\.permission\.(ACCESS_NETWORK_STATE|FOREGROUND_SERVICE|INTERNET|POST_NOTIFICATIONS|RECEIVE_BOOT_COMPLETED|VIBRATE|WAKE_LOCK|health\.READ_(HEART_RATE|RESTING_HEART_RATE|SLEEP|STEPS))|com\.pessoal\.agenda\.mobile\.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION)$'
+allowed_permissions='^(android\.permission\.(ACCESS_NETWORK_STATE|CAMERA|FOREGROUND_SERVICE|INTERNET|POST_NOTIFICATIONS|RECEIVE_BOOT_COMPLETED|VIBRATE|WAKE_LOCK|health\.READ_(HEART_RATE|RESTING_HEART_RATE|SLEEP|STEPS))|com\.pessoal\.agenda\.mobile\.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION)$'
 for apk in "$APP_APK" "$WEAR_APK"; do
   unexpected="$(apkanalyzer manifest permissions "$apk" 2>/dev/null | grep -Ev "$allowed_permissions" || true)"
   [[ -z "$unexpected" ]] || fail "permissao inesperada em $apk: $unexpected"
 done
+if apkanalyzer manifest permissions "$WEAR_APK" 2>/dev/null | grep -qx 'android.permission.CAMERA'; then
+  fail "APK Wear nao deve solicitar CAMERA"
+fi
 
 if grep -En 'firebase|crashlytics|analytics|onnxruntime|play-services-tflite' \
     "$ANDROID/app/build.gradle.kts" "$ANDROID/wear/build.gradle.kts"; then

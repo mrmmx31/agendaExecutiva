@@ -56,11 +56,11 @@ cd ..
 Resultado: 101 tarefas Gradle aprovadas. `apkanalyzer` confirmou os dois APKs
 como nao depuraveis. O script valida XML, bloqueio de backup/cleartext,
 permissoes finais, ausencia de analytics/runtime nao aprovado, logs no limite de
-saude/modelo e padroes de segredo. O telefone tem apenas rede/WorkManager,
-notificacao, vibracao e quatro leituras Health Connect esperadas; o Wear tem
-somente permissoes normais trazidas por WorkManager/Data Layer. Camera,
-microfone, localizacao, armazenamento, contatos e sensores corporais Wear nao
-aparecem.
+saude/modelo e padroes de segredo. O telefone tem rede/WorkManager, camera
+opcional para leitura local do QR, notificacao, vibracao e quatro leituras
+Health Connect esperadas; o Wear tem somente permissoes normais trazidas por
+WorkManager/Data Layer. Microfone, localizacao, armazenamento, contatos e
+sensores corporais Wear nao aparecem.
 
 ## Plano dos gates virtuais
 

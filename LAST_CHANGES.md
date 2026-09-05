@@ -7,29 +7,31 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | fix(android): distinguir estado das tarefas |
-| Data | 2026-09-05 06:06:38 -0400 |
+| Mensagem | docs(android): catalogar câmera do pareamento |
+| Data | 2026-09-05 06:26:23 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
+MAINTENANCE_MAP.md
 android/P2_10_MATRIX.md
-android/app/src/androidTest/java/com/pessoal/agenda/mobile/ui/AgendaMobileAppTest.kt
-android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileApp.kt
-android/app/src/test/java/com/pessoal/agenda/mobile/ui/TodayTaskOrderingTest.kt
-docs/release/PHYSICAL_TEST_RESULTS.md
+android/app/src/main/AndroidManifest.xml
+android/scripts/p2_10_static_gate.sh
+docs/privacy/PRIVACY_NOTICE.md
+docs/release/GOOGLE_PLAY_DECLARATIONS.md
 ```
 
 ## Diff Resumido
 
 ```diff
- android/P2_10_MATRIX.md                            |  2 +-
- .../agenda/mobile/ui/AgendaMobileAppTest.kt        |  9 +++++++
- .../pessoal/agenda/mobile/ui/AgendaMobileApp.kt    | 27 ++++++++++++++++---
- .../agenda/mobile/ui/TodayTaskOrderingTest.kt      | 30 ++++++++++++++++++++++
- docs/release/PHYSICAL_TEST_RESULTS.md              | 18 +++++++++++--
- 5 files changed, 80 insertions(+), 6 deletions(-)
+ MAINTENANCE_MAP.md                       |  1 +
+ android/P2_10_MATRIX.md                  | 10 +++++-----
+ android/app/src/main/AndroidManifest.xml |  2 ++
+ android/scripts/p2_10_static_gate.sh     |  7 ++++++-
+ docs/privacy/PRIVACY_NOTICE.md           |  5 ++++-
+ docs/release/GOOGLE_PLAY_DECLARATIONS.md |  1 +
+ 6 files changed, 19 insertions(+), 7 deletions(-)
 ```
 
 ---

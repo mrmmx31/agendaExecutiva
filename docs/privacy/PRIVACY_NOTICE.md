@@ -57,10 +57,13 @@ personalizacao, audio e vibracao podem ser desligados. O usuario pode corrigir
 ou excluir registros locais e revisar cada linha antes da exportacao. Negar ou
 revogar saude nao bloqueia tarefas, protocolos ou alertas.
 
+A camera e solicitada somente ao escolher `Ler QR code` no pareamento. A imagem
+e interpretada no aparelho, nao e armazenada nem transmitida; negar a permissao
+mantem disponivel a colagem manual do convite e nao bloqueia outras funcoes.
+
 ## Pendencias anteriores a publicacao
 
 - controlador: `A DEFINIR`;
 - contato de privacidade: `A DEFINIR`;
 - URL publica HTTPS: `A DEFINIR`;
 - data de vigencia publica: `A DEFINIR`.
-

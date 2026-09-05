@@ -35,6 +35,7 @@ OS deve ser revisto no SDK Index antes de cada release.
 Declaradas diretamente pelo telefone:
 
 - `INTERNET`: HTTPS somente com o desktop local pareado;
+- `CAMERA`: leitura local do QR de pareamento, somente após comando explícito;
 - `POST_NOTIFICATIONS`: alerta visual, pedido contextual;
 - `VIBRATE`: estimulo habilitado pelo usuario;
 - `health.READ_HEART_RATE`, `READ_RESTING_HEART_RATE`, `READ_SLEEP` e

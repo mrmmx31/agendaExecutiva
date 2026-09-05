@@ -183,6 +183,7 @@ Nenhuma permissão entra “para uso futuro”. Cada uma exige requisito, tela e
 | Permissão/capacidade | Fase | Justificativa | Comportamento negado |
 |---|---|---|---|
 | `INTERNET` | P2-03 | sync HTTPS local fixado | sem sessão desktop o app continua local; nenhum host externo é usado |
+| `CAMERA` | P2-03 | ler o QR do convite após comando explícito | colar o convite continua disponível; câmera é opcional para instalação |
 | `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` | P2-04 | permissões normais transitivas do WorkManager para persistência | sem trabalho após suspensão/reboot |
 | `ACCESS_NETWORK_STATE`, `FOREGROUND_SERVICE` | P2-04 | capacidades normais declaradas pelo runtime WorkManager; o worker atual não usa rede nem foreground | revisar ao atualizar/remover WorkManager |
 | `POST_NOTIFICATIONS` | P2-04 | alertas visuais opt-in após switch contextual | perfil permanece desligado e entregas são suprimidas sem consumir repetição |

@@ -2,8 +2,8 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Em implementacao; A3-00 concluida |
-| Progresso geral | 10% (1 de 10 fases) |
+| Status | Em implementacao; A3-00 e A3-01 concluidas |
+| Progresso geral | 20% (2 de 10 fases) |
 | Versao da spec | 1.0 |
 | Data | 2026-09-05 |
 | Plataformas | Android, desktop JavaFX e smartband via Da Fit |
@@ -180,11 +180,19 @@ no Moto (mediana 337 ms), 122001 KiB PSS, estado termico inicial e protocolo de
 bateria reproduzivel. Schemas e fixtures passaram em `jq`; as suites de contrato
 desktop e Android passaram sem falhas.
 
-### A3-01 - Hoje, plano e foco (0%)
-- [ ] Dashboard movel e plano diario;
-- [ ] foco manual/automatico explicavel;
-- [ ] encerramento e reabertura do dia;
-- [ ] testes de rotacao, processo morto e offline.
+### A3-01 - Hoje, plano e foco (100%)
+- [x] Dashboard movel e plano diario;
+- [x] foco manual/automatico explicavel;
+- [x] encerramento e reabertura do dia;
+- [x] testes de rotacao, processo morto e offline.
+
+**Evidencia:** `android/P3_01_MATRIX.md` registra banco Room v11, prioridade
+explicavel de foco, plano normal/reduzido, fechamento/reabertura e comportamento
+compacto em paisagem. Foram aprovados 122 testes JVM e os quatro casos
+instrumentados da fase no `Agenda_Phone_API_34`, incluindo migracao 10 -> 11 e
+restauracao de estado. A sincronizacao desses novos dados entra no gate A3-02,
+junto do contrato de mutacao de tarefas, para nao produzir comandos que o
+desktop atual rejeitaria.
 
 ### A3-02 - Tarefas, checklist e timer (0%)
 - [ ] CRUD operacional e estados visuais;

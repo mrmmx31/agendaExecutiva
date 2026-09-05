@@ -40,7 +40,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
 - Projeto 2: concluído em 100%; `P2-01` a `P2-10` aprovadas para o release pessoal `0.1.0`.
-- Projeto 3: 10%; `A3-00` concluída, `A3-01` é a próxima fase.
+- Projeto 3: 20%; `A3-00` e `A3-01` concluídas, `A3-02` é a próxima fase.
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.

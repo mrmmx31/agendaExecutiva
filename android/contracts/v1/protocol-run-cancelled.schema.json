@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenda.local/contracts/v1/protocol-run-cancelled.schema.json",
+  "title": "Protocol run cancelled payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "cancelled_at"],
+  "properties": {
+    "run_id": { "type": "string", "format": "uuid" },
+    "cancelled_at": { "type": "string", "format": "date-time" }
+  }
+}

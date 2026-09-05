@@ -2,8 +2,8 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Especificado; implementacao nao iniciada |
-| Progresso geral | 0% (0 de 10 fases) |
+| Status | Em implementacao; A3-00 concluida |
+| Progresso geral | 10% (1 de 10 fases) |
 | Versao da spec | 1.0 |
 | Data | 2026-09-05 |
 | Plataformas | Android, desktop JavaFX e smartband via Da Fit |
@@ -166,11 +166,19 @@ Cada dominio deve definir ownership, campos editaveis no Android, tombstone, reg
 
 Cada fase vale 10 pontos percentuais. Parcialidade pode ser anotada dentro da fase, mas o progresso geral so soma fase com gate integralmente aprovado.
 
-### A3-00 - Baseline e contratos (0%)
-- [ ] validar inventario com fixtures do banco;
-- [ ] definir navegacao e componentes adaptativos;
-- [ ] versionar contratos por dominio e estrategia de migracao;
-- [ ] registrar baseline de tempo, memoria, bateria e acessibilidade.
+### A3-00 - Baseline e contratos (100%)
+- [x] validar inventario com fixtures compartilhados;
+- [x] definir navegacao e componentes adaptativos;
+- [x] versionar contratos por dominio e estrategia de migracao;
+- [x] registrar baseline de tempo, memoria, bateria e acessibilidade.
+
+**Evidencia:** `contracts/EXPANSION_V1.md` define ownership, ativacao e
+migracao; o catalogo fechado cobre dez dominios e e validado pelos testes Java
+e Kotlin. `P3_00_NAVIGATION.md` fixa cinco destinos, breakpoints, Voltar,
+restauracao e acessibilidade. `P3_00_BASELINE.md` registra cinco inicializacoes
+no Moto (mediana 337 ms), 122001 KiB PSS, estado termico inicial e protocolo de
+bateria reproduzivel. Schemas e fixtures passaram em `jq`; as suites de contrato
+desktop e Android passaram sem falhas.
 
 ### A3-01 - Hoje, plano e foco (0%)
 - [ ] Dashboard movel e plano diario;

@@ -1,0 +1,105 @@
+{
+  "catalog_version": 1,
+  "domains": [
+    {
+      "code": "TODAY",
+      "desktop_surface": "Dashboard",
+      "mobile_scope": "COMPLETE",
+      "priority": "P0",
+      "entities": ["daily_plan", "daily_plan_item", "focus_context", "day_review"],
+      "commands": ["DAILY_PLAN_CHANGED", "FOCUS_CHANGED", "DAY_CLOSED", "DAY_REOPENED"],
+      "alert_sources": ["FOCUS", "DAILY_PLAN"],
+      "desktop_only": ["indicadores analiticos extensos"]
+    },
+    {
+      "code": "TASKS",
+      "desktop_surface": "Agenda e Prioridades",
+      "mobile_scope": "COMPLETE",
+      "priority": "P0",
+      "entities": ["task", "task_checklist_item", "task_session"],
+      "commands": ["TASK_CREATED", "TASK_UPDATED", "TASK_STATUS_CHANGED", "CHECKLIST_ITEM_CHANGED", "SESSION_RECORDED"],
+      "alert_sources": ["TASK", "SESSION"],
+      "desktop_only": ["remocao de duplicatas", "impressao", "exportacao em massa"]
+    },
+    {
+      "code": "CAPTURE",
+      "desktop_surface": "Caixa de entrada",
+      "mobile_scope": "COMPLETE",
+      "priority": "P0",
+      "entities": ["inbox_capture"],
+      "commands": ["CAPTURE_CREATED", "CAPTURE_TRIAGED"],
+      "alert_sources": [],
+      "desktop_only": ["triagem em lote"]
+    },
+    {
+      "code": "PROTOCOLS",
+      "desktop_surface": "Protocolos Operacionais",
+      "mobile_scope": "COMPLETE",
+      "priority": "P0",
+      "entities": ["protocol", "protocol_step", "protocol_run", "protocol_run_step"],
+      "commands": ["PROTOCOL_RUN_STARTED", "PROTOCOL_STEP_COMPLETED", "PROTOCOL_RUN_CANCELLED", "PROTOCOL_STRUCTURE_PROPOSED"],
+      "alert_sources": ["PROTOCOL"],
+      "desktop_only": ["edicao estrutural em massa", "impressao"]
+    },
+    {
+      "code": "STUDIES",
+      "desktop_surface": "Estudos e Atividades",
+      "mobile_scope": "COMPLETE",
+      "priority": "P1",
+      "entities": ["study_plan", "study_schedule", "study_entry", "study_compensation"],
+      "commands": ["STUDY_SESSION_RECORDED", "STUDY_PROGRESS_CHANGED", "STUDY_ATTENDANCE_CHANGED"],
+      "alert_sources": ["STUDY"],
+      "desktop_only": ["edicao ampla da grade", "diario com formato rico"]
+    },
+    {
+      "code": "IDEAS",
+      "desktop_surface": "Ideias e Projetos",
+      "mobile_scope": "COMPLETE",
+      "priority": "P1",
+      "entities": ["project_idea", "idea_checklist_item"],
+      "commands": ["IDEA_CAPTURED", "IDEA_TRIAGED", "IDEA_CHECKLIST_CHANGED"],
+      "alert_sources": ["PROJECT_NEXT_ACTION"],
+      "desktop_only": ["kanban amplo", "metodologia e referencias extensas"]
+    },
+    {
+      "code": "FINANCE",
+      "desktop_surface": "Financeiro e Pendencias",
+      "mobile_scope": "OPERATIONAL",
+      "priority": "P2",
+      "entities": ["finance_entry"],
+      "commands": ["FINANCE_ENTRY_CREATED", "FINANCE_PAYMENT_CHANGED"],
+      "alert_sources": ["PAYMENT"],
+      "desktop_only": ["relatorios", "exclusao em massa"]
+    },
+    {
+      "code": "COMMERCE",
+      "desktop_surface": "Vendas e Estoque",
+      "mobile_scope": "OPERATIONAL",
+      "priority": "P2",
+      "entities": ["sale_entry", "inventory_item"],
+      "commands": ["SALE_CREATED", "SALE_STATUS_CHANGED", "INVENTORY_ADJUSTED"],
+      "alert_sources": ["LOW_STOCK", "RECEIVABLE"],
+      "desktop_only": ["cadastro em massa", "relatorios"]
+    },
+    {
+      "code": "SETTINGS",
+      "desktop_surface": "Configuracoes",
+      "mobile_scope": "OPERATIONAL",
+      "priority": "P1",
+      "entities": ["sensory_profile", "recommendation_settings", "pairing_state"],
+      "commands": [],
+      "alert_sources": [],
+      "desktop_only": ["backup da chave", "categorias globais", "OAuth Google"]
+    },
+    {
+      "code": "REPORTING",
+      "desktop_surface": "Historicos e Relatorios",
+      "mobile_scope": "READ_ONLY",
+      "priority": "P2",
+      "entities": ["local_metric", "session_history"],
+      "commands": [],
+      "alert_sources": [],
+      "desktop_only": ["impressao", "CSV e iCalendar", "conciliacao avancada"]
+    }
+  ]
+}

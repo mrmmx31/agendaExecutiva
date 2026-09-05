@@ -12,6 +12,8 @@ mesma versão.
 | `capture-created.schema.json` | criação imutável de captura livre |
 | `protocol-run-started.schema.json` | início de uma execução de protocolo |
 | `protocol-step-completed.schema.json` | confirmação idempotente de um passo |
+| `protocol-run-cancelled.schema.json` | encerramento explícito de uma execução preservando passos feitos |
+| `expansion-domain-catalog.schema.json` | inventário fechado dos domínios candidatos ao Projeto 3 |
 | `pairing-request.schema.json` | solicitação móvel antes da aprovação desktop |
 | `pairing-response.schema.json` | estado pendente ou conclusão do pareamento |
 | `sync-batch.schema.json` | lote limitado de operações e cursor conhecido |
@@ -42,6 +44,7 @@ Os limites sensoriais e as formas das ações estão em `ALERTS_V1.md`.
 O transporte e os limites do relógio estão em `WEAR_V1.md`.
 Os eventos e razões do motor local estão em `RECOMMENDATION_V1.md`.
 O modelo aprendido, seus estados e rollback estão em `PERSONAL_MODEL_V1.md`.
+Ownership, ativação gradual e migração dos novos domínios estão em `EXPANSION_V1.md`.
 O inventário e a fronteira de proteção de saúde estão em
 `../../docs/privacy/HEALTH_DATA_INVENTORY.md` e
 `../../docs/adr/0001-health-data-security-boundary.md`.

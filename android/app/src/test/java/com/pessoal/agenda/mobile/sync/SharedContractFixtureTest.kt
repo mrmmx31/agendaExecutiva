@@ -34,6 +34,8 @@ class SharedContractFixtureTest {
         assertKeys("recommendation-decision-model.valid.json", RECOMMENDATION_DECISION_KEYS)
         assertKeys("personal-ranking-dataset.valid.json", PERSONAL_RANKING_DATASET_KEYS)
         assertKeys("personal-model-manifest.valid.json", PERSONAL_MODEL_MANIFEST_KEYS)
+        assertKeys("protocol-run-cancelled.valid.json", PROTOCOL_RUN_CANCELLED_KEYS)
+        assertKeys("expansion-domain-catalog.valid.json", EXPANSION_CATALOG_KEYS)
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").requiredText("status"))
         assertEquals("APPLIED", fixture("sync-result.valid.json").requiredText("status"))
@@ -58,6 +60,23 @@ class SharedContractFixtureTest {
         assertEquals("SHADOW", manifest.requiredText("status"))
         assertEquals("AUDITABLE_LINEAR_KOTLIN", manifest.requiredText("runtime"))
         assertEquals(PERSONAL_MODEL_METRIC_KEYS, (manifest["metrics"] as JsonObject).keys)
+
+        val expansion = fixture("expansion-domain-catalog.valid.json")
+        assertEquals("1", expansion.requiredText("catalog_version"))
+        val domains = requireNotNull(expansion["domains"] as? kotlinx.serialization.json.JsonArray)
+        val commands = mutableSetOf<String>()
+        val codes = domains.map { element ->
+            val domain = element as JsonObject
+            assertEquals(EXPANSION_DOMAIN_KEYS, domain.keys)
+            val entities = requireNotNull(domain["entities"] as? kotlinx.serialization.json.JsonArray)
+            assertTrue(entities.isNotEmpty())
+            (domain["commands"] as kotlinx.serialization.json.JsonArray).forEach {
+                assertTrue("Comando duplicado no catálogo", commands.add(it.jsonPrimitive.content))
+            }
+            domain.requiredText("code")
+        }.toSet()
+        assertEquals(EXPANSION_DOMAIN_CODES, codes)
+        assertTrue("PROTOCOL_RUN_CANCELLED" in commands)
     }
 
     @Test
@@ -109,6 +128,10 @@ class SharedContractFixtureTest {
         val PERSONAL_RANKING_SAMPLE_KEYS = setOf("day_part", "day_group", "source_device", "active_context", "capacity_context", "alert_kind", "deadline_bucket", "chosen_option")
         val PERSONAL_MODEL_MANIFEST_KEYS = setOf("contract_version", "model_id", "model_version", "purpose", "runtime", "feature_contract_version", "artifact_format", "artifact_sha256", "trained_at", "training_sample_count", "status", "metrics", "rollback_model_id")
         val PERSONAL_MODEL_METRIC_KEYS = setOf("evaluation_sample_count", "top1_accuracy", "baseline_top1_accuracy")
+        val PROTOCOL_RUN_CANCELLED_KEYS = setOf("run_id", "cancelled_at")
+        val EXPANSION_CATALOG_KEYS = setOf("catalog_version", "domains")
+        val EXPANSION_DOMAIN_KEYS = setOf("code", "desktop_surface", "mobile_scope", "priority", "entities", "commands", "alert_sources", "desktop_only")
+        val EXPANSION_DOMAIN_CODES = setOf("TODAY", "TASKS", "CAPTURE", "PROTOCOLS", "STUDIES", "IDEAS", "FINANCE", "COMMERCE", "SETTINGS", "REPORTING")
         val RESULT_STATES = setOf("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE")
     }
 }

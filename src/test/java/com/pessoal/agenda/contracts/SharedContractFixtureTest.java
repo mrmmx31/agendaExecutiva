@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
+import java.util.HashSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -39,6 +40,8 @@ class SharedContractFixtureTest {
         assertKeys("recommendation-decision-model.valid.json", RECOMMENDATION_DECISION_KEYS);
         assertKeys("personal-ranking-dataset.valid.json", PERSONAL_RANKING_DATASET_KEYS);
         assertKeys("personal-model-manifest.valid.json", PERSONAL_MODEL_MANIFEST_KEYS);
+        assertKeys("protocol-run-cancelled.valid.json", PROTOCOL_RUN_CANCELLED_KEYS);
+        assertKeys("expansion-domain-catalog.valid.json", EXPANSION_CATALOG_KEYS);
 
         assertEquals("PENDING", fixture("pairing-response.valid.json").get("status").getAsString());
         assertEquals("APPLIED", fixture("sync-result.valid.json").get("status").getAsString());
@@ -63,6 +66,21 @@ class SharedContractFixtureTest {
         assertEquals("SHADOW", manifest.get("status").getAsString());
         assertEquals("AUDITABLE_LINEAR_KOTLIN", manifest.get("runtime").getAsString());
         assertEquals(PERSONAL_MODEL_METRIC_KEYS, manifest.getAsJsonObject("metrics").keySet());
+
+        JsonObject expansion = fixture("expansion-domain-catalog.valid.json");
+        assertEquals(1, expansion.get("catalog_version").getAsInt());
+        Set<String> domainCodes = new HashSet<>();
+        Set<String> commands = new HashSet<>();
+        expansion.getAsJsonArray("domains").forEach(element -> {
+            JsonObject domain = element.getAsJsonObject();
+            assertEquals(EXPANSION_DOMAIN_KEYS, domain.keySet());
+            assertTrue(domainCodes.add(domain.get("code").getAsString()));
+            assertTrue(domain.getAsJsonArray("entities").size() > 0);
+            domain.getAsJsonArray("commands").forEach(command ->
+                    assertTrue(commands.add(command.getAsString()), "Comando duplicado no catálogo"));
+        });
+        assertEquals(EXPANSION_DOMAIN_CODES, domainCodes);
+        assertTrue(commands.contains("PROTOCOL_RUN_CANCELLED"));
     }
 
     @Test
@@ -113,5 +131,13 @@ class SharedContractFixtureTest {
     private static final Set<String> PERSONAL_RANKING_SAMPLE_KEYS = Set.of("day_part", "day_group", "source_device", "active_context", "capacity_context", "alert_kind", "deadline_bucket", "chosen_option");
     private static final Set<String> PERSONAL_MODEL_MANIFEST_KEYS = Set.of("contract_version", "model_id", "model_version", "purpose", "runtime", "feature_contract_version", "artifact_format", "artifact_sha256", "trained_at", "training_sample_count", "status", "metrics", "rollback_model_id");
     private static final Set<String> PERSONAL_MODEL_METRIC_KEYS = Set.of("evaluation_sample_count", "top1_accuracy", "baseline_top1_accuracy");
+    private static final Set<String> PROTOCOL_RUN_CANCELLED_KEYS = Set.of("run_id", "cancelled_at");
+    private static final Set<String> EXPANSION_CATALOG_KEYS = Set.of("catalog_version", "domains");
+    private static final Set<String> EXPANSION_DOMAIN_KEYS = Set.of(
+            "code", "desktop_surface", "mobile_scope", "priority", "entities", "commands",
+            "alert_sources", "desktop_only");
+    private static final Set<String> EXPANSION_DOMAIN_CODES = Set.of(
+            "TODAY", "TASKS", "CAPTURE", "PROTOCOLS", "STUDIES", "IDEAS", "FINANCE",
+            "COMMERCE", "SETTINGS", "REPORTING");
     private static final Set<String> RESULT_STATES = Set.of("APPLIED", "CONFLICT", "REJECTED", "RETRYABLE");
 }

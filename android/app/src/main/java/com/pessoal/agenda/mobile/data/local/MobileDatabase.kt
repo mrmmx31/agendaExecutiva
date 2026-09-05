@@ -11,6 +11,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     entities = [
         MobileMetadataEntity::class,
         TaskReplicaEntity::class,
+        TaskChecklistItemEntity::class,
+        ActiveTaskTimerEntity::class,
+        TaskSessionEntity::class,
         DailyPlanEntity::class,
         DailyPlanItemEntity::class,
         FocusSelectionEntity::class,
@@ -37,7 +40,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PersonalModelArtifactEntity::class,
         PersonalModelShadowMetricsEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class MobileDatabase : RoomDatabase() {
@@ -60,6 +63,7 @@ abstract class MobileDatabase : RoomDatabase() {
                 MIGRATION_8_9,
                 MIGRATION_9_10,
                 MIGRATION_10_11,
+                MIGRATION_11_12,
             ).build().also { instance = it }
         }
 
@@ -389,6 +393,43 @@ abstract class MobileDatabase : RoomDatabase() {
                     )
                 """.trimIndent())
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_focus_selections_taskId ON focus_selections(taskId)")
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE task_replicas ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE task_replicas ADD COLUMN dueDate TEXT")
+                database.execSQL("ALTER TABLE task_replicas ADD COLUMN priority TEXT NOT NULL DEFAULT 'NORMAL'")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS task_checklist_items (
+                        id TEXT NOT NULL PRIMARY KEY, taskId TEXT NOT NULL, text TEXT NOT NULL,
+                        done INTEGER NOT NULL, position INTEGER NOT NULL,
+                        FOREIGN KEY(taskId) REFERENCES task_replicas(id)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_task_checklist_items_taskId ON task_checklist_items(taskId)")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_task_checklist_items_taskId_position ON task_checklist_items(taskId, position)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS active_task_timers (
+                        singletonId INTEGER NOT NULL PRIMARY KEY, taskId TEXT NOT NULL,
+                        startedAt TEXT, accumulatedSeconds INTEGER NOT NULL, interruptedAt TEXT,
+                        FOREIGN KEY(taskId) REFERENCES task_replicas(id)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_active_task_timers_taskId ON active_task_timers(taskId)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS task_sessions (
+                        id TEXT NOT NULL PRIMARY KEY, taskId TEXT NOT NULL, startedAt TEXT NOT NULL,
+                        endedAt TEXT NOT NULL, durationSeconds INTEGER NOT NULL, notes TEXT NOT NULL,
+                        FOREIGN KEY(taskId) REFERENCES task_replicas(id)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_task_sessions_taskId ON task_sessions(taskId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_task_sessions_endedAt ON task_sessions(endedAt)")
             }
         }
     }

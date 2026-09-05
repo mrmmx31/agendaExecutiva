@@ -68,6 +68,18 @@ data class SnapshotTask(
     val revision: Long,
     @SerialName("updated_at") val updatedAt: String,
     val tombstone: Boolean,
+    val notes: String = "",
+    @SerialName("due_date") val dueDate: String? = null,
+    val priority: String = "NORMAL",
+    val checklist: List<SnapshotChecklistItem> = emptyList(),
+)
+
+@Serializable
+data class SnapshotChecklistItem(
+    val id: String,
+    val text: String,
+    val done: Boolean,
+    val position: Int,
 )
 
 @Serializable

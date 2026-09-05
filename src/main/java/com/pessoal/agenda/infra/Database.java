@@ -511,6 +511,8 @@ public class Database {
         applyAlterIfMissing("ALTER TABLE tasks ADD COLUMN sync_uuid TEXT");
         applyAlterIfMissing("ALTER TABLE protocols ADD COLUMN sync_uuid TEXT");
         applyAlterIfMissing("ALTER TABLE protocol_steps ADD COLUMN sync_uuid TEXT");
+        applyAlterIfMissing("ALTER TABLE task_checklist_items ADD COLUMN sync_uuid TEXT");
+        applyAlterIfMissing("ALTER TABLE study_sessions ADD COLUMN mobile_source_operation_id TEXT");
         applyAlterIfMissing("ALTER TABLE inbox_captures ADD COLUMN mobile_source_operation_id TEXT");
         try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
             conn.setAutoCommit(false);
@@ -541,7 +543,7 @@ public class Database {
                 stmt.execute("""
                         CREATE TABLE IF NOT EXISTS mobile_device_roles (
                             device_id TEXT NOT NULL,
-                            role TEXT NOT NULL CHECK (role IN ('TASKS_READ', 'CAPTURES_WRITE', 'PROTOCOLS_EXECUTE')),
+                            role TEXT NOT NULL CHECK (role IN ('TASKS_READ', 'TASKS_WRITE', 'CAPTURES_WRITE', 'PROTOCOLS_EXECUTE')),
                             PRIMARY KEY (device_id, role),
                             FOREIGN KEY (device_id) REFERENCES mobile_devices(device_id) ON DELETE CASCADE
                         )
@@ -578,10 +580,13 @@ public class Database {
                 populateSyncUuids(conn, "tasks");
                 populateSyncUuids(conn, "protocols");
                 populateSyncUuids(conn, "protocol_steps");
+                populateSyncUuids(conn, "task_checklist_items");
                 stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_sync_uuid ON tasks(sync_uuid) WHERE sync_uuid IS NOT NULL");
                 stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_protocols_sync_uuid ON protocols(sync_uuid) WHERE sync_uuid IS NOT NULL");
                 stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_protocol_steps_sync_uuid ON protocol_steps(sync_uuid) WHERE sync_uuid IS NOT NULL");
+                stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_task_checklist_sync_uuid ON task_checklist_items(sync_uuid) WHERE sync_uuid IS NOT NULL");
                 stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_inbox_mobile_source_operation ON inbox_captures(mobile_source_operation_id) WHERE mobile_source_operation_id IS NOT NULL");
+                stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_session_mobile_source_operation ON study_sessions(mobile_source_operation_id) WHERE mobile_source_operation_id IS NOT NULL");
                 stmt.execute("""
                         CREATE TABLE IF NOT EXISTS mobile_protocol_events (
                             operation_id TEXT PRIMARY KEY,
@@ -642,6 +647,7 @@ public class Database {
                         )
                         """);
                 ensureProtocolCancellationEvent(conn, stmt);
+                ensureTaskWriteRole(conn, stmt);
                 conn.commit();
             } catch (SQLException migrationError) {
                 conn.rollback();
@@ -699,6 +705,33 @@ public class Database {
                 FROM mobile_protocol_events_legacy
                 """);
         statement.execute("DROP TABLE mobile_protocol_events_legacy");
+    }
+
+    private static void ensureTaskWriteRole(Connection connection, Statement statement)
+            throws SQLException {
+        String tableSql = null;
+        try (PreparedStatement query = connection.prepareStatement(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='mobile_device_roles'");
+             ResultSet rows = query.executeQuery()) {
+            if (rows.next()) tableSql = rows.getString(1);
+        }
+        if (tableSql == null || tableSql.contains("TASKS_WRITE")) return;
+        statement.execute("ALTER TABLE mobile_device_roles RENAME TO mobile_device_roles_legacy");
+        statement.execute("""
+                CREATE TABLE mobile_device_roles (
+                    device_id TEXT NOT NULL,
+                    role TEXT NOT NULL CHECK (role IN (
+                        'TASKS_READ', 'TASKS_WRITE', 'CAPTURES_WRITE', 'PROTOCOLS_EXECUTE'
+                    )),
+                    PRIMARY KEY (device_id, role),
+                    FOREIGN KEY (device_id) REFERENCES mobile_devices(device_id) ON DELETE CASCADE
+                )
+                """);
+        statement.execute("""
+                INSERT INTO mobile_device_roles(device_id,role)
+                SELECT device_id,role FROM mobile_device_roles_legacy
+                """);
+        statement.execute("DROP TABLE mobile_device_roles_legacy");
     }
 
     /** Executa CREATE TABLE IF NOT EXISTS — usa o mesmo mecanismo idempotente. */

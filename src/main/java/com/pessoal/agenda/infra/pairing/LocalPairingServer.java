@@ -3,6 +3,7 @@ package com.pessoal.agenda.infra.pairing;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
 import com.pessoal.agenda.repository.DesktopSyncRepository;
@@ -57,7 +58,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
 public final class LocalPairingServer implements AutoCloseable {
-    private static final int CONTRACT_VERSION = 1;
+    private static final int CONTRACT_VERSION = 2;
+    private static final int CONTRACT_MIN_VERSION = 1;
     private static final int MAX_BODY_BYTES = 32 * 1024;
     private static final int MAX_SYNC_BODY_BYTES = 256 * 1024;
     private static final Duration SESSION_DURATION = Duration.ofMinutes(5);
@@ -65,7 +67,7 @@ public final class LocalPairingServer implements AutoCloseable {
             "contract_version", "session_id", "desktop_id", "device_id", "device_name",
             "one_time_code", "device_public_key", "invitation_nonce", "requested_roles");
     private static final Set<String> ALLOWED_ROLES = Set.of(
-            "TASKS_READ", "CAPTURES_WRITE", "PROTOCOLS_EXECUTE");
+            "TASKS_READ", "TASKS_WRITE", "CAPTURES_WRITE", "PROTOCOLS_EXECUTE");
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final DesktopSyncRepository repository;
@@ -137,7 +139,7 @@ public final class LocalPairingServer implements AutoCloseable {
 
             String endpoint = "https://" + bindAddress.getHostAddress() + ":"
                     + server.getAddress().getPort() + "/api/v1/pair/requests";
-            String invitation = "agenda://pair?v=1"
+            String invitation = "agenda://pair?v=" + CONTRACT_VERSION
                     + "&session_id=" + encode(sessionId)
                     + "&desktop_id=" + encode(desktopId)
                     + "&endpoint=" + encode(endpoint)
@@ -192,10 +194,11 @@ public final class LocalPairingServer implements AutoCloseable {
             String encrypted = encryptCredential(credential, state.request.devicePublicKey);
             repository.approveDevice(
                     state.request.deviceId, state.request.deviceName, hash,
-                    CONTRACT_VERSION, CONTRACT_VERSION, grantedRoles);
+                    CONTRACT_MIN_VERSION, state.request.contractVersion, grantedRoles);
             java.util.Arrays.fill(credential, (byte) 0);
             state.response = PairResponse.approved(
-                    state.requestId, state.request.deviceId, encrypted, grantedRoles);
+                    state.requestId, state.request.deviceId, encrypted, grantedRoles,
+                    state.request.contractVersion);
             state.decision = Decision.APPROVED;
         } catch (Exception error) {
             throw new RuntimeException("Não foi possível aprovar o dispositivo.", error);
@@ -261,8 +264,10 @@ public final class LocalPairingServer implements AutoCloseable {
             SnapshotPagePointer pointer;
             if (token == null) {
                 DesktopSyncRepository.SnapshotRecord snapshot = repository.refreshSnapshot();
+                DesktopSyncRepository.DeviceRecord device = repository.findDevice(deviceId);
                 pointer = new SnapshotPagePointer(
-                        deviceId, UUID.randomUUID().toString(), snapshot, 0);
+                        deviceId, UUID.randomUUID().toString(), snapshot, 0,
+                        device == null ? 1 : device.contractMax());
             } else {
                 pointer = snapshotTokens.get(token);
                 if (pointer == null || !pointer.deviceId.equals(deviceId)) {
@@ -315,7 +320,8 @@ public final class LocalPairingServer implements AutoCloseable {
     }
 
     private void validate(PairRequest request) {
-        if (request == null || request.contractVersion != CONTRACT_VERSION
+        if (request == null || request.contractVersion < CONTRACT_MIN_VERSION
+                || request.contractVersion > CONTRACT_VERSION
                 || !constantEquals(sessionId, request.sessionId)
                 || !constantEquals(desktopId, request.desktopId)
                 || !constantEquals(code, request.oneTimeCode)
@@ -382,7 +388,8 @@ public final class LocalPairingServer implements AutoCloseable {
         if (hasMore) {
             nextToken = randomBase64(32);
             snapshotTokens.put(nextToken, new SnapshotPagePointer(
-                    pointer.deviceId, pointer.snapshotId, pointer.snapshot, pointer.page + 1));
+                    pointer.deviceId, pointer.snapshotId, pointer.snapshot, pointer.page + 1,
+                    pointer.contractVersion));
         }
         JsonObject result = new JsonObject();
         result.addProperty("snapshot_id", pointer.snapshotId);
@@ -391,6 +398,12 @@ public final class LocalPairingServer implements AutoCloseable {
         result.addProperty("has_more", hasMore);
         if (nextToken == null) result.add("next_page_token", com.google.gson.JsonNull.INSTANCE);
         else result.addProperty("next_page_token", nextToken);
+        if (pointer.contractVersion == 1) {
+            for (JsonElement element : tasks) {
+                JsonObject task = element.getAsJsonObject();
+                task.remove("notes"); task.remove("due_date"); task.remove("priority"); task.remove("checklist");
+            }
+        }
         result.add("tasks", tasks);
         result.add("protocols", protocols);
         return result;
@@ -551,7 +564,7 @@ public final class LocalPairingServer implements AutoCloseable {
 
     private record SnapshotPagePointer(
             String deviceId, String snapshotId,
-            DesktopSyncRepository.SnapshotRecord snapshot, int page) {}
+            DesktopSyncRepository.SnapshotRecord snapshot, int page, int contractVersion) {}
 
     private static final class PairRequest {
         @SerializedName("contract_version") int contractVersion;
@@ -580,9 +593,9 @@ public final class LocalPairingServer implements AutoCloseable {
                     null, null, null, null, Set.of());
         }
         static PairResponse approved(String requestId, String deviceId,
-                                     String credential, Set<String> roles) {
+                                     String credential, Set<String> roles, int contractMax) {
             return new PairResponse(requestId, "APPROVED", null, null,
-                    deviceId, 1, 1, credential, Set.copyOf(roles));
+                    deviceId, CONTRACT_MIN_VERSION, contractMax, credential, Set.copyOf(roles));
         }
     }
 

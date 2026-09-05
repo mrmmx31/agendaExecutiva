@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -42,6 +43,11 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.StopCircle
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.PauseCircle
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -64,6 +70,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -72,6 +79,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -108,9 +116,11 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.text.Normalizer
+import kotlinx.coroutines.launch
 
 private enum class MobileSection(val label: String, val icon: ImageVector) {
     TODAY("Hoje", Icons.Outlined.Home),
+    TASKS("Tarefas", Icons.Outlined.CheckCircle),
     CAPTURE("Capturar", Icons.Outlined.Add),
     PROTOCOLS("Protocolos", Icons.Outlined.Checklist),
     QUEUE("Fila", Icons.Outlined.Inbox),
@@ -153,6 +163,17 @@ fun AgendaMobileApp(
             onSelectFocus = viewModel::selectFocus,
             onCloseToday = viewModel::closeToday,
             onReopenToday = viewModel::reopenToday,
+            onCreateTask = viewModel::createTask,
+            onUpdateTask = viewModel::updateTask,
+            onChangeTaskStatus = viewModel::changeTaskStatus,
+            onDeleteTask = viewModel::deleteTask,
+            onAddChecklistItem = viewModel::addChecklistItem,
+            onSetChecklistItemDone = viewModel::setChecklistItemDone,
+            onDeleteChecklistItem = viewModel::deleteChecklistItem,
+            onStartTaskTimer = viewModel::startTaskTimer,
+            onInterruptTaskTimer = viewModel::interruptTaskTimer,
+            onResumeTaskTimer = viewModel::resumeTaskTimer,
+            onFinishTaskTimer = viewModel::finishTaskTimer,
             onProposeProtocolStep = viewModel::proposeProtocolStep,
             onSync = viewModel::syncNow,
             onPair = viewModel::pairDesktop,
@@ -233,6 +254,17 @@ internal fun AgendaMobileScreen(
     onSelectFocus: (String?) -> Unit = {},
     onCloseToday: (String) -> Unit = {},
     onReopenToday: () -> Unit = {},
+    onCreateTask: (String, String, String?, String) -> Unit = { _, _, _, _ -> },
+    onUpdateTask: (String, String, String, String?, String) -> Unit = { _, _, _, _, _ -> },
+    onChangeTaskStatus: (String, String) -> Unit = { _, _ -> },
+    onDeleteTask: (String) -> Unit = {},
+    onAddChecklistItem: (String, String) -> Unit = { _, _ -> },
+    onSetChecklistItemDone: (String, Boolean) -> Unit = { _, _ -> },
+    onDeleteChecklistItem: (String) -> Unit = {},
+    onStartTaskTimer: (String) -> Unit = {},
+    onInterruptTaskTimer: () -> Unit = {},
+    onResumeTaskTimer: () -> Unit = {},
+    onFinishTaskTimer: (String) -> Unit = {},
     onSync: () -> Unit,
     onPair: (String, String) -> Unit,
     onCancelPairing: () -> Unit,
@@ -272,6 +304,7 @@ internal fun AgendaMobileScreen(
     var showRecommendations by rememberSaveable { mutableStateOf(false) }
     var showLeavingChoices by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     LaunchedEffect(state.feedback) {
         state.feedback?.let {
             snackbar.showSnackbar(it)
@@ -501,6 +534,32 @@ internal fun AgendaMobileScreen(
                                 else -> selected = MobileSection.PROTOCOLS.ordinal
                             }
                         },
+                    )
+                    MobileSection.TASKS -> TaskScreen(
+                        state = state,
+                        onCreate = onCreateTask,
+                        onUpdate = onUpdateTask,
+                        onStatus = { task, status ->
+                            val previous = task.status
+                            onChangeTaskStatus(task.id, status)
+                            scope.launch {
+                                val result = snackbar.showSnackbar(
+                                    message = "Estado alterado para ${status.userLabel()}.",
+                                    actionLabel = "Desfazer",
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    onChangeTaskStatus(task.id, previous)
+                                }
+                            }
+                        },
+                        onDelete = onDeleteTask,
+                        onAddChecklist = onAddChecklistItem,
+                        onChecklistDone = onSetChecklistItemDone,
+                        onDeleteChecklist = onDeleteChecklistItem,
+                        onStartTimer = onStartTaskTimer,
+                        onInterruptTimer = onInterruptTaskTimer,
+                        onResumeTimer = onResumeTaskTimer,
+                        onFinishTimer = onFinishTaskTimer,
                     )
                     MobileSection.CAPTURE -> CaptureScreen(state, onSaveCapture)
                     MobileSection.PROTOCOLS -> ProtocolScreen(
@@ -994,6 +1053,284 @@ internal fun leavingHomeCandidates(protocols: List<ProtocolTemplateEntity>): Lis
         )
         .take(3)
         .toList()
+
+@Composable
+private fun TaskScreen(
+    state: MobileUiState,
+    onCreate: (String, String, String?, String) -> Unit,
+    onUpdate: (String, String, String, String?, String) -> Unit,
+    onStatus: (TaskReplicaEntity, String) -> Unit,
+    onDelete: (String) -> Unit,
+    onAddChecklist: (String, String) -> Unit,
+    onChecklistDone: (String, Boolean) -> Unit,
+    onDeleteChecklist: (String) -> Unit,
+    onStartTimer: (String) -> Unit,
+    onInterruptTimer: () -> Unit,
+    onResumeTimer: () -> Unit,
+    onFinishTimer: (String) -> Unit,
+) {
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var creating by rememberSaveable { mutableStateOf(false) }
+    var detailId by rememberSaveable { mutableStateOf<String?>(null) }
+    var deletingId by rememberSaveable { mutableStateOf<String?>(null) }
+    val detailTask = state.tasks.firstOrNull { it.id == detailId }
+
+    if (creating || editingId != null) {
+        val editing = state.tasks.firstOrNull { it.id == editingId }
+        TaskEditorDialog(
+            task = editing,
+            busy = state.busy,
+            onDismiss = { creating = false; editingId = null },
+            onSave = { title, notes, due, priority ->
+                if (editing == null) onCreate(title, notes, due, priority)
+                else onUpdate(editing.id, title, notes, due, priority)
+                creating = false
+                editingId = null
+            },
+        )
+    }
+    deletingId?.let { id ->
+        AlertDialog(
+            onDismissRequest = { deletingId = null },
+            title = { Text("Remover tarefa?") },
+            text = { Text("A tarefa será removida também após a próxima sincronização.") },
+            confirmButton = {
+                Button(onClick = { onDelete(id); deletingId = null; detailId = null }) { Text("Remover") }
+            },
+            dismissButton = { OutlinedButton(onClick = { deletingId = null }) { Text("Cancelar") } },
+        )
+    }
+    detailTask?.let { task ->
+        TaskDetailDialog(
+            task = task,
+            checklist = state.taskChecklist.filter { it.taskId == task.id },
+            sessions = state.taskSessions.filter { it.taskId == task.id },
+            timer = state.activeTaskTimer?.takeIf { it.taskId == task.id },
+            anotherTimerActive = state.activeTaskTimer != null && state.activeTaskTimer.taskId != task.id,
+            busy = state.busy,
+            onDismiss = { detailId = null },
+            onEdit = { editingId = task.id },
+            onDelete = { deletingId = task.id },
+            onStatus = { onStatus(task, it) },
+            onAddChecklist = { onAddChecklist(task.id, it) },
+            onChecklistDone = onChecklistDone,
+            onDeleteChecklist = onDeleteChecklist,
+            onStartTimer = { onStartTimer(task.id) },
+            onInterruptTimer = onInterruptTimer,
+            onResumeTimer = onResumeTimer,
+            onFinishTimer = onFinishTimer,
+        )
+    }
+
+    ScreenList("Tarefas") {
+        item {
+            Button(
+                onClick = { creating = true },
+                enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth().testTag("task-add"),
+            ) {
+                Icon(Icons.Outlined.Add, contentDescription = null)
+                Text("Nova tarefa", modifier = Modifier.padding(start = 8.dp))
+            }
+        }
+        if (state.tasks.isEmpty()) item { EmptyState("Nenhuma tarefa disponível.") }
+        items(state.tasks, key = { it.id }) { task ->
+            val completed = task.status == "COMPLETED"
+            val conflicted = state.conflicts.any { it.entityType == "task" && it.entityId == task.id }
+            val overdue = !completed && task.dueDate?.let {
+                runCatching { java.time.LocalDate.parse(it).isBefore(java.time.LocalDate.now()) }.getOrDefault(false)
+            } == true
+            Row(
+                Modifier.fillMaxWidth().clickable { detailId = task.id }
+                    .padding(vertical = 12.dp).testTag("task-${task.id}"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(
+                    when {
+                        conflicted -> Icons.Outlined.CloudOff
+                        completed -> Icons.Outlined.CheckCircle
+                        else -> Icons.Outlined.RadioButtonUnchecked
+                    },
+                    contentDescription = when { conflicted -> "Conflito"; overdue -> "Atrasada"; else -> task.status.userLabel() },
+                    tint = when {
+                        conflicted || overdue -> MaterialTheme.colorScheme.error
+                        completed -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        task.title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        textDecoration = if (completed) TextDecoration.LineThrough else null,
+                    )
+                    Text(
+                        listOfNotNull(
+                            when { conflicted -> "Conflito"; overdue -> "Atrasada"; else -> task.status.userLabel() },
+                            task.dueDate?.let { "Prazo $it" }, task.priority.priorityLabel(),
+                        )
+                            .joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+    }
+}
+
+@Composable
+private fun TaskEditorDialog(
+    task: TaskReplicaEntity?,
+    busy: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (String, String, String?, String) -> Unit,
+) {
+    var title by rememberSaveable(task?.id) { mutableStateOf(task?.title.orEmpty()) }
+    var notes by rememberSaveable(task?.id) { mutableStateOf(task?.notes.orEmpty()) }
+    var dueDate by rememberSaveable(task?.id) { mutableStateOf(task?.dueDate.orEmpty()) }
+    var priority by rememberSaveable(task?.id) { mutableStateOf(task?.priority ?: "NORMAL") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (task == null) "Nova tarefa" else "Editar tarefa") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(title, { title = it }, label = { Text("Título") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(notes, { notes = it }, label = { Text("Notas") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    dueDate, { dueDate = it }, label = { Text("Prazo (AAAA-MM-DD)") },
+                    singleLine = true, modifier = Modifier.fillMaxWidth(),
+                )
+                Text("Prioridade", style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("LOW", "NORMAL", "HIGH").forEach { value ->
+                        OutlinedButton(onClick = { priority = value }, enabled = !busy) {
+                            Text(if (priority == value) "✓ ${value.priorityLabel()}" else value.priorityLabel())
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onSave(title, notes, dueDate.takeIf(String::isNotBlank), priority) },
+                enabled = !busy && title.isNotBlank()) { Text("Salvar") }
+        },
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
+}
+
+@Composable
+private fun TaskDetailDialog(
+    task: TaskReplicaEntity,
+    checklist: List<com.pessoal.agenda.mobile.data.local.TaskChecklistItemEntity>,
+    sessions: List<com.pessoal.agenda.mobile.data.local.TaskSessionEntity>,
+    timer: com.pessoal.agenda.mobile.data.local.ActiveTaskTimerEntity?,
+    anotherTimerActive: Boolean,
+    busy: Boolean,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onStatus: (String) -> Unit,
+    onAddChecklist: (String) -> Unit,
+    onChecklistDone: (String, Boolean) -> Unit,
+    onDeleteChecklist: (String) -> Unit,
+    onStartTimer: () -> Unit,
+    onInterruptTimer: () -> Unit,
+    onResumeTimer: () -> Unit,
+    onFinishTimer: (String) -> Unit,
+) {
+    var newItem by rememberSaveable(task.id) { mutableStateOf("") }
+    var sessionNotes by rememberSaveable(task.id) { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(task.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (task.notes.isNotBlank()) item { Text(task.notes) }
+                item {
+                    Text("Estado", style = MaterialTheme.typography.titleSmall)
+                    Column {
+                        listOf("PENDING", "IN_PROGRESS", "COMPLETED", "BLOCKED", "CANCELLED").forEach { value ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(
+                                    selected = task.status == value,
+                                    onClick = { onStatus(value) },
+                                    enabled = !busy,
+                                    modifier = Modifier.semantics { contentDescription = "Definir ${value.userLabel()}" },
+                                )
+                                Text(value.userLabel())
+                            }
+                        }
+                    }
+                }
+                item { Text("Checklist", style = MaterialTheme.typography.titleSmall) }
+                items(checklist, key = { it.id }) { item ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(item.done, { onChecklistDone(item.id, it) }, enabled = !busy)
+                        Text(item.text, Modifier.weight(1f), textDecoration = if (item.done) TextDecoration.LineThrough else null)
+                        IconButton(onClick = { onDeleteChecklist(item.id) }, enabled = !busy) {
+                            Icon(Icons.Outlined.Delete, contentDescription = "Remover item")
+                        }
+                    }
+                }
+                item {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(newItem, { newItem = it }, label = { Text("Novo item") }, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { onAddChecklist(newItem); newItem = "" }, enabled = !busy && newItem.isNotBlank()) {
+                            Icon(Icons.Outlined.Add, contentDescription = "Adicionar item")
+                        }
+                    }
+                }
+                item { HorizontalDivider(); Text("Sessão de foco", style = MaterialTheme.typography.titleSmall) }
+                item {
+                    when {
+                        timer == null -> Button(onClick = onStartTimer, enabled = !busy && !anotherTimerActive) {
+                            Icon(Icons.Outlined.Timer, contentDescription = null); Text("Iniciar", Modifier.padding(start = 6.dp))
+                        }
+                        timer.startedAt != null -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = onInterruptTimer, enabled = !busy) {
+                                Icon(Icons.Outlined.PauseCircle, contentDescription = null); Text("Interromper")
+                            }
+                        }
+                        else -> OutlinedButton(onClick = onResumeTimer, enabled = !busy) {
+                            Icon(Icons.Outlined.RestartAlt, contentDescription = null); Text("Retomar")
+                        }
+                    }
+                    if (anotherTimerActive) Text("Há outra tarefa com cronômetro ativo.", color = MaterialTheme.colorScheme.error)
+                }
+                if (timer != null) item {
+                    OutlinedTextField(sessionNotes, { sessionNotes = it }, label = { Text("Nota da sessão") }, modifier = Modifier.fillMaxWidth())
+                    Button(onClick = { onFinishTimer(sessionNotes); sessionNotes = "" }, enabled = !busy,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        Icon(Icons.Outlined.StopCircle, contentDescription = null); Text("Finalizar e registrar", Modifier.padding(start = 6.dp))
+                    }
+                }
+                if (sessions.isNotEmpty()) item {
+                    val minutes = sessions.sumOf { it.durationSeconds } / 60
+                    Text("${sessions.size} sessões · $minutes min registrados", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = { OutlinedButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, null); Text("Editar") } },
+        dismissButton = {
+            Row {
+                IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, contentDescription = "Remover tarefa") }
+                OutlinedButton(onClick = onDismiss) { Text("Fechar") }
+            }
+        },
+    )
+}
+
+private fun String.priorityLabel(): String = when (this) {
+    "LOW" -> "Baixa"
+    "HIGH" -> "Alta"
+    else -> "Normal"
+}
 
 @Composable
 private fun CaptureScreen(state: MobileUiState, onSave: (String, () -> Unit) -> Unit) {

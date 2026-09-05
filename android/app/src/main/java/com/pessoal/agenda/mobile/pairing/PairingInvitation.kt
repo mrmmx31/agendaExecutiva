@@ -16,7 +16,7 @@ data class PairingInvitation(
     val certificateFingerprint: String,
 ) {
     companion object {
-        private const val CONTRACT_VERSION = 1
+        private const val CONTRACT_VERSION = 2
         private val expectedFields = setOf(
             "v", "session_id", "desktop_id", "endpoint",
             "expires_at", "nonce", "fingerprint",
@@ -31,7 +31,7 @@ data class PairingInvitation(
             if (fields.keys != expectedFields) invalid()
 
             val version = fields.getValue("v").toIntOrNull() ?: invalid()
-            if (version != CONTRACT_VERSION) invalid()
+            if (version !in 1..CONTRACT_VERSION) invalid()
             val expiresAt = runCatching { Instant.parse(fields.getValue("expires_at")) }.getOrElse { invalid() }
             val remaining = Duration.between(now, expiresAt)
             if (remaining.isZero || remaining.isNegative || remaining > Duration.ofMinutes(5)) invalid()

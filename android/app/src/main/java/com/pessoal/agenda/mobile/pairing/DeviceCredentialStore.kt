@@ -231,7 +231,7 @@ class DeviceCredentialStore(context: Context) : PairingCredentialStore {
         const val GRANTED_ROLES = "granted_roles"
         const val SYNC_BASE = "sync_base"
         const val TLS_FINGERPRINT = "tls_fingerprint"
-        val ALLOWED_ROLES = setOf("TASKS_READ", "CAPTURES_WRITE", "PROTOCOLS_EXECUTE")
+        val ALLOWED_ROLES = setOf("TASKS_READ", "TASKS_WRITE", "CAPTURES_WRITE", "PROTOCOLS_EXECUTE")
         val OAEP_SPEC = OAEPParameterSpec(
             "SHA-256",
             "MGF1",

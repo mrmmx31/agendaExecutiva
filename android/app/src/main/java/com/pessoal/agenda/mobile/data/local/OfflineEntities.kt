@@ -20,6 +20,64 @@ data class TaskReplicaEntity(
     val revision: Long,
     val updatedAt: String,
     val tombstone: Boolean = false,
+    val notes: String = "",
+    val dueDate: String? = null,
+    val priority: String = "NORMAL",
+)
+
+@Entity(
+    tableName = "task_checklist_items",
+    foreignKeys = [ForeignKey(
+        entity = TaskReplicaEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["taskId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+    indices = [Index("taskId"), Index(value = ["taskId", "position"], unique = true)],
+)
+data class TaskChecklistItemEntity(
+    @PrimaryKey val id: String,
+    val taskId: String,
+    val text: String,
+    val done: Boolean = false,
+    val position: Int,
+)
+
+@Entity(
+    tableName = "active_task_timers",
+    foreignKeys = [ForeignKey(
+        entity = TaskReplicaEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["taskId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+    indices = [Index("taskId", unique = true)],
+)
+data class ActiveTaskTimerEntity(
+    @PrimaryKey val singletonId: Int = 1,
+    val taskId: String,
+    val startedAt: String?,
+    val accumulatedSeconds: Long,
+    val interruptedAt: String? = null,
+)
+
+@Entity(
+    tableName = "task_sessions",
+    foreignKeys = [ForeignKey(
+        entity = TaskReplicaEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["taskId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+    indices = [Index("taskId"), Index("endedAt")],
+)
+data class TaskSessionEntity(
+    @PrimaryKey val id: String,
+    val taskId: String,
+    val startedAt: String,
+    val endedAt: String,
+    val durationSeconds: Long,
+    val notes: String = "",
 )
 
 @Entity(tableName = "daily_plans")

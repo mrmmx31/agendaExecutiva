@@ -121,7 +121,7 @@ class PairingClient(
 
     private companion object {
         val TOKEN_PATTERN = Regex("[A-Za-z0-9_-]{43,128}")
-        val ALLOWED_ROLES = setOf("TASKS_READ", "CAPTURES_WRITE", "PROTOCOLS_EXECUTE")
+        val ALLOWED_ROLES = setOf("TASKS_READ", "TASKS_WRITE", "CAPTURES_WRITE", "PROTOCOLS_EXECUTE")
     }
 
     private data class PairingIdentity(val deviceId: String, val deviceName: String, val publicKey: String)

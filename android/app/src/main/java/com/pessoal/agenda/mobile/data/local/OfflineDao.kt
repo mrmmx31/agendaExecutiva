@@ -250,6 +250,57 @@ interface OfflineDao {
     @Query("SELECT * FROM task_replicas WHERE id=:id")
     suspend fun task(id: String): TaskReplicaEntity?
 
+    @Upsert
+    suspend fun upsertTask(value: TaskReplicaEntity)
+
+    @Query("SELECT * FROM task_checklist_items WHERE taskId=:taskId ORDER BY position")
+    fun observeTaskChecklist(taskId: String): Flow<List<TaskChecklistItemEntity>>
+
+    @Query("SELECT * FROM task_checklist_items ORDER BY taskId, position")
+    fun observeAllTaskChecklist(): Flow<List<TaskChecklistItemEntity>>
+
+    @Query("SELECT * FROM task_checklist_items WHERE taskId=:taskId ORDER BY position")
+    suspend fun taskChecklist(taskId: String): List<TaskChecklistItemEntity>
+
+    @Query("SELECT * FROM task_checklist_items WHERE id=:id")
+    suspend fun checklistItem(id: String): TaskChecklistItemEntity?
+
+    @Upsert
+    suspend fun upsertChecklistItem(value: TaskChecklistItemEntity)
+
+    @Upsert
+    suspend fun upsertChecklistItems(values: List<TaskChecklistItemEntity>)
+
+    @Query("DELETE FROM task_checklist_items WHERE id=:id")
+    suspend fun deleteChecklistItem(id: String): Int
+
+    @Query("DELETE FROM task_checklist_items WHERE taskId=:taskId")
+    suspend fun deleteTaskChecklist(taskId: String)
+
+    @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM task_checklist_items WHERE taskId=:taskId")
+    suspend fun nextChecklistPosition(taskId: String): Int
+
+    @Query("SELECT * FROM active_task_timers WHERE singletonId=1")
+    fun observeActiveTaskTimer(): Flow<ActiveTaskTimerEntity?>
+
+    @Query("SELECT * FROM active_task_timers WHERE singletonId=1")
+    suspend fun activeTaskTimer(): ActiveTaskTimerEntity?
+
+    @Upsert
+    suspend fun upsertActiveTaskTimer(value: ActiveTaskTimerEntity)
+
+    @Query("DELETE FROM active_task_timers")
+    suspend fun clearActiveTaskTimer()
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertTaskSession(value: TaskSessionEntity)
+
+    @Query("SELECT * FROM task_sessions WHERE taskId=:taskId ORDER BY endedAt DESC")
+    fun observeTaskSessions(taskId: String): Flow<List<TaskSessionEntity>>
+
+    @Query("SELECT * FROM task_sessions ORDER BY endedAt DESC")
+    fun observeTaskSessions(): Flow<List<TaskSessionEntity>>
+
     @Query("SELECT * FROM daily_plans WHERE planDate = :date")
     fun observeDailyPlan(date: String): Flow<DailyPlanEntity?>
 

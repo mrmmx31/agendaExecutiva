@@ -33,6 +33,14 @@ final class SyncBatchProcessor {
     private static final Set<String> RUN_CANCEL_FIELDS = Set.of("run_id", "cancelled_at");
     private static final Set<String> PROTOCOL_PROPOSAL_FIELDS = Set.of(
             "protocol_id", "base_revision", "proposed_step_label", "proposed_at");
+    private static final Set<String> TASK_FIELDS = Set.of(
+            "task_id", "title", "notes", "due_date", "priority", "status", "updated_at");
+    private static final Set<String> TASK_STATUS_FIELDS = Set.of("task_id", "status", "updated_at");
+    private static final Set<String> TASK_DELETE_FIELDS = Set.of("task_id", "deleted_at");
+    private static final Set<String> TASK_CHECKLIST_FIELDS = Set.of("task_id", "items", "updated_at");
+    private static final Set<String> CHECKLIST_ITEM_FIELDS = Set.of("id", "text", "done", "position");
+    private static final Set<String> TASK_SESSION_FIELDS = Set.of(
+            "session_id", "task_id", "started_at", "ended_at", "duration_seconds", "notes");
 
     private final DesktopSyncRepository repository;
     private final Gson gson = new GsonBuilder().serializeNulls().create();
@@ -44,7 +52,11 @@ final class SyncBatchProcessor {
     JsonObject process(String authenticatedDeviceId, byte[] body) {
         JsonObject batch = gson.fromJson(new String(body, StandardCharsets.UTF_8), JsonObject.class);
         require(batch != null && batch.keySet().equals(BATCH_FIELDS));
-        require(batch.get("contract_version").getAsInt() == 1);
+        int contractVersion = batch.get("contract_version").getAsInt();
+        require(contractVersion == 1 || contractVersion == 2);
+        DesktopSyncRepository.DeviceRecord device = repository.findDevice(authenticatedDeviceId);
+        require(device != null && contractVersion >= device.contractMin()
+                && contractVersion <= device.contractMax());
         require(authenticatedDeviceId.equals(requiredString(batch, "device_id")));
         long lastServerCursor = batch.get("last_server_cursor").getAsLong();
         require(lastServerCursor >= 0);
@@ -55,11 +67,11 @@ final class SyncBatchProcessor {
         repository.acknowledgeServerCursor(authenticatedDeviceId, lastServerCursor);
         JsonArray results = new JsonArray();
         for (JsonElement element : operations) {
-            results.add(processOperation(authenticatedDeviceId, element.getAsJsonObject()));
+            results.add(processOperation(authenticatedDeviceId, element.getAsJsonObject(), contractVersion));
         }
         DesktopSyncRepository.CursorRecord cursor = repository.cursor(authenticatedDeviceId);
         JsonObject response = new JsonObject();
-        response.addProperty("contract_version", 1);
+        response.addProperty("contract_version", contractVersion);
         response.addProperty("client_contiguous_sequence", cursor.clientContiguousSequence());
         response.addProperty("server_cursor", repository.refreshSnapshot().serverCursor());
         response.add("results", results);
@@ -75,10 +87,10 @@ final class SyncBatchProcessor {
         return response;
     }
 
-    private JsonObject processOperation(String deviceId, JsonObject operation) {
+    private JsonObject processOperation(String deviceId, JsonObject operation, int contractVersion) {
         String operationId = safeOperationId(operation);
         try {
-            validateEnvelope(deviceId, operation);
+            validateEnvelope(deviceId, operation, contractVersion);
             String command = requiredString(operation, "command_type");
             String entityType = requiredString(operation, "entity_type");
             String entityId = requiredUuid(operation, "entity_id");
@@ -94,6 +106,10 @@ final class SyncBatchProcessor {
                 return result(operationId, "REJECTED", "ID_REUSED", null, null);
             }
 
+            if (contractVersion == 1 && command.startsWith("TASK_")
+                    && !"TASKS_READ".equals(command)) return storeRejected(operation, "CONTRACT_VERSION");
+            if (contractVersion == 1 && Set.of("CHECKLIST_ITEM_CHANGED", "SESSION_RECORDED").contains(command))
+                return storeRejected(operation, "CONTRACT_VERSION");
             return switch (command) {
                 case "CAPTURE_CREATED" -> processCapture(
                         input(operation, "APPLIED", null, null, null), payload);
@@ -105,6 +121,12 @@ final class SyncBatchProcessor {
                         input(operation, "APPLIED", null, null, null), payload);
                 case "PROTOCOL_STRUCTURE_PROPOSED" -> processProtocolProposal(
                         input(operation, "APPLIED", null, null, null), payload, baseRevision);
+                case "TASK_CREATED" -> processTaskCreate(operation, payload, baseRevision);
+                case "TASK_UPDATED" -> processTaskUpdate(operation, payload, baseRevision);
+                case "TASK_STATUS_CHANGED" -> processTaskStatus(operation, payload, baseRevision);
+                case "CHECKLIST_ITEM_CHANGED" -> processTaskChecklist(operation, payload, baseRevision);
+                case "TASK_DELETED" -> processTaskDelete(operation, payload, baseRevision);
+                case "SESSION_RECORDED" -> processTaskSession(operation, payload);
                 default -> storeRejected(operation, "BUSINESS_RULE");
             };
         } catch (DesktopSyncRepository.SyncPersistenceException error) {
@@ -204,6 +226,135 @@ final class SyncBatchProcessor {
         return gson.fromJson(conflict.resultJson(), JsonObject.class);
     }
 
+    private JsonObject processTaskCreate(JsonObject operation, JsonObject payload, Long baseRevision) {
+        DesktopSyncRepository.OperationInput basic = input(operation, "APPLIED", null, 1L, null);
+        if (!repository.hasRole(basic.deviceId(), "TASKS_WRITE")) return storeRejected(basic, "ROLE_DENIED");
+        require(baseRevision == null && repository.currentRevision("task", basic.entityId()) == 0);
+        TaskValues values = taskValues(payload, basic.entityId());
+        DesktopSyncRepository.StoredOperation stored = repository.applyTaskCreate(
+                basic, values.title, values.notes, values.dueDate, values.priority, values.status);
+        repository.refreshSnapshot();
+        return storedResult(stored);
+    }
+
+    private JsonObject processTaskUpdate(JsonObject operation, JsonObject payload, Long baseRevision) {
+        DesktopSyncRepository.OperationInput basic = input(operation, "APPLIED", null, null, null);
+        if (!repository.hasRole(basic.deviceId(), "TASKS_WRITE")) return storeRejected(basic, "ROLE_DENIED");
+        TaskValues values = taskValues(payload, basic.entityId());
+        long current = checkedTaskRevision(basic, payload, baseRevision, "TEXT_DIVERGED");
+        if (current < 0) return gson.fromJson(repository.findStoredOperation(basic.operationId()).resultJson(), JsonObject.class);
+        DesktopSyncRepository.OperationInput applied = input(operation, "APPLIED", null, current + 1, null);
+        DesktopSyncRepository.StoredOperation stored = repository.applyTaskUpdate(
+                applied, values.title, values.notes, values.dueDate, values.priority);
+        repository.refreshSnapshot();
+        return storedResult(stored);
+    }
+
+    private JsonObject processTaskStatus(JsonObject operation, JsonObject payload, Long baseRevision) {
+        DesktopSyncRepository.OperationInput basic = input(operation, "APPLIED", null, null, null);
+        if (!repository.hasRole(basic.deviceId(), "TASKS_WRITE")) return storeRejected(basic, "ROLE_DENIED");
+        require(payload != null && payload.keySet().equals(TASK_STATUS_FIELDS));
+        require(requiredUuid(payload, "task_id").equals(basic.entityId()));
+        String status = taskStatus(payload.get("status").getAsString());
+        Instant.parse(requiredString(payload, "updated_at"));
+        long current = checkedTaskRevision(basic, payload, baseRevision, "STATE_DIVERGED");
+        if (current < 0) return gson.fromJson(repository.findStoredOperation(basic.operationId()).resultJson(), JsonObject.class);
+        DesktopSyncRepository.StoredOperation stored = repository.applyTaskStatus(
+                input(operation, "APPLIED", null, current + 1, null), status);
+        repository.refreshSnapshot();
+        return storedResult(stored);
+    }
+
+    private JsonObject processTaskChecklist(JsonObject operation, JsonObject payload, Long baseRevision) {
+        DesktopSyncRepository.OperationInput basic = input(operation, "APPLIED", null, null, null);
+        if (!repository.hasRole(basic.deviceId(), "TASKS_WRITE")) return storeRejected(basic, "ROLE_DENIED");
+        require(payload != null && payload.keySet().equals(TASK_CHECKLIST_FIELDS));
+        require(requiredUuid(payload, "task_id").equals(basic.entityId()));
+        Instant.parse(requiredString(payload, "updated_at"));
+        JsonArray items = payload.getAsJsonArray("items");
+        require(items != null && items.size() <= 200);
+        Set<String> ids = new java.util.HashSet<>();
+        Set<Integer> positions = new java.util.HashSet<>();
+        for (JsonElement element : items) {
+            JsonObject item = element.getAsJsonObject();
+            require(item.keySet().equals(CHECKLIST_ITEM_FIELDS));
+            require(ids.add(requiredUuid(item, "id")));
+            String text = requiredString(item, "text").trim();
+            require(!text.isEmpty() && text.length() <= 240);
+            require(item.get("done").isJsonPrimitive());
+            int position = item.get("position").getAsInt();
+            require(position >= 0 && positions.add(position));
+        }
+        long current = checkedTaskRevision(basic, payload, baseRevision, "STRUCTURE_DIVERGED");
+        if (current < 0) return gson.fromJson(repository.findStoredOperation(basic.operationId()).resultJson(), JsonObject.class);
+        DesktopSyncRepository.StoredOperation stored = repository.applyTaskChecklist(
+                input(operation, "APPLIED", null, current + 1, null), items);
+        repository.refreshSnapshot();
+        return storedResult(stored);
+    }
+
+    private JsonObject processTaskDelete(JsonObject operation, JsonObject payload, Long baseRevision) {
+        DesktopSyncRepository.OperationInput basic = input(operation, "APPLIED", null, null, null);
+        if (!repository.hasRole(basic.deviceId(), "TASKS_WRITE")) return storeRejected(basic, "ROLE_DENIED");
+        require(payload != null && payload.keySet().equals(TASK_DELETE_FIELDS));
+        require(requiredUuid(payload, "task_id").equals(basic.entityId()));
+        Instant.parse(requiredString(payload, "deleted_at"));
+        long current = checkedTaskRevision(basic, payload, baseRevision, "TOMBSTONE_DIVERGED");
+        if (current < 0) return gson.fromJson(repository.findStoredOperation(basic.operationId()).resultJson(), JsonObject.class);
+        DesktopSyncRepository.StoredOperation stored = repository.applyTaskDelete(
+                input(operation, "APPLIED", null, current + 1, null));
+        repository.refreshSnapshot();
+        return storedResult(stored);
+    }
+
+    private JsonObject processTaskSession(JsonObject operation, JsonObject payload) {
+        DesktopSyncRepository.OperationInput basic = input(operation, "APPLIED", null, null, null);
+        if (!repository.hasRole(basic.deviceId(), "TASKS_WRITE")) return storeRejected(basic, "ROLE_DENIED");
+        require(payload != null && payload.keySet().equals(TASK_SESSION_FIELDS));
+        require(requiredUuid(payload, "session_id").equals(basic.entityId()));
+        String taskId = requiredUuid(payload, "task_id");
+        String startedAt = requiredString(payload, "started_at");
+        String endedAt = requiredString(payload, "ended_at");
+        require(!Instant.parse(endedAt).isBefore(Instant.parse(startedAt)));
+        long seconds = payload.get("duration_seconds").getAsLong();
+        require(seconds >= 1 && seconds <= 86400);
+        String notes = payload.get("notes").getAsString();
+        require(notes.length() <= 1000);
+        return storedResult(repository.applyTaskSession(basic, taskId, startedAt, endedAt, seconds, notes));
+    }
+
+    private long checkedTaskRevision(DesktopSyncRepository.OperationInput input, JsonObject payload,
+                                     Long baseRevision, String reason) {
+        long current = repository.currentRevision("task", input.entityId());
+        if (current == 0) throw new IllegalArgumentException();
+        if (baseRevision != null && baseRevision == current) return current;
+        repository.storeConflict(input, baseRevision, reason, gson.toJson(payload),
+                repository.currentEntityJson("task", input.entityId()), current);
+        return -1;
+    }
+
+    private TaskValues taskValues(JsonObject payload, String entityId) {
+        require(payload != null && payload.keySet().equals(TASK_FIELDS));
+        require(requiredUuid(payload, "task_id").equals(entityId));
+        String title = requiredString(payload, "title").trim();
+        String notes = payload.get("notes").getAsString().trim();
+        require(!title.isEmpty() && title.length() <= 240 && notes.length() <= 4000);
+        String dueDate = payload.get("due_date").isJsonNull()
+                ? java.time.LocalDate.now().toString() : java.time.LocalDate.parse(payload.get("due_date").getAsString()).toString();
+        String priority = payload.get("priority").getAsString();
+        require(Set.of("LOW", "NORMAL", "HIGH").contains(priority));
+        String status = taskStatus(payload.get("status").getAsString());
+        Instant.parse(requiredString(payload, "updated_at"));
+        return new TaskValues(title, notes, dueDate, priority, status);
+    }
+
+    private static String taskStatus(String status) {
+        require(Set.of("PENDING", "IN_PROGRESS", "COMPLETED", "BLOCKED", "CANCELLED").contains(status));
+        return status;
+    }
+
+    private record TaskValues(String title, String notes, String dueDate, String priority, String status) {}
+
     private JsonObject storeRejected(JsonObject operation, String errorCode) {
         return storeRejected(input(operation, "REJECTED", errorCode, null, null), errorCode);
     }
@@ -232,10 +383,10 @@ final class SyncBatchProcessor {
                 conflictId, result, requiredString(operation, "occurred_at"));
     }
 
-    private void validateEnvelope(String deviceId, JsonObject operation) {
+    private void validateEnvelope(String deviceId, JsonObject operation, int contractVersion) {
         require(operation != null && OPERATION_FIELDS.containsAll(operation.keySet())
                 && operation.keySet().containsAll(REQUIRED_OPERATION_FIELDS));
-        require(operation.get("contract_version").getAsInt() == 1);
+        require(operation.get("contract_version").getAsInt() == contractVersion);
         require(deviceId.equals(requiredUuid(operation, "device_id")));
         requiredUuid(operation, "operation_id");
         require(operation.get("sequence").getAsLong() >= 1);

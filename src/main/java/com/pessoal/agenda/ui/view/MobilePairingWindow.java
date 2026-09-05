@@ -311,6 +311,7 @@ public final class MobilePairingWindow {
     private static String roleNames(Set<String> roles) {
         return roles.stream().sorted(Comparator.naturalOrder()).map(role -> switch (role) {
             case "TASKS_READ" -> "ler tarefas";
+            case "TASKS_WRITE" -> "criar e alterar tarefas e sessões";
             case "CAPTURES_WRITE" -> "enviar capturas";
             case "PROTOCOLS_EXECUTE" -> "executar protocolos";
             default -> role;

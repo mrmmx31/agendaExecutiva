@@ -8,6 +8,7 @@ import com.pessoal.agenda.mobile.data.local.ProtocolStepEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.data.local.SyncConflictEntity
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
+import com.pessoal.agenda.mobile.data.local.TaskChecklistItemEntity
 import java.time.Clock
 import java.time.Instant
 import kotlinx.serialization.encodeToString
@@ -27,7 +28,9 @@ class SyncRepository(
     suspend fun syncOnce(): SyncSummary {
         val now = Instant.now(clock).toString()
         dao.recoverInFlight(now)
-        val pending = dao.operationsForSync(100)
+        val available = dao.operationsForSync(100)
+        val contractVersion = available.firstOrNull()?.contractVersion ?: 2
+        val pending = available.filter { it.contractVersion == contractVersion }
         var appliedCount = 0
         if (pending.isNotEmpty()) {
             check(dao.markInFlight(pending.map { it.operationId }, now) == pending.size) {
@@ -36,7 +39,7 @@ class SyncRepository(
         }
         try {
             val response = transport.push(batch(pending))
-            applyPushResponse(pending, response, now)
+            applyPushResponse(pending, response, contractVersion, now)
             appliedCount = response.results.count { it.status == "APPLIED" }
         } catch (error: Exception) {
             if (pending.isNotEmpty()) {
@@ -73,9 +76,10 @@ class SyncRepository(
     private suspend fun applyPushResponse(
         pending: List<PendingOperationEntity>,
         response: SyncBatchResponse,
+        contractVersion: Int,
         now: String,
     ) = database.withTransaction {
-        check(response.contractVersion == 1) { "Contrato de resposta incompatível." }
+        check(response.contractVersion == contractVersion) { "Contrato de resposta incompatível." }
         val expected = pending.map { it.operationId }.toSet()
         check(response.results.map { it.operationId }.toSet() == expected
             && response.results.size == expected.size) { "Resultados incompletos ou duplicados." }
@@ -105,8 +109,17 @@ class SyncRepository(
 
     private suspend fun applySnapshot(page: SnapshotPage) = database.withTransaction {
         dao.upsertTasks(page.tasks.map {
-            TaskReplicaEntity(it.id, it.title, it.status, it.revision, it.updatedAt, it.tombstone)
+            TaskReplicaEntity(
+                it.id, it.title, it.status, it.revision, it.updatedAt, it.tombstone,
+                it.notes, it.dueDate, it.priority,
+            )
         })
+        page.tasks.forEach { task ->
+            dao.deleteTaskChecklist(task.id)
+            dao.upsertChecklistItems(task.checklist.map {
+                TaskChecklistItemEntity(it.id, task.id, it.text, it.done, it.position)
+            })
+        }
         dao.upsertProtocols(page.protocols.map {
             ProtocolTemplateEntity(
                 it.id, it.title, it.revision, it.createdAt, it.updatedAt, it.tombstone,
@@ -123,7 +136,7 @@ class SyncRepository(
     }
 
     private suspend fun batch(operations: List<PendingOperationEntity>): SyncBatch = SyncBatch(
-        contractVersion = 1,
+        contractVersion = operations.firstOrNull()?.contractVersion ?: 2,
         deviceId = operations.firstOrNull()?.deviceId
             ?: requireNotNull(dao.metadata(DEVICE_ID_KEY)?.value) { "Identidade do aparelho ausente." },
         lastServerCursor = serverCursor(),

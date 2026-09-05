@@ -28,6 +28,9 @@ import com.pessoal.agenda.mobile.data.local.MobileDatabase
 import com.pessoal.agenda.mobile.data.local.PendingOperationEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
+import com.pessoal.agenda.mobile.data.local.TaskChecklistItemEntity
+import com.pessoal.agenda.mobile.data.local.ActiveTaskTimerEntity
+import com.pessoal.agenda.mobile.data.local.TaskSessionEntity
 import com.pessoal.agenda.mobile.data.local.SyncConflictEntity
 import com.pessoal.agenda.mobile.data.local.RecommendationEventEntity
 import com.pessoal.agenda.mobile.pairing.DeviceCredentialStore
@@ -91,6 +94,9 @@ import kotlin.system.measureNanoTime
 
 data class MobileUiState(
     val tasks: List<TaskReplicaEntity> = emptyList(),
+    val taskChecklist: List<TaskChecklistItemEntity> = emptyList(),
+    val activeTaskTimer: ActiveTaskTimerEntity? = null,
+    val taskSessions: List<TaskSessionEntity> = emptyList(),
     val captures: List<CaptureEntity> = emptyList(),
     val protocols: List<ProtocolTemplateEntity> = emptyList(),
     val activeRunSteps: List<ActiveRunStepRow> = emptyList(),
@@ -238,14 +244,19 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         SecondaryOfflineContent(protocols, activeRunSteps, queue.first, queue.second, today)
     }
 
+    private val taskContent = combine(
+        repository.tasks, repository.taskChecklist, repository.activeTaskTimer, repository.taskSessions,
+    ) { tasks, checklist, timer, sessions -> TaskLocalContent(tasks, checklist, timer, sessions) }
+
     private val content = combine(
-        repository.tasks,
+        taskContent,
         repository.captures,
         secondaryContent,
-    ) { tasks, captures, secondary ->
-        val resolvedFocus = resolveFocus(tasks, secondary.today.planTasks, secondary.today.focus)
+    ) { taskContent, captures, secondary ->
+        val resolvedFocus = resolveFocus(taskContent.tasks, secondary.today.planTasks, secondary.today.focus)
         OfflineContent(
-            tasks, captures, secondary.protocols, secondary.activeRunSteps,
+            taskContent.tasks, taskContent.checklist, taskContent.timer, taskContent.sessions,
+            captures, secondary.protocols, secondary.activeRunSteps,
             secondary.operations, secondary.conflicts,
             TodayUiState(
                 date = repository.todayDate,
@@ -276,6 +287,9 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
     ) { content, busy, feedback, canSync, pairingState ->
         MobileUiState(
             tasks = content.tasks,
+            taskChecklist = content.checklist,
+            activeTaskTimer = content.timer,
+            taskSessions = content.sessions,
             captures = content.captures,
             protocols = content.protocols,
             activeRunSteps = content.activeRunSteps,
@@ -321,6 +335,50 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         successMessage = "Captura salva no telefone.",
         onSuccess = onSaved,
     ) { repository.createCapture(text) }
+
+    fun createTask(title: String, notes: String, dueDate: String?, priority: String) = execute(
+        successMessage = "Tarefa criada e colocada na fila de sincronização.",
+    ) { repository.createTask(title, notes, dueDate, priority) }
+
+    fun updateTask(id: String, title: String, notes: String, dueDate: String?, priority: String) = execute(
+        successMessage = "Tarefa atualizada.",
+    ) { repository.updateTask(id, title, notes, dueDate, priority) }
+
+    fun changeTaskStatus(id: String, status: String) = execute(
+        successMessage = "Estado da tarefa atualizado.",
+    ) { repository.changeTaskStatus(id, status) }
+
+    fun deleteTask(id: String) = execute(successMessage = "Tarefa removida.") {
+        repository.deleteTask(id)
+    }
+
+    fun addChecklistItem(taskId: String, text: String) = execute(successMessage = "Item adicionado.") {
+        repository.addChecklistItem(taskId, text)
+    }
+
+    fun setChecklistItemDone(itemId: String, done: Boolean) = execute(successMessage = "Checklist atualizado.") {
+        repository.setChecklistItemDone(itemId, done)
+    }
+
+    fun deleteChecklistItem(itemId: String) = execute(successMessage = "Item removido.") {
+        repository.deleteChecklistItem(itemId)
+    }
+
+    fun startTaskTimer(taskId: String) = execute(successMessage = "Cronômetro iniciado.") {
+        repository.startTaskTimer(taskId)
+    }
+
+    fun interruptTaskTimer() = execute(successMessage = "Cronômetro interrompido; o tempo foi preservado.") {
+        repository.interruptTaskTimer()
+    }
+
+    fun resumeTaskTimer() = execute(successMessage = "Cronômetro retomado.") {
+        repository.resumeTaskTimer()
+    }
+
+    fun finishTaskTimer(notes: String) = execute(successMessage = "Sessão registrada.") {
+        repository.finishTaskTimer(notes)
+    }
 
     fun startProtocol(protocolId: String) = execute(
         successMessage = "Protocolo iniciado offline.",
@@ -856,12 +914,22 @@ private const val HASH_PREFIX_LENGTH = 12
 
 private data class OfflineContent(
     val tasks: List<TaskReplicaEntity>,
+    val checklist: List<TaskChecklistItemEntity>,
+    val timer: ActiveTaskTimerEntity?,
+    val sessions: List<TaskSessionEntity>,
     val captures: List<CaptureEntity>,
     val protocols: List<ProtocolTemplateEntity>,
     val activeRunSteps: List<ActiveRunStepRow>,
     val operations: List<PendingOperationEntity>,
     val conflicts: List<SyncConflictEntity>,
     val today: TodayUiState,
+)
+
+private data class TaskLocalContent(
+    val tasks: List<TaskReplicaEntity>,
+    val checklist: List<TaskChecklistItemEntity>,
+    val timer: ActiveTaskTimerEntity?,
+    val sessions: List<TaskSessionEntity>,
 )
 
 private data class SecondaryOfflineContent(

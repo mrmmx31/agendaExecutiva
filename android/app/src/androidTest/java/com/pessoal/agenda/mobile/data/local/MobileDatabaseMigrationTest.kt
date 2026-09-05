@@ -34,7 +34,7 @@ class MobileDatabaseMigrationTest {
 
         helper.runMigrationsAndValidate(
             TEST_DATABASE,
-            11,
+            12,
             true,
             MobileDatabase.MIGRATION_1_2,
             MobileDatabase.MIGRATION_2_3,
@@ -46,6 +46,7 @@ class MobileDatabaseMigrationTest {
             MobileDatabase.MIGRATION_8_9,
             MobileDatabase.MIGRATION_9_10,
             MobileDatabase.MIGRATION_10_11,
+            MobileDatabase.MIGRATION_11_12,
         ).use { database ->
             database.query("SELECT value FROM mobile_metadata WHERE `key`='contract_version'").use { cursor ->
                 cursor.moveToFirst()
@@ -81,13 +82,14 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            QUEUE_DATABASE, 11, true, MobileDatabase.MIGRATION_2_3,
+            QUEUE_DATABASE, 12, true, MobileDatabase.MIGRATION_2_3,
             MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5, MobileDatabase.MIGRATION_5_6,
             MobileDatabase.MIGRATION_6_7,
             MobileDatabase.MIGRATION_7_8,
             MobileDatabase.MIGRATION_8_9,
             MobileDatabase.MIGRATION_9_10,
             MobileDatabase.MIGRATION_10_11,
+            MobileDatabase.MIGRATION_11_12,
         ).use { database ->
             database.query("SELECT status, attemptCount, updatedAt FROM pending_operations").use { cursor ->
                 cursor.moveToFirst()
@@ -103,11 +105,12 @@ class MobileDatabaseMigrationTest {
         helper.createDatabase(ALERT_DATABASE, 3).close()
 
         helper.runMigrationsAndValidate(
-            ALERT_DATABASE, 11, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
+            ALERT_DATABASE, 12, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
             MobileDatabase.MIGRATION_5_6, MobileDatabase.MIGRATION_6_7, MobileDatabase.MIGRATION_7_8,
             MobileDatabase.MIGRATION_8_9,
             MobileDatabase.MIGRATION_9_10,
             MobileDatabase.MIGRATION_10_11,
+            MobileDatabase.MIGRATION_11_12,
         ).use { database ->
             database.query("SELECT COUNT(*) FROM alert_definitions").use { cursor ->
                 cursor.moveToFirst()
@@ -146,9 +149,10 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            RECOMMENDATION_DATABASE, 11, true, MobileDatabase.MIGRATION_8_9,
+            RECOMMENDATION_DATABASE, 12, true, MobileDatabase.MIGRATION_8_9,
             MobileDatabase.MIGRATION_9_10,
             MobileDatabase.MIGRATION_10_11,
+            MobileDatabase.MIGRATION_11_12,
         ).use { database ->
             database.query("SELECT value FROM mobile_metadata WHERE `key`='fixture'").use { cursor ->
                 cursor.moveToFirst()
@@ -187,8 +191,9 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            MODEL_DATABASE, 11, true, MobileDatabase.MIGRATION_9_10,
+            MODEL_DATABASE, 12, true, MobileDatabase.MIGRATION_9_10,
             MobileDatabase.MIGRATION_10_11,
+            MobileDatabase.MIGRATION_11_12,
         ).use { database ->
             database.query("SELECT personalizationEnabled FROM recommendation_settings WHERE id='installation'").use { cursor ->
                 cursor.moveToFirst()
@@ -209,7 +214,8 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            TODAY_DATABASE, 11, true, MobileDatabase.MIGRATION_10_11,
+            TODAY_DATABASE, 12, true, MobileDatabase.MIGRATION_10_11,
+            MobileDatabase.MIGRATION_11_12,
         ).use { database ->
             database.query("SELECT title FROM task_replicas WHERE id='10000000-0000-4000-8000-000000000101'").use { cursor ->
                 cursor.moveToFirst()
@@ -218,6 +224,10 @@ class MobileDatabaseMigrationTest {
             database.query("SELECT planDate, capacity, closedAt FROM daily_plans LIMIT 0").close()
             database.query("SELECT planDate, taskId, role, position FROM daily_plan_items LIMIT 0").close()
             database.query("SELECT singletonId, taskId, selectedAt FROM focus_selections LIMIT 0").close()
+            database.query("SELECT notes, dueDate, priority FROM task_replicas LIMIT 0").close()
+            database.query("SELECT taskId, text, done, position FROM task_checklist_items LIMIT 0").close()
+            database.query("SELECT taskId, startedAt, accumulatedSeconds FROM active_task_timers LIMIT 0").close()
+            database.query("SELECT taskId, durationSeconds, notes FROM task_sessions LIMIT 0").close()
         }
     }
 

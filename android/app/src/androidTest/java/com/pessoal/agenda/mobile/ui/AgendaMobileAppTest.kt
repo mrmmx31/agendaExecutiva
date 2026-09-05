@@ -22,6 +22,7 @@ import com.pessoal.agenda.mobile.alert.SensoryProfile
 import com.pessoal.agenda.mobile.alert.AudioRoutePolicy
 import com.pessoal.agenda.mobile.alert.output.AudioOutputDevice
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
+import com.pessoal.agenda.mobile.data.local.TaskChecklistItemEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.data.local.ActiveRunStepRow
 import com.pessoal.agenda.mobile.data.local.DailyPlanEntity
@@ -54,6 +55,44 @@ import org.junit.Test
 class AgendaMobileAppTest {
     @get:Rule
     val compose = createComposeRule()
+
+    @Test
+    fun tasksExposeVisualStateChecklistAndOperationalActions() {
+        val pending = TaskReplicaEntity(
+            id = "task-mobile", title = "Preparar saída", status = "IN_PROGRESS",
+            revision = 2, updatedAt = "2026-09-05T12:00:00Z", priority = "HIGH",
+        )
+        var created: String? = null
+        var completed: String? = null
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(
+                        tasks = listOf(pending),
+                        taskChecklist = listOf(TaskChecklistItemEntity(
+                            "item-mobile", pending.id, "Levar crachá", false, 0,
+                        )),
+                    ),
+                    onSaveCapture = { _, _ -> }, onStartProtocol = {}, onCompleteStep = { _, _ -> },
+                    onSync = {}, onPair = { _, _ -> }, onCancelPairing = {},
+                    onPairingCompletionShown = {}, onFeedbackShown = {},
+                    onCreateTask = { title, _, _, _ -> created = title },
+                    onChangeTaskStatus = { _, status -> completed = status },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Tarefas").performClick()
+        compose.onNodeWithText("Preparar saída").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Levar crachá").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Definir Concluída").performClick()
+        assertEquals("COMPLETED", completed)
+        compose.onNodeWithText("Fechar").performClick()
+        compose.onNodeWithTag("task-add").performClick()
+        compose.onNodeWithText("Título").performTextInput("Nova tarefa móvel")
+        compose.onNodeWithText("Salvar").performClick()
+        assertEquals("Nova tarefa móvel", created)
+    }
 
     @Test
     fun homeShowsOfflineStateAndFictitiousTask() {

@@ -15,6 +15,9 @@ import com.pessoal.agenda.mobile.data.local.ProtocolRunStepEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolStepEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
+import com.pessoal.agenda.mobile.data.local.TaskChecklistItemEntity
+import com.pessoal.agenda.mobile.data.local.ActiveTaskTimerEntity
+import com.pessoal.agenda.mobile.data.local.TaskSessionEntity
 import com.pessoal.agenda.mobile.recommendation.RecommendationActiveContext
 import com.pessoal.agenda.mobile.recommendation.RecommendationEventType
 import com.pessoal.agenda.mobile.recommendation.RecommendationSourceDevice
@@ -47,6 +50,9 @@ class OfflineRepository(
     private val dao = database.offline()
 
     val tasks: Flow<List<TaskReplicaEntity>> = dao.observeTasks()
+    val taskChecklist: Flow<List<TaskChecklistItemEntity>> = dao.observeAllTaskChecklist()
+    val activeTaskTimer: Flow<ActiveTaskTimerEntity?> = dao.observeActiveTaskTimer()
+    val taskSessions: Flow<List<TaskSessionEntity>> = dao.observeTaskSessions()
     val captures: Flow<List<CaptureEntity>> = dao.observeCaptures()
     val protocols: Flow<List<ProtocolTemplateEntity>> = dao.observeProtocols()
     val activeRunSteps: Flow<List<ActiveRunStepRow>> = dao.observeActiveRunSteps()
@@ -125,6 +131,142 @@ class OfflineRepository(
         }
         return captureId
     }
+
+    suspend fun createTask(rawTitle: String, rawNotes: String, dueDate: String?, priority: String): String =
+        database.withTransaction {
+            val title = validTaskTitle(rawTitle)
+            val notes = validTaskNotes(rawNotes)
+            val due = validDueDate(dueDate)
+            require(priority in TASK_PRIORITIES) { "Prioridade inválida." }
+            val id = validId()
+            val now = instant()
+            val task = TaskReplicaEntity(id, title, "PENDING", 1, now, false, notes, due, priority)
+            dao.upsertTask(task)
+            enqueue(validId(), "task", id, "TASK_CREATED", now,
+                Json.encodeToString(TaskChangedPayload(id, title, notes, due, priority, "PENDING", now)))
+            id
+        }
+
+    suspend fun updateTask(id: String, rawTitle: String, rawNotes: String, dueDate: String?, priority: String) =
+        database.withTransaction {
+            val current = requireNotNull(dao.task(id)) { "Tarefa não encontrada." }
+            require(!current.tombstone) { "Tarefa removida." }
+            val now = instant()
+            val updated = current.copy(
+                title = validTaskTitle(rawTitle), notes = validTaskNotes(rawNotes),
+                dueDate = validDueDate(dueDate), priority = priority,
+                revision = current.revision + 1, updatedAt = now,
+            )
+            require(priority in TASK_PRIORITIES) { "Prioridade inválida." }
+            dao.upsertTask(updated)
+            enqueue(validId(), "task", id, "TASK_UPDATED", now,
+                Json.encodeToString(TaskChangedPayload(id, updated.title, updated.notes, updated.dueDate,
+                    updated.priority, updated.status, now)), current.revision)
+        }
+
+    suspend fun changeTaskStatus(id: String, status: String) = database.withTransaction {
+        require(status in TASK_STATUSES) { "Estado inválido." }
+        val current = requireNotNull(dao.task(id)) { "Tarefa não encontrada." }
+        val now = instant()
+        dao.upsertTask(current.copy(status = status, revision = current.revision + 1, updatedAt = now))
+        enqueue(validId(), "task", id, "TASK_STATUS_CHANGED", now,
+            Json.encodeToString(TaskStatusPayload(id, status, now)), current.revision)
+    }
+
+    suspend fun deleteTask(id: String) = database.withTransaction {
+        val current = requireNotNull(dao.task(id)) { "Tarefa não encontrada." }
+        val now = instant()
+        dao.upsertTask(current.copy(tombstone = true, revision = current.revision + 1, updatedAt = now))
+        enqueue(validId(), "task", id, "TASK_DELETED", now,
+            Json.encodeToString(TaskDeletedPayload(id, now)), current.revision)
+    }
+
+    suspend fun addChecklistItem(taskId: String, rawText: String) = database.withTransaction {
+        requireNotNull(dao.task(taskId)) { "Tarefa não encontrada." }
+        val text = rawText.trim()
+        require(text.isNotEmpty() && text.length <= MAX_CHECKLIST_TEXT_LENGTH) {
+            "O item deve ter entre 1 e $MAX_CHECKLIST_TEXT_LENGTH caracteres."
+        }
+        dao.upsertChecklistItem(TaskChecklistItemEntity(
+            validId(), taskId, text, false, dao.nextChecklistPosition(taskId),
+        ))
+        enqueueChecklist(taskId)
+    }
+
+    suspend fun setChecklistItemDone(itemId: String, done: Boolean) = database.withTransaction {
+        val item = requireNotNull(dao.checklistItem(itemId)) { "Item não encontrado." }
+        dao.upsertChecklistItem(item.copy(done = done))
+        enqueueChecklist(item.taskId)
+    }
+
+    suspend fun deleteChecklistItem(itemId: String) = database.withTransaction {
+        val item = requireNotNull(dao.checklistItem(itemId)) { "Item não encontrado." }
+        check(dao.deleteChecklistItem(itemId) == 1)
+        enqueueChecklist(item.taskId)
+    }
+
+    suspend fun startTaskTimer(taskId: String) = database.withTransaction {
+        requireNotNull(dao.task(taskId)) { "Tarefa não encontrada." }
+        require(dao.activeTaskTimer() == null) { "Finalize ou interrompa o cronômetro atual." }
+        dao.upsertActiveTaskTimer(ActiveTaskTimerEntity(taskId = taskId, startedAt = instant(), accumulatedSeconds = 0))
+    }
+
+    suspend fun interruptTaskTimer() = database.withTransaction {
+        val timer = requireNotNull(dao.activeTaskTimer()) { "Não há cronômetro ativo." }
+        if (timer.startedAt == null) return@withTransaction
+        val now = Instant.now(clock)
+        val elapsed = java.time.Duration.between(Instant.parse(timer.startedAt), now).seconds.coerceAtLeast(0)
+        dao.upsertActiveTaskTimer(timer.copy(
+            startedAt = null, accumulatedSeconds = timer.accumulatedSeconds + elapsed,
+            interruptedAt = now.toString(),
+        ))
+    }
+
+    suspend fun resumeTaskTimer() = database.withTransaction {
+        val timer = requireNotNull(dao.activeTaskTimer()) { "Não há cronômetro para retomar." }
+        if (timer.startedAt != null) return@withTransaction
+        dao.upsertActiveTaskTimer(timer.copy(startedAt = instant(), interruptedAt = null))
+    }
+
+    suspend fun finishTaskTimer(rawNotes: String): String = database.withTransaction {
+        val timer = requireNotNull(dao.activeTaskTimer()) { "Não há cronômetro ativo." }
+        val ended = Instant.now(clock)
+        val running = timer.startedAt?.let { java.time.Duration.between(Instant.parse(it), ended).seconds } ?: 0
+        val duration = (timer.accumulatedSeconds + running).coerceAtLeast(1)
+        val id = validId()
+        val notes = rawNotes.trim().take(MAX_SESSION_NOTES_LENGTH)
+        val started = ended.minusSeconds(duration).toString()
+        val session = TaskSessionEntity(id, timer.taskId, started, ended.toString(), duration, notes)
+        dao.insertTaskSession(session)
+        dao.clearActiveTaskTimer()
+        enqueue(validId(), "task_session", id, "SESSION_RECORDED", ended.toString(),
+            Json.encodeToString(TaskSessionPayload(id, timer.taskId, started, ended.toString(), duration, notes)))
+        id
+    }
+
+    private suspend fun enqueueChecklist(taskId: String) {
+        val task = requireNotNull(dao.task(taskId))
+        val now = instant()
+        val items = dao.taskChecklist(taskId).map { ChecklistPayload(it.id, it.text, it.done, it.position) }
+        dao.upsertTask(task.copy(revision = task.revision + 1, updatedAt = now))
+        enqueue(validId(), "task", taskId, "CHECKLIST_ITEM_CHANGED", now,
+            Json.encodeToString(TaskChecklistPayload(taskId, items, now)), task.revision)
+    }
+
+    fun checklist(taskId: String): Flow<List<TaskChecklistItemEntity>> = dao.observeTaskChecklist(taskId)
+    fun sessions(taskId: String): Flow<List<TaskSessionEntity>> = dao.observeTaskSessions(taskId)
+
+    private fun validTaskTitle(value: String): String = value.trim().also {
+        require(it.isNotEmpty() && it.length <= MAX_TASK_TITLE_LENGTH) {
+            "O título deve ter entre 1 e $MAX_TASK_TITLE_LENGTH caracteres."
+        }
+    }
+
+    private fun validTaskNotes(value: String): String = value.trim().also {
+        require(it.length <= MAX_TASK_NOTES_LENGTH) { "As notas devem ter no máximo $MAX_TASK_NOTES_LENGTH caracteres." }
+    }
+
+    private fun validDueDate(value: String?): String? = value?.trim()?.takeIf(String::isNotEmpty)?.also(LocalDate::parse)
 
     suspend fun saveTodayPlan(
         capacity: String,
@@ -368,9 +510,15 @@ class OfflineRepository(
     private fun instant(): String = Instant.now(clock).toString()
 
     companion object {
-        const val CONTRACT_VERSION = 1
+        const val CONTRACT_VERSION = 2
         const val MAX_CAPTURE_LENGTH = 4000
         const val MAX_CLOSING_NOTE_LENGTH = 500
+        const val MAX_TASK_TITLE_LENGTH = 240
+        const val MAX_TASK_NOTES_LENGTH = 4000
+        const val MAX_CHECKLIST_TEXT_LENGTH = 240
+        const val MAX_SESSION_NOTES_LENGTH = 1000
+        val TASK_PRIORITIES = setOf("LOW", "NORMAL", "HIGH")
+        val TASK_STATUSES = setOf("PENDING", "IN_PROGRESS", "COMPLETED", "BLOCKED", "CANCELLED")
         private const val DEVICE_ID_KEY = "device_id"
         private const val FIXTURE_TASK_ONE = "00000000-0000-4000-8000-000000000101"
         private const val FIXTURE_TASK_TWO = "00000000-0000-4000-8000-000000000102"
@@ -418,4 +566,48 @@ private data class ProtocolStructureProposedPayload(
     @SerialName("base_revision") val baseRevision: Long,
     @SerialName("proposed_step_label") val proposedStepLabel: String,
     @SerialName("proposed_at") val proposedAt: String,
+)
+
+@Serializable
+private data class TaskChangedPayload(
+    @SerialName("task_id") val taskId: String,
+    val title: String,
+    val notes: String,
+    @SerialName("due_date") val dueDate: String?,
+    val priority: String,
+    val status: String,
+    @SerialName("updated_at") val updatedAt: String,
+)
+
+@Serializable
+private data class TaskStatusPayload(
+    @SerialName("task_id") val taskId: String,
+    val status: String,
+    @SerialName("updated_at") val updatedAt: String,
+)
+
+@Serializable
+private data class TaskDeletedPayload(
+    @SerialName("task_id") val taskId: String,
+    @SerialName("deleted_at") val deletedAt: String,
+)
+
+@Serializable
+private data class ChecklistPayload(val id: String, val text: String, val done: Boolean, val position: Int)
+
+@Serializable
+private data class TaskChecklistPayload(
+    @SerialName("task_id") val taskId: String,
+    val items: List<ChecklistPayload>,
+    @SerialName("updated_at") val updatedAt: String,
+)
+
+@Serializable
+private data class TaskSessionPayload(
+    @SerialName("session_id") val sessionId: String,
+    @SerialName("task_id") val taskId: String,
+    @SerialName("started_at") val startedAt: String,
+    @SerialName("ended_at") val endedAt: String,
+    @SerialName("duration_seconds") val durationSeconds: Long,
+    val notes: String,
 )

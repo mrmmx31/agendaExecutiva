@@ -55,8 +55,8 @@ class SyncRepositoryTest {
         offline.createCapture("Captura para sincronizar")
         val transport = FakeTransport(
             result = { batch ->
-                assertEquals(1, batch.contractVersion)
-                assertTrue(Json.encodeToString(batch).contains("\"contract_version\":1"))
+                assertEquals(2, batch.contractVersion)
+                assertTrue(Json.encodeToString(batch).contains("\"contract_version\":2"))
                 response(batch, "APPLIED")
             },
             pages = ArrayDeque(listOf(snapshot(cursor = 7))),
@@ -128,7 +128,7 @@ class SyncRepositoryTest {
         conflictId: String? = null,
         conflicts: List<ConflictPayload> = emptyList(),
     ) = SyncBatchResponse(
-        1,
+        batch.contractVersion,
         batch.operations.maxOfOrNull { it.sequence } ?: 0,
         0,
         batch.operations.map {

@@ -23,7 +23,7 @@ import java.util.UUID;
 
 public final class DesktopSyncRepository {
     private static final Set<String> ALLOWED_ROLES = Set.of(
-            "TASKS_READ", "CAPTURES_WRITE", "PROTOCOLS_EXECUTE");
+            "TASKS_READ", "TASKS_WRITE", "CAPTURES_WRITE", "PROTOCOLS_EXECUTE");
     private static final Set<String> TERMINAL_STATUSES = Set.of(
             "APPLIED", "CONFLICT", "REJECTED");
 
@@ -274,6 +274,112 @@ public final class DesktopSyncRepository {
         });
     }
 
+    public StoredOperation applyTaskCreate(OperationInput input, String title, String notes,
+                                           String dueDate, String priority, String status) {
+        return applyEffect(input, connection -> {
+            try (PreparedStatement statement = connection.prepareStatement("""
+                    INSERT INTO tasks(title,notes,due_date,done,category,schedule_type,priority,status,sync_uuid)
+                    VALUES(?,?,?,?,'Geral','SINGLE',?,?,?)
+                    """)) {
+                statement.setString(1, title);
+                statement.setString(2, notes);
+                statement.setString(3, dueDate);
+                statement.setInt(4, "COMPLETED".equals(status) ? 1 : 0);
+                statement.setString(5, desktopTaskPriority(priority));
+                statement.setString(6, desktopTaskStatus(status));
+                statement.setString(7, input.entityId());
+                if (statement.executeUpdate() != 1) invalid("task_create");
+            }
+        });
+    }
+
+    public StoredOperation applyTaskUpdate(OperationInput input, String title, String notes,
+                                           String dueDate, String priority) {
+        return applyEffect(input, connection -> {
+            try (PreparedStatement statement = connection.prepareStatement("""
+                    UPDATE tasks SET title=?, notes=?, due_date=?, priority=? WHERE sync_uuid=?
+                    """)) {
+                statement.setString(1, title);
+                statement.setString(2, notes);
+                statement.setString(3, dueDate);
+                statement.setString(4, desktopTaskPriority(priority));
+                statement.setString(5, input.entityId());
+                if (statement.executeUpdate() != 1) invalid("task_update");
+            }
+        });
+    }
+
+    public StoredOperation applyTaskStatus(OperationInput input, String status) {
+        return applyEffect(input, connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "UPDATE tasks SET done=?, status=? WHERE sync_uuid=?")) {
+                statement.setInt(1, "COMPLETED".equals(status) ? 1 : 0);
+                statement.setString(2, desktopTaskStatus(status));
+                statement.setString(3, input.entityId());
+                if (statement.executeUpdate() != 1) invalid("task_status");
+            }
+        });
+    }
+
+    public StoredOperation applyTaskDelete(OperationInput input) {
+        return applyEffect(input, connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "DELETE FROM tasks WHERE sync_uuid=?")) {
+                statement.setString(1, input.entityId());
+                if (statement.executeUpdate() != 1) invalid("task_delete");
+            }
+        });
+    }
+
+    public StoredOperation applyTaskChecklist(OperationInput input, JsonArray items) {
+        return applyEffect(input, connection -> {
+            Long taskId = queryLong(connection, "SELECT id FROM tasks WHERE sync_uuid=?", input.entityId());
+            if (taskId == null) invalid("task_checklist");
+            try (PreparedStatement delete = connection.prepareStatement(
+                    "DELETE FROM task_checklist_items WHERE task_id=?")) {
+                delete.setLong(1, taskId);
+                delete.executeUpdate();
+            }
+            try (PreparedStatement insert = connection.prepareStatement("""
+                    INSERT INTO task_checklist_items(task_id,text,done,position,kanban_column,sync_uuid)
+                    VALUES(?,?,?,?,?,?)
+                    """)) {
+                for (var element : items) {
+                    JsonObject item = element.getAsJsonObject();
+                    insert.setLong(1, taskId);
+                    insert.setString(2, item.get("text").getAsString());
+                    insert.setInt(3, item.get("done").getAsBoolean() ? 1 : 0);
+                    insert.setInt(4, item.get("position").getAsInt());
+                    insert.setString(5, item.get("done").getAsBoolean() ? "concluido" : "backlog");
+                    insert.setString(6, item.get("id").getAsString());
+                    insert.addBatch();
+                }
+                insert.executeBatch();
+            }
+        });
+    }
+
+    public StoredOperation applyTaskSession(OperationInput input, String taskSyncId,
+                                            String startedAt, String endedAt,
+                                            long durationSeconds, String notes) {
+        return applyEffect(input, connection -> {
+            Long taskId = queryLong(connection, "SELECT id FROM tasks WHERE sync_uuid=?", taskSyncId);
+            if (taskId == null) invalid("task_session");
+            try (PreparedStatement statement = connection.prepareStatement("""
+                    INSERT INTO study_sessions(task_id,subject,session_date,duration_minutes,notes,mobile_source_operation_id)
+                    SELECT ?, title, ?, ?, ?, ? FROM tasks WHERE id=?
+                    """)) {
+                statement.setLong(1, taskId);
+                statement.setString(2, endedAt.substring(0, 10));
+                statement.setLong(3, Math.max(1, (durationSeconds + 59) / 60));
+                statement.setString(4, notes);
+                statement.setString(5, input.operationId());
+                statement.setLong(6, taskId);
+                if (statement.executeUpdate() != 1) invalid("task_session");
+            }
+        });
+    }
+
     public StoredOperation storeConflict(OperationInput input, Long baseRevision, String reason,
                                          String localValueJson, String serverValueJson,
                                          long serverRevision) {
@@ -486,18 +592,40 @@ public final class DesktopSyncRepository {
         ensureSyncUuids(connection, "tasks");
         ensureSyncUuids(connection, "protocols");
         ensureSyncUuids(connection, "protocol_steps");
+        ensureSyncUuids(connection, "task_checklist_items");
         Map<EntityKey, String> entities = new LinkedHashMap<>();
         try (PreparedStatement statement = connection.prepareStatement("""
-                SELECT sync_uuid, title, done, status FROM tasks
+                SELECT sync_uuid, title, notes, due_date, priority, done, status, id FROM tasks
                 WHERE sync_uuid IS NOT NULL ORDER BY sync_uuid
                 """); ResultSet rows = statement.executeQuery()) {
             while (rows.next()) {
                 JsonObject value = new JsonObject();
                 value.addProperty("id", rows.getString("sync_uuid"));
                 value.addProperty("title", rows.getString("title"));
+                value.addProperty("notes", rows.getString("notes"));
+                value.addProperty("due_date", rows.getString("due_date"));
+                value.addProperty("priority", mobileTaskPriority(rows.getString("priority")));
                 value.addProperty("status", rows.getInt("done") == 1
                         ? "COMPLETED" : normalizeTaskStatus(rows.getString("status")));
                 value.addProperty("tombstone", false);
+                JsonArray checklist = new JsonArray();
+                try (PreparedStatement itemStatement = connection.prepareStatement("""
+                        SELECT sync_uuid,text,done,position FROM task_checklist_items
+                        WHERE task_id=? ORDER BY position,id
+                        """)) {
+                    itemStatement.setLong(1, rows.getLong("id"));
+                    try (ResultSet itemRows = itemStatement.executeQuery()) {
+                        while (itemRows.next()) {
+                            JsonObject item = new JsonObject();
+                            item.addProperty("id", itemRows.getString("sync_uuid"));
+                            item.addProperty("text", itemRows.getString("text"));
+                            item.addProperty("done", itemRows.getInt("done") == 1);
+                            item.addProperty("position", itemRows.getInt("position"));
+                            checklist.add(item);
+                        }
+                    }
+                }
+                value.add("checklist", checklist);
                 entities.put(new EntityKey("task", rows.getString("sync_uuid")), gson.toJson(value));
             }
         }
@@ -638,6 +766,39 @@ public final class DesktopSyncRepository {
             case "BLOQUEADA" -> "BLOCKED";
             default -> "PENDING";
         };
+    }
+
+    private static String desktopTaskStatus(String value) {
+        return switch (value) {
+            case "COMPLETED" -> "CONCLUIDA";
+            case "CANCELLED" -> "CANCELADA";
+            case "IN_PROGRESS" -> "EM_ANDAMENTO";
+            case "BLOCKED" -> "BLOQUEADA";
+            default -> "PENDENTE";
+        };
+    }
+
+    private static String desktopTaskPriority(String value) {
+        return switch (value) {
+            case "LOW" -> "BAIXA";
+            case "HIGH" -> "ALTA";
+            default -> "NORMAL";
+        };
+    }
+
+    private static String mobileTaskPriority(String value) {
+        return switch (value) {
+            case "BAIXA" -> "LOW";
+            case "ALTA", "CRITICA" -> "HIGH";
+            default -> "NORMAL";
+        };
+    }
+
+    private static Long queryLong(Connection connection, String sql, Object value) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, value);
+            try (ResultSet rows = statement.executeQuery()) { return rows.next() ? rows.getLong(1) : null; }
+        }
     }
 
     private static String normalizeSqlTimestamp(String value) {

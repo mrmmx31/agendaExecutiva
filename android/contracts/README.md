@@ -45,6 +45,8 @@ O transporte e os limites do relógio estão em `WEAR_V1.md`.
 Os eventos e razões do motor local estão em `RECOMMENDATION_V1.md`.
 O modelo aprendido, seus estados e rollback estão em `PERSONAL_MODEL_V1.md`.
 Ownership, ativação gradual e migração dos novos domínios estão em `EXPANSION_V1.md`.
+As mutações de tarefa, a permissão `TASKS_WRITE` e o snapshot compatível por
+negociação estão em `SYNC_V2.md`; aparelhos v1 continuam limitados ao formato v1.
 O inventário e a fronteira de proteção de saúde estão em
 `../../docs/privacy/HEALTH_DATA_INVENTORY.md` e
 `../../docs/adr/0001-health-data-security-boundary.md`.

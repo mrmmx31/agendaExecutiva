@@ -77,6 +77,34 @@ class OfflineRepositoryTest {
     }
 
     @Test
+    fun taskChecklistStatusAndSessionAreOfflineFirstAndQueued() = runBlocking {
+        val taskId = repository.createTask(
+            "  Preparar materiais  ", "Separar por ordem", "2026-09-06", "HIGH",
+        )
+        repository.addChecklistItem(taskId, "Carregador")
+        val item = repository.checklist(taskId).first().single()
+        repository.setChecklistItemDone(item.id, true)
+        repository.changeTaskStatus(taskId, "IN_PROGRESS")
+        repository.startTaskTimer(taskId)
+        repository.interruptTaskTimer()
+        repository.resumeTaskTimer()
+        repository.finishTaskTimer("Sessão curta de teste")
+
+        val task = repository.tasks.first().single()
+        assertEquals("Preparar materiais", task.title)
+        assertEquals("HIGH", task.priority)
+        assertEquals("IN_PROGRESS", task.status)
+        assertTrue(repository.checklist(taskId).first().single().done)
+        assertEquals(1, repository.sessions(taskId).first().size)
+        assertEquals(null, repository.activeTaskTimer.first())
+        assertEquals(
+            listOf("TASK_CREATED", "CHECKLIST_ITEM_CHANGED", "CHECKLIST_ITEM_CHANGED",
+                "TASK_STATUS_CHANGED", "SESSION_RECORDED"),
+            repository.operations.first().sortedBy { it.sequence }.map { it.commandType },
+        )
+    }
+
+    @Test
     fun dailyPlanFocusClosingAndReopeningWorkOffline() = runBlocking {
         repository.initializeFictitiousData()
         val tasks = repository.tasks.first()

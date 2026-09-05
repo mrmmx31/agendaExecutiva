@@ -1,6 +1,6 @@
 # Registro do candidato 0.1
 
-Gerado em 03/09/2026 às 16:36:41 UTC para uso pessoal por `sideload`. Nenhum
+Regenerado em 05/09/2026 às 10:32:08 UTC para uso pessoal por `sideload`. Nenhum
 artefato foi publicado ou enviado a terceiro.
 
 ## Assinatura
@@ -16,18 +16,14 @@ artefato foi publicado ou enviado a terceiro.
 
 | Artefato | SHA-256 |
 |---|---|
-| `app-release.apk` | `22affa7db9510580f408f6cf22eab4b87b07794d3f5da6ec678fb286809cf9f2` |
-| `wear-release.apk` | `cf3c5e510e525032e40db3b060843f79a00edb100c8bc36a982362d490a40516` |
-| `app-release.aab` | `640d06dc4df4c17236d70359ca2896b1191904d3a05da87c00cd5b0ab78cd670` |
+| `app-release.apk` | `9f13cf71cdfc394035364881f5836346d054519cf791728939824f338560e6ba` |
+| `wear-release.apk` | `ff701ab9d8a84670f8ca978ad73d0346ef30d52ed26fbe5a6c9748c0a72ef4d4` |
+| `app-release.aab` | `803759b32a8c877425c1e4e56998196e7bc28a16a5c3caaabd0fafd2c6e99226` |
 | `wear-release.aab` | `6033b0286afbacf03666598dc77aef92bf96997f1845903dfdbf2dce39f1d837` |
 
 `android/scripts/p2_10_release_candidate.sh` verificou as quatro assinaturas,
-o certificado comum e o gate estático. O gate 9 foi concluído; a instalação
-final aguarda a regeneração do candidato com a seleção de áudio atual e a
-correção do sync local reaberto.
-
-Este candidato foi sucedido por uma alteração ainda não empacotada na seleção
-individual de saída de áudio. Os hashes acima continuam identificando o
-candidato auditado, mas não devem ser instalados como fechamento final. Após o
-novo código passar pelos gates, os quatro artefatos serão regenerados com a
-mesma chave e este registro receberá os novos hashes.
+o certificado comum e o gate estático. O APK de telefone foi instalado no Moto
+Edge 60, pareado com a Agenda desktop e sincronizado até fila 0. A câmera
+permaneceu negada e o fallback por colagem do convite funcionou. Este é o
+candidato final aprovado para uso pessoal; publicação e distribuição a terceiros
+continuam proibidas nesta versão.

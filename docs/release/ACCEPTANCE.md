@@ -22,10 +22,10 @@ Health apps, suporte, controlador dos dados e estrategia de Play App Signing.
 |---|---|
 | gates funcionais 1 a 8 | aprovados, com limites fisicos catalogados |
 | janela passiva de 24 horas e medicao final | aprovada após 32h55 no gate 9 |
-| APK/AAB e verificacao de certificado comum | candidato assinado verificado; regeneração final pendente após áudio/Drive |
+| APK/AAB e verificacao de certificado comum | candidato final assinado e verificado em 05/09/2026 |
 | chave pessoal definitiva | criada fora do repositorio, protegida por senha e modo `600` |
 | backup cifrado separado da chave | aprovado no Google Drive `appDataFolder`; upload e restauração não destrutiva validados em 03/09/2026 |
-| instalacao do APK release pessoal | pendente da regeneração do candidato |
+| instalacao do APK release pessoal | aprovada no Moto Edge 60; pareamento, snapshot e fila 0 confirmados |
 | publicacao ou venda | fora do escopo da versao 0.1 |
 
 ## Cerimonia minima da chave pessoal
@@ -44,9 +44,10 @@ definitiva foi criada em 03/09/2026 após autorização explícita, fora do
 repositorio e sem expor a senha. Ela não deve ser usada para instalação até
 existir uma cópia cifrada separada e sua restauração ter sido testada.
 
-## Condicao de fechamento
+## Fechamento
 
-O Projeto 2 chega a 100% somente depois de corrigir e validar a reconexão do
-sync local; regenerar os artefatos assinados; instalar o APK de telefone;
-executar o percurso final sem dado pessoal destrutivo; registrar checksums e
-restaurar configurações temporárias do aparelho.
+O Projeto 2 chegou a 100% em 05/09/2026. O sync local persistente foi validado,
+os artefatos foram regenerados com a chave pessoal, o APK release foi instalado
+e o percurso final confirmou startup sem prompt, câmera negada com fallback por
+colagem, pareamento, snapshot e fila 0. A tela foi mantida ligada por solicitação
+do usuário durante a depuração; essa configuração não pertence ao aplicativo.

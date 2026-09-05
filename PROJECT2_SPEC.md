@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 99% do Projeto 2 |
+| Status | Concluído em 05/09/2026; 100% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -596,7 +596,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-09` estão concluídas, e `P2-10` tem 9 de 10 gates. O avanço geral é 99% e resta 1%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. Todas estão concluídas; o avanço geral é 100%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -970,7 +970,7 @@ comando.
 
 Telefone e relógio físicos, bateria, permissões, áudio, perda de conexão, exportação para médico e revisão do enquadramento antes de qualquer alegação clínica.
 
-**Status:** Em andamento, 90% (9 de 10 gates concluídos).
+**Status:** Concluído em 2026-09-05, 100% (10 de 10 gates concluídos).
 
 **Checklist de avanço:**
 
@@ -985,7 +985,7 @@ Telefone e relógio físicos, bateria, permissões, áudio, perda de conexão, e
   ações como suportadas ou indisponíveis; manter ações completas validadas no
   módulo Wear OS;
 - [x] medir bateria, memória e temperatura em janela prolongada nos dispositivos reais;
-- [ ] fechar aceite, assinatura, declarações de loja e decisão de distribuição.
+- [x] fechar aceite, assinatura e decisão de distribuição pessoal; manter declarações de loja como condição de uma futura publicação.
 
 **Evidência inicial:** `android/P2_10_MATRIX.md` registra os dez gates. O app
 agora informa antes dos consentimentos que dados de saúde são opcionais, locais,
@@ -1051,8 +1051,18 @@ criptografia, adulteração e repetição após 401 têm testes automatizados. U
 e restauração reais foram aprovados em 03/09/2026: o Drive confirmou um único
 arquivo cifrado de 4.516 bytes e a aplicação confirmou integridade, senha do
 PKCS#12 e igualdade do certificado sem substituir a chave local. Nenhum dado de
-conta, token, senha ou identificador remoto foi documentado. O gate 10 ainda
-depende do novo candidato, instalação e aceite final.
+conta, token, senha ou identificador remoto foi documentado. Essas pendências
+foram encerradas pela evidência final abaixo.
+
+**Evidência final do gate 10:** o candidato `0.1.0` foi regenerado depois das
+correções de sync, áudio, QR e estado visual das tarefas. APK e AAB de telefone
+e Wear foram assinados com o mesmo certificado, verificados e aprovados pelo
+gate estático. A câmera ficou opcional e restrita à leitura local do QR; no
+Moto, permaneceu negada e a colagem do convite funcionou. O APK release foi
+instalado sem remover a variante de campo, abriu sem solicitação espontânea,
+pareou com o desktop, sincronizou as tarefas reais e encerrou com fila 0. A
+decisão de distribuição é `sideload` pessoal; loja, venda e terceiros exigem
+nova revisão completa.
 
 ## 21. Gates obrigatórios
 
@@ -1095,9 +1105,8 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 7. um relatório de período puder ser revisado e exportado sem inferência clínica;
 8. personalização puder ser desligada e revertida às regras padrão.
 
-## 24. Próxima ação
+## 24. Fechamento
 
-Fechar o gate 10 de `android/P2_10_MATRIX.md`: gerar o candidato assinado com as
-correções finais de P2-03, instalá-lo e executar o percurso de aceite e a decisão
-de distribuição pessoal. Qualquer publicação ou venda exige nova revisão de
-privacidade, permissões, conta de distribuição e enquadramento regulatório.
+O Projeto 2 foi concluído para uso pessoal por `sideload`. Qualquer publicação,
+venda, beta externo ou mudança de alegação exige reabrir privacidade, permissões,
+conta de distribuição, suporte e enquadramento regulatório.

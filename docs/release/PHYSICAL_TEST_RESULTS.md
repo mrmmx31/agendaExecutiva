@@ -149,10 +149,9 @@ Compose direcionados passaram no AVD.
 
 ## Próxima interação mínima
 
-1. regenerar e instalar o candidato pessoal após as correções finais;
-2. executar o percurso final de aceite pessoal sem dado destrutivo;
-3. backup cifrado da chave definitiva no Google Drive: concluído em 03/09/2026,
-   com restauração não destrutiva validada.
+Nenhuma para o release pessoal `0.1.0`. O candidato final foi assinado,
+instalado, pareado e sincronizado em 05/09/2026. O backup cifrado da chave no
+Google Drive e a restauração não destrutiva foram validados em 03/09/2026.
 
 ## Seleção individual de áudio
 

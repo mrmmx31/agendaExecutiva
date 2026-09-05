@@ -17,13 +17,13 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 | 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | aprovado com limites do ambiente | telefone, MOTO XT220, DND e mídia concorrente aprovados; smartband é intermitente, USB ausente e chamada real não foi provocada |
 | 8 | wearable fisico: entrega, acoes disponiveis e desconexao | aprovado com limites do hardware | texto/som e ações no telefone aprovados; ações/vibração/fila no pulso indisponíveis; alertas desligados não entregam |
 | 9 | bateria, memoria e temperatura em uso prolongado | aprovado | 32h55 após a instalação atual: 73%, 28,9 °C, cinco amostras PSS estáveis entre 162.584 e 163.073 KiB, sem crescimento monotônico e zero crashes |
-| 10 | aceite final, artefato assinado e decisao de distribuicao | preparado; bloqueado pelos gates finais | v0.1 definida como sideload pessoal; chave e backup Drive validados; falta regenerar artefatos, instalar e percorrer aceite |
+| 10 | aceite final, artefato assinado e decisao de distribuicao | aprovado | v0.1 assinada, auditada, instalada, pareada e sincronizada; distribuição limitada a sideload pessoal |
 
-**Estado atual:** 90% do P2-10 (9 de 10); Projeto 2 em 99% após concluir P2-03.
+**Estado atual:** 100% do P2-10 (10 de 10); Projeto 2 concluído em 100%.
 
-**Sessão física em andamento:** o detalhamento incremental, sem identificadores,
-fica em `docs/release/PHYSICAL_TEST_RESULTS.md`. Evidência parcial não altera o
-percentual de um gate até todos os critérios obrigatórios dele passarem.
+**Sessão física concluída:** o detalhamento incremental, sem identificadores,
+fica em `docs/release/PHYSICAL_TEST_RESULTS.md`. Evidência parcial não alterou o
+percentual de um gate antes de todos os critérios obrigatórios passarem.
 
 ## Gate 1 - decisao regulatoria
 
@@ -150,7 +150,8 @@ de produção criada nesta etapa; a validação automatizada usou somente uma ch
 sintética de um dia fora do projeto e a removeu ao terminar. APK e AAB dos dois
 módulos passaram na verificação de assinatura e certificado comum. Em seguida,
 o gate integral sem credenciais aprovou 377 tarefas Gradle e 365 casos unitários,
-e os APKs release voltaram a ser não assinados. O gate 10 permanece pendente.
+e os APKs release voltaram a ser não assinados. Essa preparação foi sucedida
+pelo candidato pessoal definitivo descrito abaixo.
 
 **Candidato definitivo:** em 03/09/2026, após autorização explícita, foi criada
 uma chave RSA de 4096 bits em armazenamento privado fora do projeto, com modo
@@ -159,12 +160,20 @@ telefone e Wear, comprovou o certificado comum, repetiu o gate estático e
 terminou sem publicação. Certificado e checksums públicos estão em
 `docs/release/RELEASE_0.1.md`; senha e chave privada não são versionadas. O
 backup cifrado separado e a restauração não destrutiva foram validados em
-03/09/2026. A instalação final e o percurso de aceite permanecem pendentes. O
-gate temporal 9 foi concluído em 05/09/2026 após 32h55.
+03/09/2026. A instalação e o percurso de aceite foram concluídos com o candidato
+regenerado em 05/09/2026. O gate temporal 9 foi concluído após 32h55.
 
-Depois desse candidato, a seleção de áudio passou a distinguir cada saída que o
+Depois do primeiro candidato, a seleção de áudio passou a distinguir cada saída que o
 Android realmente expõe, mantendo preferência local sem endereço Bluetooth e
 fallback para telefone/sistema. Em teste físico, o fone apareceu separadamente;
 a smartband conectada ao Da Fit não estava simultaneamente disponível como rota
-de áudio. O candidato definitivo será regenerado com essa alteração agora
-estabilizada; o backup Drive já foi comprovado.
+de áudio. O candidato definitivo foi regenerado com essa alteração, as
+correções de sync e a distinção visual das tarefas; o backup Drive já havia sido
+comprovado.
+
+**Fechamento do gate 10:** em 05/09/2026, o release `0.1.0` foi assinado e o
+gate estático aprovou os APKs de telefone/Wear, incluindo câmera opcional apenas
+no telefone. O APK foi instalado no Moto sem remover a variante `fieldTest`,
+abriu sem prompt, pareou por convite colado com a câmera negada, sincronizou as
+tarefas reais e terminou com fila 0. A distribuição aprovada permanece somente
+por sideload pessoal.

@@ -9,6 +9,7 @@ Este documento é o ponto de entrada para manutenção. Ele reduz a necessidade 
 | Correção desktop existente | `MAINTENANCE_MAP.md` → seção relevante de `DEVELOPMENT.md` → código/testes locais |
 | Regra ou UX do produto atual | `SPEC.md` → `ARCHITECTURE.md` → código/testes |
 | Projeto Android/Wear | `PROJECT2_SPEC.md` → `android/contracts/README.md` → `android/README.md` |
+| Expansão funcional Android | `ANDROID_EXPANSION_SPEC.md` → domínio correspondente no `SPEC.md` → contrato móvel → código/testes |
 | IA ou personalização | `PROJECT2_SPEC.md` seções 14, 15, 20 e 21 → `docs/adr/0003-personal-ranking-runtime.md` → model card correspondente |
 | Saúde ou relatório médico | `PROJECT2_SPEC.md` seções 2, 12, 13, 15 e 21 |
 | Google Tasks | `SPEC.md` seções 9.9 e 26 → classes `Google*` → testes correspondentes |
@@ -24,6 +25,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 |---|---|---|
 | `SPEC.md` | produto desktop atual, requisitos e percentuais | detalhes extensos do Projeto 2 |
 | `PROJECT2_SPEC.md` | Android, Wear, sync móvel, saúde e IA | código implementado fictício |
+| `ANDROID_EXPANSION_SPEC.md` | Projeto 3, paridade funcional Android e checklist percentual | capacidades ainda não testadas como concluídas |
 | `ARCHITECTURE.md` | limites técnicos do desktop | decisões de produto não aprovadas |
 | `DEVELOPMENT.md` | mecânica e convenções do desktop | backlog ou hipóteses |
 | `PILOT.md` | evidência e decisões do piloto encerrado | conteúdo pessoal |
@@ -38,6 +40,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
 - Projeto 2: concluído em 100%; `P2-01` a `P2-10` aprovadas para o release pessoal `0.1.0`.
+- Projeto 3: especificado em 0%; expansão funcional Android ainda não iniciada.
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.

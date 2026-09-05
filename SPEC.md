@@ -8,6 +8,8 @@
 | Plataforma | Desktop JavaFX, Java 21, SQLite local |
 | Fonte de verdade | Este documento para produto e UX; `ARCHITECTURE.md` para limites técnicos |
 
+> A expansão funcional posterior do Android, incluindo cursos e integração sensorial via Da Fit, está especificada em `ANDROID_EXPANSION_SPEC.md`.
+
 ## 1. Resumo
 
 A Agenda Científica Pessoal deve funcionar como uma prótese executiva: um sistema externo que ajuda o usuário a lembrar, escolher, iniciar, sustentar, interromper e retomar atividades com menos esforço mental.

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Em implementacao; A3-00 e A3-01 concluidas |
+| Status | Em implementacao; A3-00 e A3-01 concluidas; A3-02 em aceite |
 | Progresso geral | 20% (2 de 10 fases) |
 | Versao da spec | 1.0 |
 | Data | 2026-09-05 |
@@ -194,11 +194,16 @@ restauracao de estado. A sincronizacao desses novos dados entra no gate A3-02,
 junto do contrato de mutacao de tarefas, para nao produzir comandos que o
 desktop atual rejeitaria.
 
-### A3-02 - Tarefas, checklist e timer (0%)
-- [ ] CRUD operacional e estados visuais;
-- [ ] checklist e desfazer;
-- [ ] timer, interrupcao, retomada e sessoes;
+### A3-02 - Tarefas, checklist e timer (75%)
+- [x] CRUD operacional e estados visuais;
+- [x] checklist e desfazer;
+- [x] timer, interrupcao, retomada e sessoes;
 - [ ] sync/conflitos e testes ponta a ponta.
+
+**Evidencia parcial:** `android/P3_02_MATRIX.md` registra Room v12, tela
+operacional, fila offline, contrato v2 compatível, suites automatizadas e APK
+assinado instalado no Moto. O ultimo item depende somente do novo consentimento
+`TASKS_WRITE` e do percurso real telefone -> desktop -> conflito -> sessao.
 
 ### A3-03 - Protocolos robustos (0%)
 - [ ] iniciar, concluir, encerrar e reiniciar;

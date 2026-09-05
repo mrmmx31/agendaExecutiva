@@ -16,6 +16,7 @@ import java.util.HexFormat;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SyncBatchProcessorTest {
     private static final String DEVICE_ID = "10000000-0000-4000-8000-000000000060";
@@ -91,6 +92,118 @@ class SyncBatchProcessorTest {
                 SELECT COUNT(*) FROM mobile_protocol_events
                 WHERE event_type='PROTOCOL_RUN_CANCELLED'
                 """));
+    }
+
+    @Test
+    void mobileTaskCreationRequiresWriteRoleAndAppearsInSnapshot() throws Exception {
+        Database database = new Database(tempDir.resolve("task-create.db"));
+        database.runMigrations();
+        DesktopSyncRepository repository = new DesktopSyncRepository(database);
+        repository.approveDevice(DEVICE_ID, "Android fictício", "a".repeat(64), 1, 2,
+                Set.of("TASKS_READ", "TASKS_WRITE"));
+
+        JsonObject response = new SyncBatchProcessor(repository).process(
+                DEVICE_ID, taskCreateBatch());
+
+        assertEquals("APPLIED", response.getAsJsonArray("results").get(0)
+                .getAsJsonObject().get("status").getAsString());
+        assertEquals(1, database.queryInt("SELECT COUNT(*) FROM tasks WHERE title='Tarefa móvel'"));
+        JsonObject snapshotTask = new Gson().fromJson(repository.refreshSnapshot().taskJson().get(0), JsonObject.class);
+        assertEquals("Detalhes", snapshotTask.get("notes").getAsString());
+        assertEquals("HIGH", snapshotTask.get("priority").getAsString());
+        assertTrue(snapshotTask.has("checklist"));
+    }
+
+    @Test
+    void staleMobileTaskUpdateProducesConflictWithoutOverwritingDesktop() throws Exception {
+        Database database = new Database(tempDir.resolve("task-conflict.db"));
+        database.runMigrations();
+        database.execute("INSERT INTO tasks(title,due_date,category) VALUES(?,?,?)",
+                "Versão desktop", "2026-09-06", "Geral");
+        DesktopSyncRepository repository = new DesktopSyncRepository(database);
+        repository.approveDevice(DEVICE_ID, "Android fictício", "a".repeat(64), 1, 2,
+                Set.of("TASKS_READ", "TASKS_WRITE"));
+        String taskId = new Gson().fromJson(repository.refreshSnapshot().taskJson().get(0), JsonObject.class)
+                .get("id").getAsString();
+
+        JsonObject response = new SyncBatchProcessor(repository).process(
+                DEVICE_ID, taskUpdateBatch(taskId, 0));
+
+        assertEquals("CONFLICT", response.getAsJsonArray("results").get(0)
+                .getAsJsonObject().get("status").getAsString());
+        assertEquals("Versão desktop", string(database, "SELECT title FROM tasks"));
+        assertEquals(1, response.getAsJsonArray("conflicts").size());
+    }
+
+    private byte[] taskUpdateBatch(String taskId, long baseRevision) throws Exception {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("task_id", taskId);
+        payload.addProperty("title", "Versão telefone");
+        payload.addProperty("notes", "");
+        payload.addProperty("due_date", "2026-09-07");
+        payload.addProperty("priority", "NORMAL");
+        payload.addProperty("status", "PENDING");
+        payload.addProperty("updated_at", "2026-09-05T13:00:00Z");
+        String payloadJson = new Gson().toJson(payload);
+        String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(payloadJson.getBytes(StandardCharsets.UTF_8)));
+        JsonObject operation = new JsonObject();
+        operation.addProperty("operation_id", OPERATION_ID);
+        operation.addProperty("device_id", DEVICE_ID);
+        operation.addProperty("sequence", 1);
+        operation.addProperty("contract_version", 2);
+        operation.addProperty("entity_type", "task");
+        operation.addProperty("entity_id", taskId);
+        operation.addProperty("command_type", "TASK_UPDATED");
+        operation.addProperty("occurred_at", "2026-09-05T13:00:00Z");
+        operation.addProperty("time_zone", "America/Manaus");
+        operation.add("payload", payload);
+        operation.addProperty("payload_hash", hash);
+        operation.addProperty("base_revision", baseRevision);
+        JsonArray operations = new JsonArray();
+        operations.add(operation);
+        JsonObject batch = new JsonObject();
+        batch.addProperty("contract_version", 2);
+        batch.addProperty("device_id", DEVICE_ID);
+        batch.addProperty("last_server_cursor", 0);
+        batch.add("operations", operations);
+        return new Gson().toJson(batch).getBytes(StandardCharsets.UTF_8);
+    }
+
+    private byte[] taskCreateBatch() throws Exception {
+        String taskId = "10000000-0000-4000-8000-000000000070";
+        JsonObject payload = new JsonObject();
+        payload.addProperty("task_id", taskId);
+        payload.addProperty("title", "Tarefa móvel");
+        payload.addProperty("notes", "Detalhes");
+        payload.addProperty("due_date", "2026-09-06");
+        payload.addProperty("priority", "HIGH");
+        payload.addProperty("status", "PENDING");
+        payload.addProperty("updated_at", "2026-09-05T12:00:00Z");
+        String payloadJson = new Gson().toJson(payload);
+        String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(payloadJson.getBytes(StandardCharsets.UTF_8)));
+        JsonObject operation = new JsonObject();
+        operation.addProperty("operation_id", OPERATION_ID);
+        operation.addProperty("device_id", DEVICE_ID);
+        operation.addProperty("sequence", 1);
+        operation.addProperty("contract_version", 2);
+        operation.addProperty("entity_type", "task");
+        operation.addProperty("entity_id", taskId);
+        operation.addProperty("command_type", "TASK_CREATED");
+        operation.addProperty("occurred_at", "2026-09-05T12:00:00Z");
+        operation.addProperty("time_zone", "America/Manaus");
+        operation.add("payload", payload);
+        operation.addProperty("payload_hash", hash);
+        operation.add("base_revision", JsonNull.INSTANCE);
+        JsonArray operations = new JsonArray();
+        operations.add(operation);
+        JsonObject batch = new JsonObject();
+        batch.addProperty("contract_version", 2);
+        batch.addProperty("device_id", DEVICE_ID);
+        batch.addProperty("last_server_cursor", 0);
+        batch.add("operations", operations);
+        return new Gson().toJson(batch).getBytes(StandardCharsets.UTF_8);
     }
 
     private byte[] cancellationBatch() throws Exception {

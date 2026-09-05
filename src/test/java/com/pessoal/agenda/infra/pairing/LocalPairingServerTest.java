@@ -214,7 +214,8 @@ class LocalPairingServerTest {
             Map<String, String> secondInvitation = invitation(secondSession.invitation());
 
             assertFalse(firstInvitation.get("session_id").equals(secondInvitation.get("session_id")));
-            assertFalse(firstInvitation.get("fingerprint").equals(secondInvitation.get("fingerprint")));
+            assertEquals(firstInvitation.get("fingerprint"), secondInvitation.get("fingerprint"));
+            assertEquals(firstInvitation.get("endpoint"), secondInvitation.get("endpoint"));
             complete(secondInvitation.get("endpoint"), secondInvitation.get("fingerprint"),
                     firstPending.get("request_id").getAsString(),
                     firstPending.get("completion_token").getAsString(), 409);
@@ -229,6 +230,34 @@ class LocalPairingServerTest {
 
             assertEquals("APPROVED", approved.get("status").getAsString());
             assertEquals("ACTIVE", repository.findDevice(DEVICE_ID).status());
+        }
+    }
+
+    @Test
+    void approvedSyncRemainsAvailableAfterPairingSessionExpires() throws Exception {
+        MutableClock clock = new MutableClock(Instant.parse("2026-09-01T12:00:00Z"));
+        try (var server = server(clock)) {
+            PairingSession session = server.start();
+            Map<String, String> invitation = invitation(session.invitation());
+            KeyPair keys = rsaKeys();
+            JsonObject pending = createRequest(session, invitation, keys, session.oneTimeCode());
+            server.approve(pending.get("request_id").getAsString(),
+                    Set.of("TASKS_READ", "CAPTURES_WRITE"));
+            JsonObject approved = complete(
+                    invitation.get("endpoint"), invitation.get("fingerprint"),
+                    pending.get("request_id").getAsString(),
+                    pending.get("completion_token").getAsString(), 200);
+            byte[] credential = decryptCredential(
+                    approved.get("encrypted_credential").getAsString(), keys);
+            String syncBase = invitation.get("endpoint").replace("/pair/requests", "/sync");
+
+            clock.advanceSeconds(301);
+            JsonObject result = authenticatedJson(syncBase + "/batches",
+                    invitation.get("fingerprint"), credential, syncBatch(), "POST", 200);
+
+            assertEquals("APPLIED", result.getAsJsonArray("results").get(0)
+                    .getAsJsonObject().get("status").getAsString());
+            java.util.Arrays.fill(credential, (byte) 0);
         }
     }
 

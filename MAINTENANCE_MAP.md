@@ -37,7 +37,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 - Estabilização: concluída.
 - Google Tasks ao vivo: 100%.
 - Piloto: encerrado em 100% com cinco decisões `SEM EVIDÊNCIA`.
-- Projeto 2: implementação em 98%, restando 2%; `P2-03` reaberta pelo ciclo de vida efêmero do servidor de sync e `P2-10` em 9 de 10 gates.
+- Projeto 2: implementação em 99%, restando 1%; `P2-01` a `P2-09` concluídas e `P2-10` em 9 de 10 gates.
 - Aplicação desktop pessoal pode estar aberta durante manutenção; confirmar processo antes de limpar `target/` ou reiniciar.
 - Banco pessoal: `~/.agenda-pessoal/agenda.db`.
 - Tokens Google: `~/.agenda/google-tokens.json`, permissão esperada `600`.
@@ -54,7 +54,7 @@ Não usar `LAST_CHANGES.md` como especificação; ele é gerado pelo hook após 
 | Alertas | preferências/contagens | Preferences | `PendencyNotificationService` | Config/Dashboard/status | service e FX |
 | Protocolos | `Protocol*` | `ProtocolRepository` | serviços/controllers atuais | Checklist e execução | repository/FX |
 | Google Tasks | mappings/snapshots | repositories Google | auth, gateway e sync services | Config e sync window | transport, sync e FX |
-| Sync móvel local | réplicas/fila Room | `DesktopSyncRepository` | `LocalPairingServer`, `SyncBatchProcessor`, transporte HTTPS | status no Android e pareamento desktop | protocolo aprovado; servidor persistente pendente em P2-03 |
+| Sync móvel local | réplicas/fila Room | `DesktopSyncRepository` | `LocalPairingServer`, `LocalSyncTlsIdentityStore`, `SyncBatchProcessor`, transporte HTTPS | status conectado nas duas aplicações e pareamento desktop | protocolo, reconexão, reinício e fila real aprovados em P2-03 |
 | Janelas | estado JavaFX | Preferences quando aplicável | `WindowManager` | views | `WindowManagerFxTest`, responsive tests |
 | Tema | tokens CSS | preferência visual | `ThemeManager` | todas as scenes | testes FX de contraste/tema |
 
@@ -171,8 +171,8 @@ Atualizar esta tabela quando uma dependência for adicionada ou removida.
 | Provedor LLM | resumo textual revisável | somente seleção consentida | não | processamento local/manual |
 | Google Tasks | sync de tarefas | tarefas autorizadas | opcional atual | uso só local |
 | Gson 2.10.1 | codec do contrato JSON desktop | convites e respostas locais | P2-03 | substituir exige teste de compatibilidade de schema |
-| Bouncy Castle 1.78.1 | certificado ECDSA efêmero | chave/certificado somente em memória | P2-03 | JSSE não fornece builder X.509 público |
-| ZXing Core 3.5.3 | QR do convite local | URI temporária de pareamento | P2-03 | convite também pode ser copiado como texto |
+| Bouncy Castle 1.78.1 | certificado ECDSA persistente do sync local | PKCS#12 e segredo locais com modo `600` | P2-03 | JSSE não fornece builder X.509 público |
+| ZXing Core 3.5.3 e ZXing Android Embedded 4.3.0 | gerar e ler QR do convite local | URI temporária de pareamento | P2-03 | convite também pode ser colado como texto |
 
 Para cada SDK novo registrar: versão fixa, licença, origem, permissões, rede, telemetria, tamanho, política de atualização, CVEs e teste de remoção.
 

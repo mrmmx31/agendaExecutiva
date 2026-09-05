@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 98% do Projeto 2 |
+| Status | Implementação em andamento; 99% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -596,7 +596,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-03` foi reaberta com 6 de 7 itens após o teste real revelar que o servidor não sobrevive à sessão de pareamento; `P2-01`, `P2-02` e `P2-04` a `P2-09` estão concluídas, e `P2-10` tem 9 de 10 gates. O avanço geral arredondado é 98% e restam 2%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-01` a `P2-09` estão concluídas, e `P2-10` tem 9 de 10 gates. O avanço geral é 99% e resta 1%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -621,7 +621,7 @@ Captura, réplica mínima, protocolos, fila de operações, schemas e dados fict
 
 Servidor desktop, QR, TLS fixado, Keystore, cursores, snapshots, idempotência, conflitos e revogação.
 
-**Status:** Reaberto em 2026-09-03, 86% (6 de 7 itens concluídos).
+**Status:** Concluído em 2026-09-05, 100% (7 de 7 itens concluídos).
 
 **Checklist de avanço:**
 
@@ -631,7 +631,7 @@ Servidor desktop, QR, TLS fixado, Keystore, cursores, snapshots, idempotência, 
 - [x] implementar servidor HTTPS efêmero, aprovação/revogação no desktop e credencial protegida no Android Keystore;
 - [x] implementar push/pull idempotente, snapshot paginado, estados da fila e revisão de conflitos;
 - [x] aprovar matriz integrada em banco temporário e AVD, incluindo repetição, expiração, certificado incorreto e reconexão.
-- [ ] manter endpoint HTTPS e identidade TLS estáveis durante a vida da Agenda desktop, permitindo reconexão e sync sem novo pareamento a cada sessão.
+- [x] manter endpoint HTTPS e identidade TLS estáveis durante a vida da Agenda desktop, permitindo reconexão e sync sem novo pareamento a cada sessão.
 
 **Decisão inicial:** diferentemente da ativação direta usada como referência mecânica no Motoclube, a Agenda não emite credencial após apenas ler QR e código. A solicitação fica pendente até o usuário conferir nome e papéis no desktop. A permissão Android de rede foi adicionada somente junto do cliente HTTPS local fixado e não autoriza integrações externas.
 
@@ -652,6 +652,26 @@ salvo deixa de aceitar reconexão cotidiana. O protocolo e a fila permanecem
 válidos, mas sincronização operacional recorrente não está disponível até o
 servidor ter ciclo de vida da aplicação, porta/identidade recuperáveis e teste
 de reinício real. Não tratar novo pareamento manual como solução definitiva.
+
+**Correção e aceite real:** em 05/09/2026, o servidor HTTPS passou ao ciclo de
+vida da Agenda desktop, em porta fixa, com chave EC e certificado persistidos
+em PKCS#12 privado (`600`). A expiração encerra somente o convite; credenciais
+aprovadas continuam autenticando sync. A seleção de rede passou a priorizar a
+interface física sobre VMware/Docker, e o Linux recebeu regra de firewall
+restrita à porta 48484 na rede local. O leitor QR e a colagem do convite foram
+integrados ao Android. Desktop e telefone agora exibem o dispositivo conectado,
+com atualização após aprovação/revogação e comando manual de atualização.
+
+No Moto Edge 60 autorizado, o pareamento permaneceu válido após reiniciar o
+desktop e conservou a impressão TLS. Um lote real acumulado convergiu de 8 para
+0 operações: a captura entrou uma vez, cinco eventos válidos foram aplicados e
+dois eventos de protocolo fictício foram rejeitados por regra de negócio, sem
+duplicação. O snapshot trouxe as tarefas do desktop e uma segunda sincronização
+encerrou sem alterações. O ensaio também revelou respostas antigas sem campos
+nulos; desktop e Android foram tornados compatíveis e o reenvio terminal limpou
+a fila. `mvn test` e o perfil `javafx-ui-tests` passaram com 237 testes, e
+`:app:testFieldTestUnitTest :app:assembleFieldTest` passou antes da instalação
+e do aceite no aparelho.
 
 ### P2-04 — Alertas e áudio no smartphone
 
@@ -1077,6 +1097,7 @@ O projeto será considerado operacional quando, em dispositivo real e sem depend
 
 ## 24. Próxima ação
 
-Solicitar autorização explícita e condições de teste para os gates físicos 6 a
-9 de `android/P2_10_MATRIX.md`. O gate 10 fecha o aceite e a decisão de
-distribuição depois dessas evidências.
+Fechar o gate 10 de `android/P2_10_MATRIX.md`: gerar o candidato assinado com as
+correções finais de P2-03, instalá-lo e executar o percurso de aceite e a decisão
+de distribuição pessoal. Qualquer publicação ou venda exige nova revisão de
+privacidade, permissões, conta de distribuição e enquadramento regulatório.

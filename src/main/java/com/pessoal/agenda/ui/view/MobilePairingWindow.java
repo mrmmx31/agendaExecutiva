@@ -5,7 +5,6 @@ import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.pessoal.agenda.app.AppContextHolder;
-import com.pessoal.agenda.infra.pairing.LocalNetworkAddressSelector;
 import com.pessoal.agenda.infra.pairing.LocalPairingServer;
 import com.pessoal.agenda.infra.pairing.PairingSession;
 import com.pessoal.agenda.infra.pairing.PendingPairingRequest;
@@ -45,6 +44,7 @@ public final class MobilePairingWindow {
 
     private final DesktopSyncRepository repository = AppContextHolder.get().desktopSyncRepository();
     private final Timeline poller = new Timeline(new KeyFrame(Duration.seconds(1), event -> poll()));
+    private final Runnable deviceStateChanged;
 
     private Stage stage;
     private LocalPairingServer server;
@@ -59,6 +59,14 @@ public final class MobilePairingWindow {
     private Button approve;
     private Button reject;
     private String displayedRequestId;
+
+    public MobilePairingWindow() {
+        this(() -> {});
+    }
+
+    public MobilePairingWindow(Runnable deviceStateChanged) {
+        this.deviceStateChanged = deviceStateChanged;
+    }
 
     public void show() {
         if (openStage != null && openStage.isShowing()) {
@@ -176,8 +184,7 @@ public final class MobilePairingWindow {
     private void startPairing() {
         closeServerOnly();
         try {
-            server = new LocalPairingServer(
-                    repository, LocalNetworkAddressSelector.select(), 0);
+            server = AppContextHolder.get().startMobileSyncServer();
             session = server.start();
             displayedRequestId = null;
             invitationPanel.setVisible(true);
@@ -231,6 +238,7 @@ public final class MobilePairingWindow {
             reject.setDisable(true);
             status.setText("Dispositivo aprovado. Aguardando o aplicativo concluir o recebimento.");
             refreshDevices();
+            deviceStateChanged.run();
         } catch (RuntimeException error) {
             Dialogs.error("Erro ao aprovar", rootMessage(error));
         }
@@ -279,6 +287,7 @@ public final class MobilePairingWindow {
                 .ifPresent(button -> {
                     repository.revokeDevice(device.deviceId());
                     refreshDevices();
+                    deviceStateChanged.run();
                     status.setText("Acesso de " + device.deviceName() + " revogado.");
                 });
     }
@@ -315,7 +324,7 @@ public final class MobilePairingWindow {
     }
 
     private void closeServerOnly() {
-        if (server != null) server.close();
+        if (server != null) server.endPairingSession();
         server = null;
         session = null;
     }

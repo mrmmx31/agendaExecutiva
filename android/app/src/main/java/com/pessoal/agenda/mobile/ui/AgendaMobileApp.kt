@@ -33,6 +33,8 @@ import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -69,6 +71,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.heading
@@ -89,6 +92,8 @@ import com.pessoal.agenda.mobile.data.local.SyncConflictEntity
 import com.pessoal.agenda.mobile.alert.SensoryChannel
 import com.pessoal.agenda.mobile.health.report.HealthReportFormat
 import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -559,6 +564,10 @@ private fun PairingDialog(
 ) {
     var invitation by rememberSaveable(initialInvitation) { mutableStateOf(initialInvitation) }
     var code by rememberSaveable { mutableStateOf("") }
+    val clipboard = LocalClipboardManager.current
+    val scanner = rememberLauncherForActivityResult(ScanContract()) { result ->
+        result.contents?.takeIf { it.startsWith("agenda://pair?") }?.let { invitation = it }
+    }
     AlertDialog(
         onDismissRequest = onCancel,
         title = { Text("Conectar ao desktop") },
@@ -573,6 +582,39 @@ private fun PairingDialog(
                     maxLines = 5,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            scanner.launch(
+                                ScanOptions()
+                                    .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                                    .setPrompt("Leia o convite exibido pela Agenda no desktop")
+                                    .setBeepEnabled(false)
+                                    .setOrientationLocked(true),
+                            )
+                        },
+                        enabled = !inProgress,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Outlined.QrCodeScanner, contentDescription = null)
+                        Text("Ler QR code")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            clipboard.getText()?.text
+                                ?.takeIf { it.startsWith("agenda://pair?") }
+                                ?.let { invitation = it.take(4096) }
+                        },
+                        enabled = !inProgress,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Outlined.ContentPaste, contentDescription = null)
+                        Text("Colar convite")
+                    }
+                }
                 OutlinedTextField(
                     value = code,
                     onValueChange = { value -> code = value.filter(Char::isDigit).take(6) },

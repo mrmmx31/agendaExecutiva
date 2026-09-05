@@ -46,6 +46,8 @@ class SyncBatchProcessorTest {
         assertEquals("STRUCTURE_DIVERGED", first.getAsJsonArray("conflicts").get(0)
                 .getAsJsonObject().get("reason").getAsString());
         assertEquals(first, replay);
+        assertEquals(Set.of("operation_id", "status", "error_code", "server_revision", "conflict_id"),
+                replay.getAsJsonArray("results").get(0).getAsJsonObject().keySet());
         assertEquals(1, database.queryInt("SELECT COUNT(*) FROM mobile_conflicts"));
     }
 

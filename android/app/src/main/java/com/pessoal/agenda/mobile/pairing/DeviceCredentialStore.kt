@@ -30,12 +30,15 @@ class DeviceCredentialStore(context: Context) : PairingCredentialStore {
             }
 
     override val deviceName: String
-        get() = listOf(Build.MANUFACTURER, Build.MODEL)
-            .filter(String::isNotBlank)
-            .joinToString(" ")
-            .replace(Regex("\\s+"), " ")
-            .take(100)
-            .ifBlank { "Android" }
+        get() {
+            val manufacturer = Build.MANUFACTURER.trim()
+            val model = Build.MODEL.trim()
+            return (if (model.startsWith(manufacturer, ignoreCase = true)) model
+            else "$manufacturer $model")
+                .replace(Regex("\\s+"), " ")
+                .take(100)
+                .ifBlank { "Android" }
+        }
 
     override fun publicKeyBase64Url(): String {
         ensureRsaKey()

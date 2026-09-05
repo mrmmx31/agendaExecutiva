@@ -1,6 +1,7 @@
 package com.pessoal.agenda.repository;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.pessoal.agenda.infra.Database;
@@ -665,7 +666,7 @@ public final class DesktopSyncRepository {
         else result.addProperty("server_revision", serverRevision);
         if (conflictId == null) result.add("conflict_id", com.google.gson.JsonNull.INSTANCE);
         else result.addProperty("conflict_id", conflictId);
-        return new Gson().toJson(result);
+        return new GsonBuilder().serializeNulls().create().toJson(result);
     }
 
     public CursorRecord cursor(String deviceId) {

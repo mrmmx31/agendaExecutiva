@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.Comparator;
+import java.util.Locale;
 
 public final class LocalNetworkAddressSelector {
     private LocalNetworkAddressSelector() {}
@@ -13,10 +14,14 @@ public final class LocalNetworkAddressSelector {
         try {
             return NetworkInterface.networkInterfaces()
                     .filter(LocalNetworkAddressSelector::usableInterface)
-                    .flatMap(NetworkInterface::inetAddresses)
-                    .filter(address -> address instanceof Inet4Address)
-                    .filter(InetAddress::isSiteLocalAddress)
-                    .sorted(Comparator.comparing(InetAddress::getHostAddress))
+                    .flatMap(network -> network.inetAddresses()
+                            .filter(address -> address instanceof Inet4Address)
+                            .filter(InetAddress::isSiteLocalAddress)
+                            .map(address -> new Candidate(network.getName(), address)))
+                    .sorted(Comparator.comparingInt((Candidate candidate) ->
+                                    interfacePriority(candidate.interfaceName()))
+                            .thenComparing(candidate -> candidate.address().getHostAddress()))
+                    .map(Candidate::address)
                     .findFirst()
                     .orElseThrow(() -> new IllegalStateException(
                             "Nenhum endereço IPv4 de rede local está disponível."));
@@ -32,4 +37,16 @@ public final class LocalNetworkAddressSelector {
             return false;
         }
     }
+
+    static int interfacePriority(String interfaceName) {
+        String name = interfaceName.toLowerCase(Locale.ROOT);
+        if (name.startsWith("wl") || name.startsWith("wlan")) return 0;
+        if (name.startsWith("en") || name.startsWith("eth")) return 1;
+        if (name.startsWith("vmnet") || name.startsWith("veth")
+                || name.startsWith("docker") || name.startsWith("virbr")
+                || name.startsWith("br-")) return 3;
+        return 2;
+    }
+
+    private record Candidate(String interfaceName, InetAddress address) {}
 }

@@ -33,6 +33,8 @@ import com.pessoal.agenda.mobile.pairing.PairingClient
 import com.pessoal.agenda.mobile.pairing.PairingException
 import com.pessoal.agenda.mobile.sync.HttpsSyncTransport
 import com.pessoal.agenda.mobile.sync.SyncRepository
+import com.pessoal.agenda.mobile.sync.SyncTransportException
+import android.util.Log
 import com.pessoal.agenda.mobile.wear.AndroidWearStateCleaner
 import com.pessoal.agenda.mobile.wear.AndroidWearProtocolPublisher
 import com.pessoal.agenda.mobile.health.AndroidKeystoreHealthDataCipher
@@ -776,14 +778,18 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
                     feedback.value = successMessage
                     onSuccess()
                 }
-                .onFailure { feedback.value = it.safeMessage("A operação local não foi concluída.") }
+                .onFailure {
+                    Log.e("AgendaMobile", "Operação local não concluída", it)
+                    feedback.value = it.safeMessage("A operação local não foi concluída.")
+                }
             busy.value = false
         }
     }
 }
 
 private fun Throwable.safeMessage(fallback: String): String =
-    if ((this is IllegalArgumentException || this is PairingException) && !message.isNullOrBlank()) message!! else fallback
+    if ((this is IllegalArgumentException || this is PairingException
+            || this is SyncTransportException) && !message.isNullOrBlank()) message!! else fallback
 
 private const val INFERENCE_BENCHMARK_RUNS = 1_000
 private const val HASH_PREFIX_LENGTH = 12

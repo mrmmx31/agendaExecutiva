@@ -661,6 +661,8 @@ class AgendaMobileAppTest {
         }
 
         compose.onNodeWithContentDescription("Conectar ao desktop").performClick()
+        compose.onNodeWithText("Ler QR code").assertIsDisplayed()
+        compose.onNodeWithText("Colar convite").assertIsDisplayed()
         compose.onNodeWithText("Convite").performTextInput("agenda://pair?teste")
         compose.onNodeWithText("Código de seis dígitos").performTextInput("123456")
         compose.onNodeWithText("Conectar").assertIsEnabled().performClick()

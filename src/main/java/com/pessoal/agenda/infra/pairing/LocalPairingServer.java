@@ -75,6 +75,8 @@ public final class LocalPairingServer implements AutoCloseable {
     private final Gson gson = new GsonBuilder().serializeNulls().create();
     private final SyncBatchProcessor syncProcessor;
     private final Consumer<String> diagnostic;
+    private final LocalSyncTlsIdentityStore.TlsIdentity configuredIdentity;
+    private LocalSyncTlsIdentityStore.TlsIdentity runtimeIdentity;
 
     private HttpsServer server;
     private ExecutorService executor;
@@ -89,46 +91,48 @@ public final class LocalPairingServer implements AutoCloseable {
     private final Map<String, SnapshotPagePointer> snapshotTokens = new HashMap<>();
 
     public LocalPairingServer(DesktopSyncRepository repository, InetAddress bindAddress, int port) {
-        this(repository, Clock.systemUTC(), bindAddress, port, ignored -> {});
+        this(repository, Clock.systemUTC(), bindAddress, port, ignored -> {}, null);
+    }
+
+    public LocalPairingServer(DesktopSyncRepository repository, InetAddress bindAddress, int port,
+                              LocalSyncTlsIdentityStore.TlsIdentity identity) {
+        this(repository, Clock.systemUTC(), bindAddress, port, ignored -> {}, identity);
     }
 
     LocalPairingServer(DesktopSyncRepository repository, Clock clock,
                        InetAddress bindAddress, int port) {
-        this(repository, clock, bindAddress, port, ignored -> {});
+        this(repository, clock, bindAddress, port, ignored -> {}, null);
     }
 
     LocalPairingServer(DesktopSyncRepository repository, Clock clock,
                        InetAddress bindAddress, int port, Consumer<String> diagnostic) {
+        this(repository, clock, bindAddress, port, diagnostic, null);
+    }
+
+    LocalPairingServer(DesktopSyncRepository repository, Clock clock,
+                       InetAddress bindAddress, int port, Consumer<String> diagnostic,
+                       LocalSyncTlsIdentityStore.TlsIdentity identity) {
         this.repository = repository;
         this.clock = clock;
         this.bindAddress = bindAddress;
         this.port = port;
         this.syncProcessor = new SyncBatchProcessor(repository);
         this.diagnostic = diagnostic;
+        this.configuredIdentity = identity;
     }
 
     public synchronized PairingSession start() {
-        close();
         try {
+            ensureRunning();
             Instant now = clock.instant();
             expiresAt = now.plus(SESSION_DURATION);
-            KeyPair certificateKeys = ecKeyPair();
-            X509Certificate certificate = certificate(certificateKeys, bindAddress, now, expiresAt);
-            server = HttpsServer.create(new InetSocketAddress(bindAddress, port), 0);
-            server.setHttpsConfigurator(new HttpsConfigurator(sslContext(certificateKeys, certificate)));
-            server.createContext("/api/v1/pair/requests", this::handleRequest);
-            server.createContext("/api/v1/sync/batches", this::handleRequest);
-            server.createContext("/api/v1/sync/snapshot", this::handleRequest);
-            executor = Executors.newVirtualThreadPerTaskExecutor();
-            server.setExecutor(executor);
-
             sessionId = UUID.randomUUID().toString();
             desktopId = repository.desktopId();
             nonce = randomBase64(32);
             code = "%06d".formatted(RANDOM.nextInt(1_000_000));
             pending = null;
-            server.start();
             long generation = ++sessionGeneration;
+            if (expirationThread != null) expirationThread.interrupt();
             expirationThread = Thread.startVirtualThread(() -> closeAfterExpiration(generation));
 
             String endpoint = "https://" + bindAddress.getHostAddress() + ":"
@@ -139,11 +143,30 @@ public final class LocalPairingServer implements AutoCloseable {
                     + "&endpoint=" + encode(endpoint)
                     + "&expires_at=" + encode(expiresAt.toString())
                     + "&nonce=" + encode(nonce)
-                    + "&fingerprint=" + fingerprint(certificate);
+                    + "&fingerprint=" + fingerprint(activeIdentity().certificate());
             return new PairingSession(invitation, code, expiresAt);
         } catch (Exception error) {
-            close();
+            endPairingSession();
             throw new RuntimeException("Não foi possível abrir o pareamento local.", error);
+        }
+    }
+
+    public synchronized void ensureRunning() {
+        if (server != null) return;
+        try {
+            LocalSyncTlsIdentityStore.TlsIdentity identity = activeIdentity();
+            server = HttpsServer.create(new InetSocketAddress(bindAddress, port), 0);
+            server.setHttpsConfigurator(new HttpsConfigurator(
+                    sslContext(identity.keys(), identity.certificate())));
+            server.createContext("/api/v1/pair/requests", this::handleRequest);
+            server.createContext("/api/v1/sync/batches", this::handleRequest);
+            server.createContext("/api/v1/sync/snapshot", this::handleRequest);
+            executor = Executors.newVirtualThreadPerTaskExecutor();
+            server.setExecutor(executor);
+            server.start();
+        } catch (Exception error) {
+            close();
+            throw new IllegalStateException("Não foi possível iniciar o sync local.", error);
         }
     }
 
@@ -202,7 +225,7 @@ public final class LocalPairingServer implements AutoCloseable {
     }
 
     private void handleSyncBatch(HttpExchange exchange) throws IOException {
-        if (!"POST".equals(exchange.getRequestMethod()) || expired()) {
+        if (!"POST".equals(exchange.getRequestMethod())) {
             respond(exchange, 409, new ErrorResponse("Sincronização indisponível."));
             return;
         }
@@ -224,7 +247,7 @@ public final class LocalPairingServer implements AutoCloseable {
     }
 
     private synchronized void handleSnapshot(HttpExchange exchange) throws IOException {
-        if (!"GET".equals(exchange.getRequestMethod()) || expired()) {
+        if (!"GET".equals(exchange.getRequestMethod())) {
             respond(exchange, 409, new ErrorResponse("Sincronização indisponível."));
             return;
         }
@@ -396,18 +419,26 @@ public final class LocalPairingServer implements AutoCloseable {
 
     private boolean expired() { return expiresAt == null || !clock.instant().isBefore(expiresAt); }
 
-    @Override
-    public synchronized void close() {
+    public synchronized void endPairingSession() {
         sessionGeneration++;
-        if (server != null) server.stop(0);
-        if (executor != null) executor.shutdownNow();
         if (expirationThread != null && expirationThread != Thread.currentThread()) {
             expirationThread.interrupt();
         }
+        expirationThread = null;
+        sessionId = null;
+        nonce = null;
+        code = null;
+        expiresAt = null;
+        pending = null;
+    }
+
+    @Override
+    public synchronized void close() {
+        endPairingSession();
+        if (server != null) server.stop(0);
+        if (executor != null) executor.shutdownNow();
         server = null;
         executor = null;
-        expirationThread = null;
-        pending = null;
         snapshotTokens.clear();
     }
 
@@ -415,11 +446,21 @@ public final class LocalPairingServer implements AutoCloseable {
         try {
             Thread.sleep(SESSION_DURATION);
             synchronized (this) {
-                if (generation == sessionGeneration) close();
+                if (generation == sessionGeneration) endPairingSession();
             }
         } catch (InterruptedException ignored) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private LocalSyncTlsIdentityStore.TlsIdentity activeIdentity() throws Exception {
+        if (configuredIdentity != null) return configuredIdentity;
+        if (runtimeIdentity != null) return runtimeIdentity;
+        Instant now = clock.instant();
+        KeyPair keys = ecKeyPair();
+        runtimeIdentity = new LocalSyncTlsIdentityStore.TlsIdentity(
+                keys, certificate(keys, bindAddress, now, now.plus(Duration.ofDays(365))));
+        return runtimeIdentity;
     }
 
     private static String encryptCredential(byte[] credential, String encodedPublicKey) throws Exception {

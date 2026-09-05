@@ -31,6 +31,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -548,24 +549,64 @@ public class ConfigController {
     }
 
     private VBox buildMobilePairingSection() {
+        return buildMobilePairingSection(new MobilePairingActions() {
+            @Override
+            public List<String> activeDeviceNames() {
+                return AppContextHolder.get().desktopSyncRepository().listDevices().stream()
+                        .filter(device -> device.status().equals("ACTIVE"))
+                        .map(device -> device.deviceName())
+                        .toList();
+            }
+
+            @Override
+            public void openManager(Runnable stateChanged) {
+                new MobilePairingWindow(stateChanged).show();
+            }
+        });
+    }
+
+    VBox buildMobilePairingSection(MobilePairingActions actions) {
         Label title = new Label("Aplicativo móvel");
         title.getStyleClass().add("section-title");
         Label state = new Label();
-        long active = AppContextHolder.get().desktopSyncRepository().listDevices().stream()
-                .filter(device -> device.status().equals("ACTIVE"))
-                .count();
-        state.setText(active == 1 ? "1 dispositivo ativo" : active + " dispositivos ativos");
-        state.getStyleClass().add(active > 0 ? "t-success" : "t-muted");
+        state.setId("mobile-pairing-state");
+        state.setWrapText(true);
+
+        Runnable refreshState = () -> {
+            List<String> names = actions.activeDeviceNames();
+            state.getStyleClass().removeAll("t-success", "t-muted");
+            if (names.isEmpty()) {
+                state.setText("Nenhum dispositivo conectado");
+                state.getStyleClass().add("t-muted");
+            } else if (names.size() == 1) {
+                state.setText("Conectado: " + names.getFirst());
+                state.getStyleClass().add("t-success");
+            } else {
+                state.setText(names.size() + " dispositivos conectados: "
+                        + String.join(", ", names));
+                state.getStyleClass().add("t-success");
+            }
+        };
 
         Button manage = new Button("Gerenciar dispositivos");
         manage.setId("mobile-pairing-manage");
         manage.getStyleClass().add("secondary-button");
-        manage.setOnAction(event -> new MobilePairingWindow().show());
+        manage.setOnAction(event -> actions.openManager(refreshState));
 
-        VBox section = new VBox(10, title, state, manage);
+        Button refresh = new Button("↻");
+        refresh.setId("mobile-pairing-refresh");
+        refresh.getStyleClass().add("secondary-button");
+        refresh.setTooltip(new Tooltip("Atualizar estado dos dispositivos"));
+        refresh.setOnAction(event -> refreshState.run());
+
+        FlowPane actionsBar = new FlowPane(10, 8, manage, refresh);
+        actionsBar.setAlignment(Pos.CENTER_LEFT);
+
+        VBox section = new VBox(10, title, state, actionsBar);
         section.setId("config-mobile-pairing");
         section.getStyleClass().add("config-section");
         section.setPadding(new Insets(12, 14, 12, 14));
+        refreshState.run();
         return section;
     }
 
@@ -592,6 +633,11 @@ public class ConfigController {
         void disconnect() throws Exception;
         void clearMappings();
         void openSync();
+    }
+
+    interface MobilePairingActions {
+        List<String> activeDeviceNames();
+        void openManager(Runnable stateChanged);
     }
 
     VBox buildLocalMetricsSection() {

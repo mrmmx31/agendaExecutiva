@@ -98,6 +98,12 @@ public class AgendaApp extends Application {
         // Contexto compartilhado com callback de status
         ctx = new SharedContext(statusLabel::setText);
 
+        try {
+            AppContextHolder.get().startMobileSyncServer();
+        } catch (RuntimeException error) {
+            statusLabel.setText("Sync móvel indisponível nesta rede; tente novamente nas Configurações.");
+        }
+
         // Callbacks coordenados pelo AgendaApp
         ctx.setDashboardRefreshCallback(this::refreshDashboardKpis);
         ctx.setAlertRefreshCallback(this::refreshAlertsAndUpcoming);
@@ -162,6 +168,7 @@ public class AgendaApp extends Application {
             PendencyNotificationService.getInstance().stop();
             timerRecoveryService.stopTracking();
             TaskTimerService.get().removeStateListener(timerStateRefresh);
+            AppContextHolder.get().stopMobileSyncServer();
             WindowManager.closeAll();
             Platform.exit();
         });

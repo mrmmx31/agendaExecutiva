@@ -88,7 +88,7 @@ final class SyncBatchProcessor {
             DesktopSyncRepository.StoredOperation existing = repository.findStoredOperation(operationId);
             if (existing != null) {
                 if (same(existing, operation, payloadHash)) {
-                    return gson.fromJson(existing.resultJson(), JsonObject.class);
+                    return storedResult(existing);
                 }
                 return result(operationId, "REJECTED", "ID_REUSED", null, null);
             }
@@ -124,7 +124,7 @@ final class SyncBatchProcessor {
         String text = requiredString(payload, "text");
         Instant createdAt = Instant.parse(requiredString(payload, "created_at"));
         DesktopSyncRepository.StoredOperation stored = repository.applyCapture(input, text, createdAt);
-        return gson.fromJson(stored.resultJson(), JsonObject.class);
+        return storedResult(stored);
     }
 
     private JsonObject processRunStarted(DesktopSyncRepository.OperationInput input,
@@ -150,7 +150,7 @@ final class SyncBatchProcessor {
         }
         DesktopSyncRepository.StoredOperation stored = repository.applyProtocolEvent(
                 input, gson.toJson(payload));
-        return gson.fromJson(stored.resultJson(), JsonObject.class);
+        return storedResult(stored);
     }
 
     private JsonObject processProtocolStep(DesktopSyncRepository.OperationInput input,
@@ -164,7 +164,7 @@ final class SyncBatchProcessor {
         Instant.parse(requiredString(payload, "completed_at"));
         DesktopSyncRepository.StoredOperation stored = repository.applyProtocolEvent(
                 input, gson.toJson(payload));
-        return gson.fromJson(stored.resultJson(), JsonObject.class);
+        return storedResult(stored);
     }
 
     private JsonObject processProtocolProposal(DesktopSyncRepository.OperationInput input,
@@ -199,7 +199,7 @@ final class SyncBatchProcessor {
                 null, null, DesktopSyncRepository.resultJson(
                         input.operationId(), "REJECTED", errorCode, null, null), input.occurredAt());
         DesktopSyncRepository.StoredOperation stored = repository.storeTerminal(rejected);
-        return gson.fromJson(stored.resultJson(), JsonObject.class);
+        return storedResult(stored);
     }
 
     private DesktopSyncRepository.OperationInput input(JsonObject operation, String status,
@@ -248,6 +248,11 @@ final class SyncBatchProcessor {
         return new GsonBuilder().serializeNulls().create().fromJson(
                 DesktopSyncRepository.resultJson(operationId, status, error, revision, conflictId),
                 JsonObject.class);
+    }
+
+    private static JsonObject storedResult(DesktopSyncRepository.StoredOperation stored) {
+        return result(stored.operationId(), stored.status(), stored.errorCode(),
+                stored.serverRevision(), stored.conflictId());
     }
 
     private JsonObject conflictJson(DesktopSyncRepository.ConflictRecord conflict) {

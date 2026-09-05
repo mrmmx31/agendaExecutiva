@@ -1455,7 +1455,7 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 ## 32. Projeto 2 — Extensão móvel e sensorial
 
-**Status:** Especificado em 31/08/2026; implementação 98%, com 2% restantes. `P2-01` a `P2-09` estão concluídas e `P2-10` tem 8 de 10 gates.
+**Status:** Especificado em 31/08/2026; implementação 99%, com 1% restante. `P2-01` a `P2-09` estão concluídas e `P2-10` tem 9 de 10 gates.
 
 **Visão:** estender a Agenda para Android e Wear OS, mantendo o desktop como superfície de organização, o smartphone como nó móvel offline e o smartwatch como superfície curta de percepção e resposta. Alertas devem oferecer `Concluir` e `Adiar` quando o wearable tiver Wear OS ou API oficial; smartbands fechadas recebem o melhor espelhamento suportado e mantêm essas ações no telefone. Capturas e protocolos devem funcionar fora do notebook e convergir depois.
 
@@ -1465,4 +1465,4 @@ O piloto valida as hipóteses da seção 21 sem criar opções antecipadamente e
 
 **Documentos:** requisitos, arquitetura, fases e gates estão em `PROJECT2_SPEC.md`. O ponto de entrada para manutenção, catálogos, contratos e retomada de contexto está em `MAINTENANCE_MAP.md`.
 
-**Próxima ação:** completar a janela de estabilidade do gate 9 no Moto Edge 60 autorizado; a coleta final está protegida e agendada para depois das 24 horas. Health Connect, exportações, revogação e áudio/rotas físicos foram aprovados com limites documentados da smartband e do ambiente. O candidato 0.1 já está assinado; depois faltam backup cifrado separado da chave, instalação e percurso final de aceite pessoal.
+**Próxima ação:** fechar o gate 10 com novo candidato assinado, instalação e percurso final de aceite pessoal. A conexão local persistente foi validada no Moto Edge 60: pareamento sobreviveu ao reinício do desktop, a fila móvel convergiu de 8 para 0 sem duplicação e o estado conectado passou a ser visível nas duas aplicações.

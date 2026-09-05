@@ -116,6 +116,7 @@ dependencies {
     implementation(project(":wear-contract"))
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
     implementation("androidx.health.connect:connect-client:1.1.0")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.test:core:1.6.1")

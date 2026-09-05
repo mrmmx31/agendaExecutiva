@@ -32,9 +32,9 @@ data class SyncBatch(
 data class SyncResult(
     @SerialName("operation_id") val operationId: String,
     val status: String,
-    @SerialName("error_code") val errorCode: String?,
-    @SerialName("server_revision") val serverRevision: Long?,
-    @SerialName("conflict_id") val conflictId: String?,
+    @SerialName("error_code") val errorCode: String? = null,
+    @SerialName("server_revision") val serverRevision: Long? = null,
+    @SerialName("conflict_id") val conflictId: String? = null,
 )
 
 @Serializable

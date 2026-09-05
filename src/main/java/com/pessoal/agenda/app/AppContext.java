@@ -14,6 +14,9 @@ import com.pessoal.agenda.service.TaskService;
 import com.pessoal.agenda.service.InboxCaptureService;
 import com.pessoal.agenda.service.QuickCapturePreferences;
 import com.pessoal.agenda.service.LocalMetricsService;
+import com.pessoal.agenda.infra.pairing.LocalNetworkAddressSelector;
+import com.pessoal.agenda.infra.pairing.LocalPairingServer;
+import com.pessoal.agenda.infra.pairing.LocalSyncTlsIdentityStore;
 
 /**
  * Composition Root (DI manual): centraliza a montagem de dependencias da aplicacao.
@@ -66,6 +69,7 @@ public class AppContext {
     private final TaskTimerRecoveryService taskTimerRecoveryService;
     private final QuickCapturePreferences quickCapturePreferences;
     private final LocalMetricsService localMetricsService;
+    private LocalPairingServer mobileSyncServer;
 
     private AppContext() {
         this.database = new Database();
@@ -275,5 +279,23 @@ public class AppContext {
 
     public LocalMetricsService localMetricsService() {
         return localMetricsService;
+    }
+
+    public synchronized LocalPairingServer startMobileSyncServer() {
+        if (mobileSyncServer != null) {
+            mobileSyncServer.ensureRunning();
+            return mobileSyncServer;
+        }
+        var address = LocalNetworkAddressSelector.select();
+        var identity = new LocalSyncTlsIdentityStore().loadOrCreate(address);
+        mobileSyncServer = new LocalPairingServer(
+                desktopSyncRepository, address, 48484, identity);
+        mobileSyncServer.ensureRunning();
+        return mobileSyncServer;
+    }
+
+    public synchronized void stopMobileSyncServer() {
+        if (mobileSyncServer != null) mobileSyncServer.close();
+        mobileSyncServer = null;
     }
 }

@@ -19,7 +19,7 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 | 9 | bateria, memoria e temperatura em uso prolongado | aprovado | 32h55 após a instalação atual: 73%, 28,9 °C, cinco amostras PSS estáveis entre 162.584 e 163.073 KiB, sem crescimento monotônico e zero crashes |
 | 10 | aceite final, artefato assinado e decisao de distribuicao | preparado; bloqueado pelos gates finais | v0.1 definida como sideload pessoal; chave e backup Drive validados; falta regenerar artefatos, instalar e percorrer aceite |
 
-**Estado atual:** 90% do P2-10 (9 de 10); Projeto 2 em 98% após reabrir P2-03.
+**Estado atual:** 90% do P2-10 (9 de 10); Projeto 2 em 99% após concluir P2-03.
 
 **Sessão física em andamento:** o detalhamento incremental, sem identificadores,
 fica em `docs/release/PHYSICAL_TEST_RESULTS.md`. Evidência parcial não altera o

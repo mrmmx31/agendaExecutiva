@@ -65,6 +65,13 @@ class AgendaMobileAppTest {
                                 revision = 1,
                                 updatedAt = "2026-08-31T12:00:00Z",
                             ),
+                            TaskReplicaEntity(
+                                id = "completed-task-id",
+                                title = "Tarefa concluída fictícia",
+                                status = "COMPLETED",
+                                revision = 2,
+                                updatedAt = "2026-08-31T13:00:00Z",
+                            ),
                         ),
                     ),
                     onSaveCapture = { _, _ -> },
@@ -82,6 +89,8 @@ class AgendaMobileAppTest {
         compose.onNodeWithText("Agenda").assertIsDisplayed()
         compose.onNodeWithText("Somente neste telefone").assertIsDisplayed()
         compose.onNodeWithText("Tarefa fictícia").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Tarefa pendente").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Tarefa concluída").assertIsDisplayed()
     }
 
     @Test

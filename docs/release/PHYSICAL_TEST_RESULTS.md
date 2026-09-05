@@ -133,10 +133,24 @@ durável, mas sync recorrente após fechar/expirar a janela ainda não é um rec
 operacional. `P2-03` foi reaberta para corrigir o ciclo de vida do endpoint e da
 identidade TLS.
 
+Em 05/09, a correção de `P2-03` foi instalada preservando os dados. O Moto
+permaneceu pareado depois de reiniciar o desktop, recebeu o snapshot e reduziu a
+fila de 8 para 0 sem duplicar a captura aplicada. A tela inicial passou a
+mostrar `Pareado ao desktop`; o desktop passou a mostrar o nome do aparelho e a
+atualizar o estado após aprovação, revogação ou comando manual.
+
+O mesmo aceite revelou que pendentes e concluídas usavam o mesmo ícone na lista
+Android. A variante corrigida usa círculo vazio para pendente, marca e título
+riscado/atenuado para concluída, e mantém as concluídas depois das tarefas
+abertas sem alterar a ordem relativa de cada grupo. O APK `fieldTest` foi
+reinstalado com preservação de dados; inspeção física em tema escuro confirmou
+as pendências no início da tela. Testes unitários, montagem do APK e 20 testes
+Compose direcionados passaram no AVD.
+
 ## Próxima interação mínima
 
-1. corrigir e validar o ciclo de vida do servidor de sync local reaberto em P2-03;
-2. regenerar e instalar o candidato pessoal após essa correção;
+1. regenerar e instalar o candidato pessoal após as correções finais;
+2. executar o percurso final de aceite pessoal sem dado destrutivo;
 3. backup cifrado da chave definitiva no Google Drive: concluído em 03/09/2026,
    com restauração não destrutiva validada.
 

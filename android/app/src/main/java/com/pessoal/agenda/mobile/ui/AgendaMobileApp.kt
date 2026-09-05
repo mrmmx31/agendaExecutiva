@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -77,6 +78,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
@@ -653,6 +655,7 @@ private fun TodayScreen(
     busy: Boolean,
     onLeavingHome: () -> Unit,
 ) {
+    val orderedTasks = remember(tasks) { orderTasksForToday(tasks) }
     ScreenList(title = "Hoje") {
         item {
             Button(
@@ -665,15 +668,30 @@ private fun TodayScreen(
             }
         }
         if (tasks.isEmpty()) item { EmptyState("Nenhuma tarefa local") }
-        items(tasks, key = { it.id }) { task ->
+        items(orderedTasks, key = { it.id }) { task ->
+            val completed = task.status == "COMPLETED"
             Row(
                 Modifier.fillMaxWidth().padding(vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                Icon(
+                    imageVector = if (completed) Icons.Outlined.CheckCircle
+                    else Icons.Outlined.RadioButtonUnchecked,
+                    contentDescription = if (completed) "Tarefa concluída" else "Tarefa pendente",
+                    tint = if (completed) MaterialTheme.colorScheme.tertiary
+                    else MaterialTheme.colorScheme.primary,
+                )
                 Column(Modifier.weight(1f)) {
-                    Text(task.title, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        task.title,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            textDecoration = if (completed) TextDecoration.LineThrough
+                            else TextDecoration.None,
+                        ),
+                        color = if (completed) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.onSurface,
+                    )
                     Text(
                         task.status.userLabel(),
                         style = MaterialTheme.typography.bodySmall,
@@ -685,6 +703,9 @@ private fun TodayScreen(
         }
     }
 }
+
+internal fun orderTasksForToday(tasks: List<TaskReplicaEntity>): List<TaskReplicaEntity> =
+    tasks.sortedBy { it.status == "COMPLETED" }
 
 internal fun leavingHomeCandidates(protocols: List<ProtocolTemplateEntity>): List<ProtocolTemplateEntity> =
     protocols.asSequence()

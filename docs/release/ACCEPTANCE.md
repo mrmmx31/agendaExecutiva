@@ -21,11 +21,11 @@ Health apps, suporte, controlador dos dados e estrategia de Play App Signing.
 | Item | Estado |
 |---|---|
 | gates funcionais 1 a 8 | aprovados, com limites fisicos catalogados |
-| janela passiva de 24 horas e medicao final | pendente no gate 9 |
+| janela passiva de 24 horas e medicao final | aprovada após 32h55 no gate 9 |
 | APK/AAB e verificacao de certificado comum | candidato assinado verificado; regeneração final pendente após áudio/Drive |
 | chave pessoal definitiva | criada fora do repositorio, protegida por senha e modo `600` |
 | backup cifrado separado da chave | aprovado no Google Drive `appDataFolder`; upload e restauração não destrutiva validados em 03/09/2026 |
-| instalacao do APK release pessoal | pendente da regeneração do candidato e do gate 9 |
+| instalacao do APK release pessoal | pendente da regeneração do candidato |
 | publicacao ou venda | fora do escopo da versao 0.1 |
 
 ## Cerimonia minima da chave pessoal
@@ -46,7 +46,7 @@ existir uma cópia cifrada separada e sua restauração ter sido testada.
 
 ## Condicao de fechamento
 
-O Projeto 2 chega a 100% somente depois de: concluir o gate 9 sem regressao;
-criar e validar a chave pessoal; gerar os artefatos assinados; instalar o APK
-de telefone; executar o percurso final sem dado pessoal destrutivo; registrar
-checksums e restaurar configuracoes temporarias do aparelho.
+O Projeto 2 chega a 100% somente depois de corrigir e validar a reconexão do
+sync local; regenerar os artefatos assinados; instalar o APK de telefone;
+executar o percurso final sem dado pessoal destrutivo; registrar checksums e
+restaurar configurações temporárias do aparelho.

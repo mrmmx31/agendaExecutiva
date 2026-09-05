@@ -16,10 +16,10 @@ comando pode ser enviado a telefone ou relogio fisico sem autorizacao explicita.
 | 6 | telefone fisico: instalacao, permissoes, Health Connect e exportacao | aprovado | fluxo isolado completo; origem sintética restrita ao Toolbox, exportações SAF validadas, revogação real e limpeza aprovadas |
 | 7 | audio fisico: fone com/sem fio, remocao, DND, chamada e midia | aprovado com limites do ambiente | telefone, MOTO XT220, DND e mídia concorrente aprovados; smartband é intermitente, USB ausente e chamada real não foi provocada |
 | 8 | wearable fisico: entrega, acoes disponiveis e desconexao | aprovado com limites do hardware | texto/som e ações no telefone aprovados; ações/vibração/fila no pulso indisponíveis; alertas desligados não entregam |
-| 9 | bateria, memoria e temperatura em uso prolongado | aguardando nova janela | instalação da correção de navegação invalidou o baseline; timer anterior cancelado porque o telefone sairá da rede |
+| 9 | bateria, memoria e temperatura em uso prolongado | aprovado | 32h55 após a instalação atual: 73%, 28,9 °C, cinco amostras PSS estáveis entre 162.584 e 163.073 KiB, sem crescimento monotônico e zero crashes |
 | 10 | aceite final, artefato assinado e decisao de distribuicao | preparado; bloqueado pelos gates finais | v0.1 definida como sideload pessoal; chave e backup Drive validados; falta regenerar artefatos, instalar e percorrer aceite |
 
-**Estado atual:** 80% do P2-10 (8 de 10); Projeto 2 em 97% após reabrir P2-03.
+**Estado atual:** 90% do P2-10 (9 de 10); Projeto 2 em 98% após reabrir P2-03.
 
 **Sessão física em andamento:** o detalhamento incremental, sem identificadores,
 fica em `docs/release/PHYSICAL_TEST_RESULTS.md`. Evidência parcial não altera o
@@ -159,8 +159,8 @@ telefone e Wear, comprovou o certificado comum, repetiu o gate estático e
 terminou sem publicação. Certificado e checksums públicos estão em
 `docs/release/RELEASE_0.1.md`; senha e chave privada não são versionadas. O
 backup cifrado separado e a restauração não destrutiva foram validados em
-03/09/2026. A instalação final e o percurso de aceite permanecem pendentes,
-assim como a conclusão temporal do gate 9.
+03/09/2026. A instalação final e o percurso de aceite permanecem pendentes. O
+gate temporal 9 foi concluído em 05/09/2026 após 32h55.
 
 Depois desse candidato, a seleção de áudio passou a distinguir cada saída que o
 Android realmente expõe, mantendo preferência local sem endereço Bluetooth e

@@ -114,10 +114,11 @@ baseline foi posteriormente invalidado pela correção de navegação abaixo.
 O timeout temporário de tela do Moto foi restaurado de 30 para 5 minutos. A
 instalação da correção de navegação em 03/09 invalidou o baseline anterior; o
 timer das 16:14 de 04/09 foi cancelado porque o telefone sairia da rede. Uma
-nova janela de 24 horas deve começar quando o aparelho estiver novamente
-disponível. A smartband fechada não expõe bateria por ADB, portanto esse valor
-continua dependendo de leitura manual no aplicativo companheiro ou será
-registrado como indisponível.
+coleta válida foi realizada em 05/09, 32h55 após instalar esse APK: bateria em
+73%, fora de carga, temperatura de 28,9 °C e cinco amostras PSS de 162.791,
+162.584, 162.714, 162.932 e 163.073 KiB. Não houve crescimento monotônico nem
+referência ao pacote no buffer de crash. O gate 9 foi aprovado. A smartband
+fechada não expõe bateria por ADB; essa limitação permanece registrada.
 
 ## Navegação e sync móvel
 
@@ -134,8 +135,8 @@ identidade TLS.
 
 ## Próxima interação mínima
 
-1. ao retornar com o telefone, iniciar nova janela de 24 horas com o APK atual;
-2. informar a bateria da pulseira pelo aplicativo companheiro, se disponível;
+1. corrigir e validar o ciclo de vida do servidor de sync local reaberto em P2-03;
+2. regenerar e instalar o candidato pessoal após essa correção;
 3. backup cifrado da chave definitiva no Google Drive: concluído em 03/09/2026,
    com restauração não destrutiva validada.
 

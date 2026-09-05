@@ -22,8 +22,9 @@ artefato foi publicado ou enviado a terceiro.
 | `wear-release.aab` | `6033b0286afbacf03666598dc77aef92bf96997f1845903dfdbf2dce39f1d837` |
 
 `android/scripts/p2_10_release_candidate.sh` verificou as quatro assinaturas,
-o certificado comum e o gate estático. A instalação final aguarda a regeneração
-do candidato com a seleção de áudio atual e o encerramento do gate 9.
+o certificado comum e o gate estático. O gate 9 foi concluído; a instalação
+final aguarda a regeneração do candidato com a seleção de áudio atual e a
+correção do sync local reaberto.
 
 Este candidato foi sucedido por uma alteração ainda não empacotada na seleção
 individual de saída de áudio. Os hashes acima continuam identificando o

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementação em andamento; 97% do Projeto 2 |
+| Status | Implementação em andamento; 98% do Projeto 2 |
 | Versão da spec | 1.0 |
 | Data | 2026-08-31 |
 | Plataformas | Desktop JavaFX, Android e Wear OS |
@@ -596,7 +596,7 @@ Criar `android/`, módulos `app` e futuramente `wear`, Compose, Room, lint, test
 
 **Evidência:** `./gradlew test lint assembleDebug` e o teste instrumentado Compose passaram. O APK foi instalado somente em emuladores API 34; a interface foi inspecionada em tema claro e escuro sem cortes, sobreposição ou texto escuro residual. Os dois AVDs concluíram o primeiro boot, responderam via `adb` e o Android Studio confirmou `Successful pairing` entre `Agenda_Phone_API_34` e `Agenda_Wear_API_34`. O aplicativo oficial Google Pixel Watch exigiu as permissões de notificações e dispositivos próximos no AVD; nenhuma dessas permissões foi adicionada à Agenda. Nenhum dado pessoal da Agenda, Health Connect, rede da Agenda ou IA foi utilizado.
 
-**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-03` foi reaberta com 6 de 7 itens após o teste real revelar que o servidor não sobrevive à sessão de pareamento; `P2-01`, `P2-02` e `P2-04` a `P2-09` estão concluídas, e `P2-10` tem 8 de 10 gates. O avanço geral arredondado é 97% e restam 3%. `P2-00` é especificação e não entra nesse percentual.
+**Percentual geral:** a implementação tem dez fases de `P2-01` a `P2-10`, cada uma valendo 10 pontos percentuais. `P2-03` foi reaberta com 6 de 7 itens após o teste real revelar que o servidor não sobrevive à sessão de pareamento; `P2-01`, `P2-02` e `P2-04` a `P2-09` estão concluídas, e `P2-10` tem 9 de 10 gates. O avanço geral arredondado é 98% e restam 2%. `P2-00` é especificação e não entra nesse percentual.
 
 ### P2-02 — Núcleo móvel offline
 
@@ -950,7 +950,7 @@ comando.
 
 Telefone e relógio físicos, bateria, permissões, áudio, perda de conexão, exportação para médico e revisão do enquadramento antes de qualquer alegação clínica.
 
-**Status:** Em andamento, 80% (8 de 10 gates concluídos).
+**Status:** Em andamento, 90% (9 de 10 gates concluídos).
 
 **Checklist de avanço:**
 
@@ -964,7 +964,7 @@ Telefone e relógio físicos, bateria, permissões, áudio, perda de conexão, e
 - [x] validar espelhamento conectado/desconectado na Mertto ZL02D e registrar
   ações como suportadas ou indisponíveis; manter ações completas validadas no
   módulo Wear OS;
-- [ ] medir bateria, memória e temperatura em janela prolongada nos dispositivos reais;
+- [x] medir bateria, memória e temperatura em janela prolongada nos dispositivos reais;
 - [ ] fechar aceite, assinatura, declarações de loja e decisão de distribuição.
 
 **Evidência inicial:** `android/P2_10_MATRIX.md` registra os dez gates. O app

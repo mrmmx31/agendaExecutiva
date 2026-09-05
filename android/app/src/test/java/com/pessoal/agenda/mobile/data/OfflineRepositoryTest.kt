@@ -77,6 +77,87 @@ class OfflineRepositoryTest {
     }
 
     @Test
+    fun dailyPlanFocusClosingAndReopeningWorkOffline() = runBlocking {
+        repository.initializeFictitiousData()
+        val tasks = repository.tasks.first()
+
+        repository.saveTodayPlan("NORMAL", tasks[0].id, listOf(tasks[1].id))
+        repository.selectFocus(tasks[1].id)
+
+        assertEquals("NORMAL", repository.todayPlan.first()?.capacity)
+        assertEquals(listOf("ESSENTIAL", "SUPPORT"), repository.todayPlanTasks.first().map { it.role })
+        assertEquals(tasks[1].id, repository.focusSelection.first()?.taskId)
+        assertTrue(repository.operations.first().isEmpty())
+
+        repository.closeTodayPlan("  Retomar amanhã  ")
+        assertEquals("Retomar amanhã", repository.todayPlan.first()?.closingNote)
+        assertTrue(repository.todayPlan.first()?.closedAt != null)
+
+        repository.reopenTodayPlan()
+        assertEquals(null, repository.todayPlan.first()?.closedAt)
+        assertEquals(null, repository.todayPlan.first()?.closingNote)
+        repository.selectFocus(null)
+        assertEquals(null, repository.focusSelection.first())
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun reducedDailyPlanRejectsSupportTasks() = runBlocking {
+        repository.initializeFictitiousData()
+        val tasks = repository.tasks.first()
+        repository.saveTodayPlan("REDUCED", tasks[0].id, listOf(tasks[1].id))
+    }
+
+    @Test
+    fun dailyPlanAndFocusSurviveDatabaseRecreation() {
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+            val databaseName = "agenda-mobile-today-recreation-test.db"
+            context.deleteDatabase(databaseName)
+            val clock = Clock.fixed(Instant.parse("2026-08-31T12:00:00Z"), ZoneOffset.UTC)
+            val zone = ZoneId.of("America/Manaus")
+
+            try {
+                val firstDatabase = Room.databaseBuilder(context, MobileDatabase::class.java, databaseName)
+                    .allowMainThreadQueries()
+                    .build()
+                try {
+                    val firstRepository = OfflineRepository(
+                        database = firstDatabase,
+                        clock = clock,
+                        zoneId = zone,
+                    )
+                    firstRepository.initializeFictitiousData()
+                    val task = firstRepository.tasks.first().first()
+                    firstRepository.saveTodayPlan("REDUCED", task.id, emptyList())
+                    firstRepository.selectFocus(task.id)
+                } finally {
+                    firstDatabase.close()
+                }
+
+                val restoredDatabase = Room.databaseBuilder(context, MobileDatabase::class.java, databaseName)
+                    .allowMainThreadQueries()
+                    .build()
+                try {
+                    val restoredRepository = OfflineRepository(
+                        database = restoredDatabase,
+                        clock = clock,
+                        zoneId = zone,
+                    )
+                    assertEquals("REDUCED", restoredRepository.todayPlan.first()?.capacity)
+                    assertEquals(
+                        restoredRepository.todayPlanTasks.first().single().taskId,
+                        restoredRepository.focusSelection.first()?.taskId,
+                    )
+                } finally {
+                    restoredDatabase.close()
+                }
+            } finally {
+                context.deleteDatabase(databaseName)
+            }
+        }
+    }
+
+    @Test
     fun completingProtocolStepIsIdempotentAndFinishesRun() = runBlocking {
         repository.initializeFictitiousData()
         val runId = repository.startProtocol(OfflineRepository.FIXTURE_PROTOCOL)

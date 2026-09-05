@@ -11,6 +11,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     entities = [
         MobileMetadataEntity::class,
         TaskReplicaEntity::class,
+        DailyPlanEntity::class,
+        DailyPlanItemEntity::class,
+        FocusSelectionEntity::class,
         CaptureEntity::class,
         ProtocolTemplateEntity::class,
         ProtocolStepEntity::class,
@@ -34,7 +37,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PersonalModelArtifactEntity::class,
         PersonalModelShadowMetricsEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 abstract class MobileDatabase : RoomDatabase() {
@@ -56,6 +59,7 @@ abstract class MobileDatabase : RoomDatabase() {
                 MIGRATION_7_8,
                 MIGRATION_8_9,
                 MIGRATION_9_10,
+                MIGRATION_10_11,
             ).build().also { instance = it }
         }
 
@@ -346,6 +350,45 @@ abstract class MobileDatabase : RoomDatabase() {
                         lastModelOption TEXT, updatedAt TEXT NOT NULL
                     )
                 """.trimIndent())
+            }
+        }
+
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS daily_plans (
+                        planDate TEXT NOT NULL PRIMARY KEY,
+                        capacity TEXT NOT NULL,
+                        createdAt TEXT NOT NULL,
+                        closedAt TEXT,
+                        closingNote TEXT
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS daily_plan_items (
+                        planDate TEXT NOT NULL,
+                        taskId TEXT NOT NULL,
+                        role TEXT NOT NULL,
+                        position INTEGER NOT NULL,
+                        PRIMARY KEY(planDate, taskId),
+                        FOREIGN KEY(planDate) REFERENCES daily_plans(planDate)
+                            ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(taskId) REFERENCES task_replicas(id)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_daily_plan_items_taskId ON daily_plan_items(taskId)")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_daily_plan_items_planDate_role_position ON daily_plan_items(planDate, role, position)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS focus_selections (
+                        singletonId INTEGER NOT NULL PRIMARY KEY,
+                        taskId TEXT NOT NULL,
+                        selectedAt TEXT NOT NULL,
+                        FOREIGN KEY(taskId) REFERENCES task_replicas(id)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_focus_selections_taskId ON focus_selections(taskId)")
             }
         }
     }

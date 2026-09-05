@@ -34,7 +34,7 @@ class MobileDatabaseMigrationTest {
 
         helper.runMigrationsAndValidate(
             TEST_DATABASE,
-            10,
+            11,
             true,
             MobileDatabase.MIGRATION_1_2,
             MobileDatabase.MIGRATION_2_3,
@@ -45,6 +45,7 @@ class MobileDatabaseMigrationTest {
             MobileDatabase.MIGRATION_7_8,
             MobileDatabase.MIGRATION_8_9,
             MobileDatabase.MIGRATION_9_10,
+            MobileDatabase.MIGRATION_10_11,
         ).use { database ->
             database.query("SELECT value FROM mobile_metadata WHERE `key`='contract_version'").use { cursor ->
                 cursor.moveToFirst()
@@ -80,12 +81,13 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            QUEUE_DATABASE, 10, true, MobileDatabase.MIGRATION_2_3,
+            QUEUE_DATABASE, 11, true, MobileDatabase.MIGRATION_2_3,
             MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5, MobileDatabase.MIGRATION_5_6,
             MobileDatabase.MIGRATION_6_7,
             MobileDatabase.MIGRATION_7_8,
             MobileDatabase.MIGRATION_8_9,
             MobileDatabase.MIGRATION_9_10,
+            MobileDatabase.MIGRATION_10_11,
         ).use { database ->
             database.query("SELECT status, attemptCount, updatedAt FROM pending_operations").use { cursor ->
                 cursor.moveToFirst()
@@ -101,10 +103,11 @@ class MobileDatabaseMigrationTest {
         helper.createDatabase(ALERT_DATABASE, 3).close()
 
         helper.runMigrationsAndValidate(
-            ALERT_DATABASE, 10, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
+            ALERT_DATABASE, 11, true, MobileDatabase.MIGRATION_3_4, MobileDatabase.MIGRATION_4_5,
             MobileDatabase.MIGRATION_5_6, MobileDatabase.MIGRATION_6_7, MobileDatabase.MIGRATION_7_8,
             MobileDatabase.MIGRATION_8_9,
             MobileDatabase.MIGRATION_9_10,
+            MobileDatabase.MIGRATION_10_11,
         ).use { database ->
             database.query("SELECT COUNT(*) FROM alert_definitions").use { cursor ->
                 cursor.moveToFirst()
@@ -143,8 +146,9 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            RECOMMENDATION_DATABASE, 10, true, MobileDatabase.MIGRATION_8_9,
+            RECOMMENDATION_DATABASE, 11, true, MobileDatabase.MIGRATION_8_9,
             MobileDatabase.MIGRATION_9_10,
+            MobileDatabase.MIGRATION_10_11,
         ).use { database ->
             database.query("SELECT value FROM mobile_metadata WHERE `key`='fixture'").use { cursor ->
                 cursor.moveToFirst()
@@ -183,7 +187,8 @@ class MobileDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            MODEL_DATABASE, 10, true, MobileDatabase.MIGRATION_9_10,
+            MODEL_DATABASE, 11, true, MobileDatabase.MIGRATION_9_10,
+            MobileDatabase.MIGRATION_10_11,
         ).use { database ->
             database.query("SELECT personalizationEnabled FROM recommendation_settings WHERE id='installation'").use { cursor ->
                 cursor.moveToFirst()
@@ -194,11 +199,34 @@ class MobileDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun migrateModelStorageToDailyPlanAndFocus() {
+        helper.createDatabase(TODAY_DATABASE, 10).use { database ->
+            database.execSQL(
+                "INSERT INTO task_replicas(id,title,status,revision,updatedAt,tombstone) VALUES(?,?,?,?,?,?)",
+                arrayOf("10000000-0000-4000-8000-000000000101", "Tarefa preservada", "PENDING", 1, "2026-09-05T12:00:00Z", 0),
+            )
+        }
+
+        helper.runMigrationsAndValidate(
+            TODAY_DATABASE, 11, true, MobileDatabase.MIGRATION_10_11,
+        ).use { database ->
+            database.query("SELECT title FROM task_replicas WHERE id='10000000-0000-4000-8000-000000000101'").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("Tarefa preservada", cursor.getString(0))
+            }
+            database.query("SELECT planDate, capacity, closedAt FROM daily_plans LIMIT 0").close()
+            database.query("SELECT planDate, taskId, role, position FROM daily_plan_items LIMIT 0").close()
+            database.query("SELECT singletonId, taskId, selectedAt FROM focus_selections LIMIT 0").close()
+        }
+    }
+
     private companion object {
         const val TEST_DATABASE = "agenda-mobile-migration-test.db"
         const val QUEUE_DATABASE = "agenda-mobile-queue-migration-test.db"
         const val ALERT_DATABASE = "agenda-mobile-alert-migration-test.db"
         const val RECOMMENDATION_DATABASE = "agenda-mobile-recommendation-migration-test.db"
         const val MODEL_DATABASE = "agenda-mobile-model-migration-test.db"
+        const val TODAY_DATABASE = "agenda-mobile-today-migration-test.db"
     }
 }

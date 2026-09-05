@@ -10,6 +10,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.health.connect.client.PermissionController
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -50,8 +51,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -74,10 +78,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -92,6 +98,7 @@ import com.pessoal.agenda.mobile.data.local.PendingOperationEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
 import com.pessoal.agenda.mobile.data.local.SyncConflictEntity
+import com.pessoal.agenda.mobile.data.OfflineRepository
 import com.pessoal.agenda.mobile.alert.SensoryChannel
 import com.pessoal.agenda.mobile.health.report.HealthReportFormat
 import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
@@ -142,6 +149,10 @@ fun AgendaMobileApp(
             onStartProtocol = viewModel::startProtocol,
             onCompleteStep = viewModel::completeStep,
             onCancelProtocol = viewModel::cancelProtocol,
+            onSaveTodayPlan = viewModel::saveTodayPlan,
+            onSelectFocus = viewModel::selectFocus,
+            onCloseToday = viewModel::closeToday,
+            onReopenToday = viewModel::reopenToday,
             onProposeProtocolStep = viewModel::proposeProtocolStep,
             onSync = viewModel::syncNow,
             onPair = viewModel::pairDesktop,
@@ -218,6 +229,10 @@ internal fun AgendaMobileScreen(
     onStartProtocol: (String) -> Unit,
     onCompleteStep: (String, String) -> Unit,
     onCancelProtocol: (String) -> Unit = {},
+    onSaveTodayPlan: (String, String, List<String>) -> Unit = { _, _, _ -> },
+    onSelectFocus: (String?) -> Unit = {},
+    onCloseToday: (String) -> Unit = {},
+    onReopenToday: () -> Unit = {},
     onSync: () -> Unit,
     onPair: (String, String) -> Unit,
     onCancelPairing: () -> Unit,
@@ -249,6 +264,7 @@ internal fun AgendaMobileScreen(
     onActivatePersonalModel: (String) -> Unit = {},
     onRollbackPersonalModel: () -> Unit = {},
 ) {
+    val compactHeight = LocalConfiguration.current.screenHeightDp < 500
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var showPairing by rememberSaveable { mutableStateOf(false) }
     var showSensorySettings by rememberSaveable { mutableStateOf(false) }
@@ -341,7 +357,7 @@ internal fun AgendaMobileScreen(
                             showSensorySettings -> "Configurações sensoriais"
                             else -> "Agenda"
                         })
-                        if (!showSensorySettings && !showHealth && !showRecommendations) {
+                        if (!compactHeight && !showSensorySettings && !showHealth && !showRecommendations) {
                             Text(
                                 text = "Núcleo offline",
                                 style = MaterialTheme.typography.labelMedium,
@@ -374,12 +390,17 @@ internal fun AgendaMobileScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            if (!showSensorySettings && !showHealth && !showRecommendations) {
+            if (!compactHeight && !showSensorySettings && !showHealth && !showRecommendations) {
                 NavigationBar {
                     MobileSection.entries.forEachIndexed { index, section ->
                         NavigationBarItem(
@@ -393,7 +414,19 @@ internal fun AgendaMobileScreen(
             }
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
+        Row(Modifier.fillMaxSize().padding(padding)) {
+            if (compactHeight && !showSensorySettings && !showHealth && !showRecommendations) {
+                NavigationRail {
+                    MobileSection.entries.forEachIndexed { index, section ->
+                        NavigationRailItem(
+                            selected = selected == index,
+                            onClick = { selected = index },
+                            icon = { Icon(section.icon, contentDescription = section.label) },
+                        )
+                    }
+                }
+            }
+            Column(Modifier.fillMaxSize().weight(1f)) {
             if (showHealth) {
                 HealthPrivacyScreen(
                     state = state.health,
@@ -441,15 +474,22 @@ internal fun AgendaMobileScreen(
                     onSync,
                     onPair = { showPairing = true },
                 )
-                AlertsOptInBand(
-                    enabled = state.sensorySettings.profile.globalEnabled,
-                    busy = state.busy,
-                    onChanged = onVisualAlertsChanged,
-                )
+                if (!compactHeight) {
+                    AlertsOptInBand(
+                        enabled = state.sensorySettings.profile.globalEnabled,
+                        busy = state.busy,
+                        onChanged = onVisualAlertsChanged,
+                    )
+                }
                 when (MobileSection.entries[selected]) {
                     MobileSection.TODAY -> TodayScreen(
                         tasks = state.tasks,
+                        today = state.today,
                         busy = state.busy,
+                        onSavePlan = onSaveTodayPlan,
+                        onSelectFocus = onSelectFocus,
+                        onCloseDay = onCloseToday,
+                        onReopenDay = onReopenToday,
                         onLeavingHome = {
                             when {
                                 state.activeRunSteps.isNotEmpty() -> selected = MobileSection.PROTOCOLS.ordinal
@@ -475,6 +515,7 @@ internal fun AgendaMobileScreen(
                     MobileSection.QUEUE -> QueueScreen(state.operations, state.conflicts)
                 }
             }
+        }
         }
     }
 }
@@ -656,11 +697,193 @@ private fun PairingDialog(
 @Composable
 private fun TodayScreen(
     tasks: List<TaskReplicaEntity>,
+    today: TodayUiState,
     busy: Boolean,
+    onSavePlan: (String, String, List<String>) -> Unit,
+    onSelectFocus: (String?) -> Unit,
+    onCloseDay: (String) -> Unit,
+    onReopenDay: () -> Unit,
     onLeavingHome: () -> Unit,
 ) {
     val orderedTasks = remember(tasks) { orderTasksForToday(tasks) }
+    val openTasks = remember(tasks) {
+        tasks.filter { !it.tombstone && it.status !in setOf("COMPLETED", "CANCELLED") }
+    }
+    var showPlanEditor by rememberSaveable { mutableStateOf(false) }
+    var showFocusPicker by rememberSaveable { mutableStateOf(false) }
+    var showCloseDay by rememberSaveable { mutableStateOf(false) }
+    var reducedCapacity by rememberSaveable { mutableStateOf(false) }
+    var essentialTaskId by rememberSaveable { mutableStateOf<String?>(null) }
+    var supportTaskIds by rememberSaveable { mutableStateOf<List<String>>(emptyList()) }
+    var closingNote by rememberSaveable { mutableStateOf("") }
+
+    if (showFocusPicker) {
+        AlertDialog(
+            onDismissRequest = { showFocusPicker = false },
+            title = { Text("Escolher foco") },
+            text = {
+                LazyColumn(modifier = Modifier.height(320.dp)) {
+                    items(openTasks, key = { it.id }) { task ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = today.focusSource == "MANUAL" && today.focusTask?.id == task.id,
+                                onClick = {
+                                    onSelectFocus(task.id)
+                                    showFocusPicker = false
+                                },
+                                enabled = !busy,
+                            )
+                            Text(task.title, modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                OutlinedButton(
+                    onClick = {
+                        onSelectFocus(null)
+                        showFocusPicker = false
+                    },
+                    enabled = !busy,
+                ) { Text("Usar automático") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showFocusPicker = false }) { Text("Cancelar") }
+            },
+        )
+    }
+    if (showPlanEditor) {
+        AlertDialog(
+            onDismissRequest = { showPlanEditor = false },
+            title = { Text(if (today.plan == null) "Começar meu dia" else "Editar plano de hoje") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            reducedCapacity = !reducedCapacity
+                            if (reducedCapacity) supportTaskIds = emptyList()
+                        },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = reducedCapacity,
+                            onCheckedChange = {
+                                reducedCapacity = it
+                                if (it) supportTaskIds = emptyList()
+                            },
+                        )
+                        Text("Capacidade reduzida")
+                    }
+                    Text("Tarefa essencial", style = MaterialTheme.typography.titleSmall)
+                    LazyColumn(modifier = Modifier.height(300.dp)) {
+                        items(openTasks, key = { it.id }) { task ->
+                            val essential = essentialTaskId == task.id
+                            val support = task.id in supportTaskIds
+                            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(
+                                        selected = essential,
+                                        onClick = {
+                                            essentialTaskId = task.id
+                                            supportTaskIds = supportTaskIds - task.id
+                                        },
+                                    )
+                                    Text(task.title, modifier = Modifier.weight(1f), maxLines = 2)
+                                }
+                                if (!reducedCapacity && !essential) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(
+                                            checked = support,
+                                            onCheckedChange = { checked ->
+                                                supportTaskIds = when {
+                                                    checked && supportTaskIds.size < 2 -> supportTaskIds + task.id
+                                                    !checked -> supportTaskIds - task.id
+                                                    else -> supportTaskIds
+                                                }
+                                            },
+                                        )
+                                        Text("Apoio")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onSavePlan(
+                            if (reducedCapacity) "REDUCED" else "NORMAL",
+                            requireNotNull(essentialTaskId),
+                            supportTaskIds,
+                        )
+                        showPlanEditor = false
+                    },
+                    enabled = essentialTaskId != null && !busy,
+                ) { Text("Salvar plano") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showPlanEditor = false }) { Text("Cancelar") }
+            },
+        )
+    }
+    if (showCloseDay) {
+        AlertDialog(
+            onDismissRequest = { showCloseDay = false },
+            title = { Text("Encerrar meu dia?") },
+            text = {
+                OutlinedTextField(
+                    value = closingNote,
+                    onValueChange = { closingNote = it.take(OfflineRepository.MAX_CLOSING_NOTE_LENGTH) },
+                    label = { Text("Nota opcional") },
+                    minLines = 3,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onCloseDay(closingNote)
+                        showCloseDay = false
+                    },
+                    enabled = !busy,
+                ) { Text("Encerrar dia") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCloseDay = false }) { Text("Continuar o dia") }
+            },
+        )
+    }
     ScreenList(title = "Hoje") {
+        item {
+            Text("Agora", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            today.focusTask?.let { focus ->
+                Text(focus.title, style = MaterialTheme.typography.titleLarge)
+                Text(
+                    when (today.focusSource) {
+                        "MANUAL" -> "Escolhido por você"
+                        "PLAN" -> "Essencial do plano de hoje"
+                        else -> "Sugestão automática"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } ?: Text("Nenhuma tarefa aberta para focar")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { showFocusPicker = true },
+                    enabled = openTasks.isNotEmpty() && !busy,
+                ) { Text("Escolher foco") }
+                if (today.focusSource == "MANUAL") {
+                    OutlinedButton(onClick = { onSelectFocus(null) }, enabled = !busy) {
+                        Text("Usar automático")
+                    }
+                }
+            }
+        }
         item {
             Button(
                 onClick = onLeavingHome,
@@ -669,6 +892,53 @@ private fun TodayScreen(
             ) {
                 Icon(Icons.Outlined.Home, contentDescription = null)
                 Text("Vou sair")
+            }
+        }
+        item {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text("Plano de hoje", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            when {
+                today.plan == null -> {
+                    Text("Escolha uma tarefa essencial e, se couber, até duas de apoio.")
+                    Button(
+                        onClick = {
+                            reducedCapacity = false
+                            essentialTaskId = today.focusTask?.id ?: openTasks.firstOrNull()?.id
+                            supportTaskIds = emptyList()
+                            showPlanEditor = true
+                        },
+                        enabled = openTasks.isNotEmpty() && !busy,
+                    ) { Text("Começar meu dia") }
+                }
+                today.plan.closedAt != null -> {
+                    Text("Dia encerrado")
+                    today.plan.closingNote?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    OutlinedButton(onClick = onReopenDay, enabled = !busy) { Text("Reabrir dia") }
+                }
+                else -> {
+                    Text(if (today.plan.capacity == "REDUCED") "Capacidade reduzida" else "Capacidade normal")
+                    today.planTasks.forEach { item ->
+                        Text(if (item.role == "ESSENTIAL") "Essencial: ${item.title}" else "Apoio: ${item.title}")
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = {
+                                reducedCapacity = today.plan.capacity == "REDUCED"
+                                essentialTaskId = today.planTasks.firstOrNull { it.role == "ESSENTIAL" }?.taskId
+                                supportTaskIds = today.planTasks.filter { it.role == "SUPPORT" }.map { it.taskId }
+                                showPlanEditor = true
+                            },
+                            enabled = !busy,
+                        ) { Text("Editar plano") }
+                        OutlinedButton(
+                            onClick = {
+                                closingNote = ""
+                                showCloseDay = true
+                            },
+                            enabled = !busy,
+                        ) { Text("Encerrar dia") }
+                    }
+                }
             }
         }
         if (tasks.isEmpty()) item { EmptyState("Nenhuma tarefa local") }
@@ -938,7 +1208,7 @@ private fun QueueScreen(
 @Composable
 private fun ScreenList(title: String, content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().testTag("screen-$title"),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

@@ -247,6 +247,54 @@ interface OfflineDao {
     @Upsert
     suspend fun upsertTasks(values: List<TaskReplicaEntity>)
 
+    @Query("SELECT * FROM task_replicas WHERE id=:id")
+    suspend fun task(id: String): TaskReplicaEntity?
+
+    @Query("SELECT * FROM daily_plans WHERE planDate = :date")
+    fun observeDailyPlan(date: String): Flow<DailyPlanEntity?>
+
+    @Query("SELECT * FROM daily_plans WHERE planDate = :date")
+    suspend fun dailyPlan(date: String): DailyPlanEntity?
+
+    @Upsert
+    suspend fun upsertDailyPlan(value: DailyPlanEntity)
+
+    @Query("DELETE FROM daily_plan_items WHERE planDate = :date")
+    suspend fun deleteDailyPlanItems(date: String)
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertDailyPlanItems(values: List<DailyPlanItemEntity>)
+
+    @Query("""
+        SELECT daily_plan_items.planDate AS planDate,
+               daily_plan_items.taskId AS taskId,
+               daily_plan_items.role AS role,
+               daily_plan_items.position AS position,
+               task_replicas.title AS title,
+               task_replicas.status AS status
+        FROM daily_plan_items
+        JOIN task_replicas ON task_replicas.id = daily_plan_items.taskId
+        WHERE daily_plan_items.planDate = :date AND task_replicas.tombstone = 0
+        ORDER BY CASE daily_plan_items.role WHEN 'ESSENTIAL' THEN 0 ELSE 1 END,
+                 daily_plan_items.position
+    """)
+    fun observeDailyPlanTasks(date: String): Flow<List<DailyPlanTaskRow>>
+
+    @Query("UPDATE daily_plans SET closedAt=:closedAt, closingNote=:note WHERE planDate=:date AND closedAt IS NULL")
+    suspend fun closeDailyPlan(date: String, closedAt: String, note: String?): Int
+
+    @Query("UPDATE daily_plans SET closedAt=NULL, closingNote=NULL WHERE planDate=:date AND closedAt IS NOT NULL")
+    suspend fun reopenDailyPlan(date: String): Int
+
+    @Query("SELECT * FROM focus_selections WHERE singletonId = 1")
+    fun observeFocusSelection(): Flow<FocusSelectionEntity?>
+
+    @Upsert
+    suspend fun upsertFocusSelection(value: FocusSelectionEntity)
+
+    @Query("DELETE FROM focus_selections")
+    suspend fun clearFocusSelection()
+
     @Query("SELECT * FROM captures ORDER BY createdAt DESC")
     fun observeCaptures(): Flow<List<CaptureEntity>>
 
@@ -402,6 +450,15 @@ data class ActiveRunStepRow(
     val position: Int,
     val label: String,
     val completedAt: String?,
+)
+
+data class DailyPlanTaskRow(
+    val planDate: String,
+    val taskId: String,
+    val role: String,
+    val position: Int,
+    val title: String,
+    val status: String,
 )
 
 data class AlertScheduleRow(

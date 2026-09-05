@@ -21,6 +21,9 @@ import com.pessoal.agenda.mobile.alert.output.AudioOutputDevice
 import com.pessoal.agenda.mobile.alert.output.AudioOutputPreferenceStore
 import com.pessoal.agenda.mobile.data.local.ActiveRunStepRow
 import com.pessoal.agenda.mobile.data.local.CaptureEntity
+import com.pessoal.agenda.mobile.data.local.DailyPlanEntity
+import com.pessoal.agenda.mobile.data.local.DailyPlanTaskRow
+import com.pessoal.agenda.mobile.data.local.FocusSelectionEntity
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
 import com.pessoal.agenda.mobile.data.local.PendingOperationEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
@@ -102,6 +105,15 @@ data class MobileUiState(
     val sensorySettings: SensorySettingsUiState = SensorySettingsUiState(),
     val health: HealthUiState = HealthUiState(),
     val recommendation: RecommendationUiState = RecommendationUiState(),
+    val today: TodayUiState = TodayUiState(),
+)
+
+data class TodayUiState(
+    val date: String = "",
+    val plan: DailyPlanEntity? = null,
+    val planTasks: List<DailyPlanTaskRow> = emptyList(),
+    val focusTask: TaskReplicaEntity? = null,
+    val focusSource: String = "AUTOMATIC",
 )
 
 data class RecommendationUiState(
@@ -211,14 +223,38 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             operations, conflicts -> operations to conflicts
     }
 
-    private val content = combine(
-        repository.tasks,
-        repository.captures,
+    private val todayContent = combine(
+        repository.todayPlan,
+        repository.todayPlanTasks,
+        repository.focusSelection,
+    ) { plan, planTasks, focus -> TodayLocalContent(plan, planTasks, focus) }
+
+    private val secondaryContent = combine(
         repository.protocols,
         repository.activeRunSteps,
         queue,
-    ) { tasks, captures, protocols, activeRunSteps, queue ->
-        OfflineContent(tasks, captures, protocols, activeRunSteps, queue.first, queue.second)
+        todayContent,
+    ) { protocols, activeRunSteps, queue, today ->
+        SecondaryOfflineContent(protocols, activeRunSteps, queue.first, queue.second, today)
+    }
+
+    private val content = combine(
+        repository.tasks,
+        repository.captures,
+        secondaryContent,
+    ) { tasks, captures, secondary ->
+        val resolvedFocus = resolveFocus(tasks, secondary.today.planTasks, secondary.today.focus)
+        OfflineContent(
+            tasks, captures, secondary.protocols, secondary.activeRunSteps,
+            secondary.operations, secondary.conflicts,
+            TodayUiState(
+                date = repository.todayDate,
+                plan = secondary.today.plan,
+                planTasks = secondary.today.planTasks,
+                focusTask = resolvedFocus.first,
+                focusSource = resolvedFocus.second,
+            ),
+        )
     }
 
     private val privateData = combine(health, recommendation) { healthState, recommendationState ->
@@ -254,6 +290,7 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
             sensorySettings = pairingState.sensorySettings,
             health = pairingState.health,
             recommendation = pairingState.recommendation,
+            today = content.today,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MobileUiState())
 
@@ -291,6 +328,22 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         val runId = repository.startProtocol(protocolId)
         AndroidWearProtocolPublisher(getApplication(), repository).publish(runId)
     }
+
+    fun saveTodayPlan(capacity: String, essentialTaskId: String, supportTaskIds: List<String>) = execute(
+        successMessage = "Plano de hoje salvo neste telefone.",
+    ) { repository.saveTodayPlan(capacity, essentialTaskId, supportTaskIds) }
+
+    fun selectFocus(taskId: String?) = execute(
+        successMessage = if (taskId == null) "Seleção automática restaurada." else "Foco escolhido.",
+    ) { repository.selectFocus(taskId) }
+
+    fun closeToday(note: String) = execute(
+        successMessage = "Dia encerrado neste telefone.",
+    ) { repository.closeTodayPlan(note) }
+
+    fun reopenToday() = execute(
+        successMessage = "Dia reaberto.",
+    ) { repository.reopenTodayPlan() }
 
     fun completeStep(runId: String, stepId: String) = execute(
         successMessage = "Passo confirmado.",
@@ -808,7 +861,37 @@ private data class OfflineContent(
     val activeRunSteps: List<ActiveRunStepRow>,
     val operations: List<PendingOperationEntity>,
     val conflicts: List<SyncConflictEntity>,
+    val today: TodayUiState,
 )
+
+private data class SecondaryOfflineContent(
+    val protocols: List<ProtocolTemplateEntity>,
+    val activeRunSteps: List<ActiveRunStepRow>,
+    val operations: List<PendingOperationEntity>,
+    val conflicts: List<SyncConflictEntity>,
+    val today: TodayLocalContent,
+)
+
+private data class TodayLocalContent(
+    val plan: DailyPlanEntity?,
+    val planTasks: List<DailyPlanTaskRow>,
+    val focus: FocusSelectionEntity?,
+)
+
+internal fun resolveFocus(
+    tasks: List<TaskReplicaEntity>,
+    planTasks: List<DailyPlanTaskRow>,
+    selection: FocusSelectionEntity?,
+): Pair<TaskReplicaEntity?, String> {
+    val open = tasks.filter { !it.tombstone && it.status !in setOf("COMPLETED", "CANCELLED") }
+    selection?.let { selected ->
+        open.firstOrNull { it.id == selected.taskId }?.let { return it to "MANUAL" }
+    }
+    planTasks.firstOrNull { it.role == "ESSENTIAL" }
+        ?.let { item -> open.firstOrNull { it.id == item.taskId } }
+        ?.let { return it to "PLAN" }
+    return open.sortedWith(compareBy<TaskReplicaEntity>({ it.status != "IN_PROGRESS" }, { it.title })).firstOrNull() to "AUTOMATIC"
+}
 
 private data class PairingUiState(
     val inProgress: Boolean,

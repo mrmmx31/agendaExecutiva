@@ -24,6 +24,9 @@ import com.pessoal.agenda.mobile.alert.output.AudioOutputDevice
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
 import com.pessoal.agenda.mobile.data.local.ActiveRunStepRow
+import com.pessoal.agenda.mobile.data.local.DailyPlanEntity
+import com.pessoal.agenda.mobile.data.local.DailyPlanTaskRow
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
 import com.pessoal.agenda.mobile.data.local.HealthConsentEntity
 import com.pessoal.agenda.mobile.health.HealthCategory
@@ -92,6 +95,100 @@ class AgendaMobileAppTest {
         compose.onNodeWithText("Tarefa fictícia").assertIsDisplayed()
         compose.onNodeWithContentDescription("Tarefa pendente").assertIsDisplayed()
         compose.onNodeWithContentDescription("Tarefa concluída").assertIsDisplayed()
+    }
+
+    @Test
+    fun todayCreatesReducedPlanFromCurrentFocus() {
+        var saved: Triple<String, String, List<String>>? = null
+        val task = TaskReplicaEntity(
+            id = "task-id",
+            title = "Tarefa essencial",
+            status = "PENDING",
+            revision = 1,
+            updatedAt = "2026-09-05T12:00:00Z",
+        )
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(tasks = listOf(task), today = TodayUiState(focusTask = task)),
+                    onSaveCapture = { _, _ -> }, onStartProtocol = {}, onCompleteStep = { _, _ -> },
+                    onSaveTodayPlan = { capacity, essential, supports ->
+                        saved = Triple(capacity, essential, supports)
+                    },
+                    onSync = {}, onPair = { _, _ -> }, onCancelPairing = {},
+                    onPairingCompletionShown = {}, onFeedbackShown = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("screen-Hoje").performScrollToNode(hasText("Começar meu dia"))
+        compose.onNodeWithText("Começar meu dia").performClick()
+        compose.onNodeWithText("Capacidade reduzida").performClick()
+        compose.onNodeWithText("Salvar plano").performClick()
+
+        assertEquals(Triple("REDUCED", "task-id", emptyList<String>()), saved)
+    }
+
+    @Test
+    fun dailyPlanDialogSurvivesStateRestoration() {
+        val restoration = StateRestorationTester(compose)
+        val task = TaskReplicaEntity(
+            id = "task-id",
+            title = "Preparar relatório",
+            status = "PENDING",
+            revision = 1,
+            updatedAt = "2026-09-05T12:00:00Z",
+        )
+        restoration.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(tasks = listOf(task), today = TodayUiState(focusTask = task)),
+                    onSaveCapture = { _, _ -> }, onStartProtocol = {}, onCompleteStep = { _, _ -> },
+                    onSync = {}, onPair = { _, _ -> }, onCancelPairing = {},
+                    onPairingCompletionShown = {}, onFeedbackShown = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("screen-Hoje").performScrollToNode(hasText("Começar meu dia"))
+        compose.onNodeWithText("Começar meu dia").performClick()
+        compose.onNodeWithText("Editar plano de hoje").assertDoesNotExist()
+        compose.onNodeWithText("Salvar plano").assertIsDisplayed()
+        restoration.emulateSavedInstanceStateRestore()
+        compose.onNodeWithText("Salvar plano").assertIsDisplayed()
+    }
+
+    @Test
+    fun closedDayCanBeReopened() {
+        var reopened = false
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(today = TodayUiState(
+                        plan = DailyPlanEntity(
+                            planDate = "2026-09-05",
+                            capacity = "NORMAL",
+                            createdAt = "2026-09-05T12:00:00Z",
+                            closedAt = "2026-09-05T20:00:00Z",
+                            closingNote = "Continuar amanhã",
+                        ),
+                        planTasks = listOf(DailyPlanTaskRow(
+                            "2026-09-05", "task-id", "ESSENTIAL", 0, "Tarefa", "PENDING",
+                        )),
+                    )),
+                    onSaveCapture = { _, _ -> }, onStartProtocol = {}, onCompleteStep = { _, _ -> },
+                    onReopenToday = { reopened = true },
+                    onSync = {}, onPair = { _, _ -> }, onCancelPairing = {},
+                    onPairingCompletionShown = {}, onFeedbackShown = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("screen-Hoje").performScrollToNode(hasText("Dia encerrado"))
+        compose.onNodeWithText("Dia encerrado").assertIsDisplayed()
+        compose.onNodeWithText("Continuar amanhã").assertIsDisplayed()
+        compose.onNodeWithText("Reabrir dia").performClick()
+        assertEquals(true, reopened)
     }
 
     @Test

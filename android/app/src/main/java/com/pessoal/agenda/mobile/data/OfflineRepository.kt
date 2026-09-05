@@ -3,6 +3,10 @@ package com.pessoal.agenda.mobile.data
 import androidx.room.withTransaction
 import com.pessoal.agenda.mobile.data.local.ActiveRunStepRow
 import com.pessoal.agenda.mobile.data.local.CaptureEntity
+import com.pessoal.agenda.mobile.data.local.DailyPlanEntity
+import com.pessoal.agenda.mobile.data.local.DailyPlanItemEntity
+import com.pessoal.agenda.mobile.data.local.DailyPlanTaskRow
+import com.pessoal.agenda.mobile.data.local.FocusSelectionEntity
 import com.pessoal.agenda.mobile.data.local.MobileDatabase
 import com.pessoal.agenda.mobile.data.local.MobileMetadataEntity
 import com.pessoal.agenda.mobile.data.local.PendingOperationEntity
@@ -21,6 +25,7 @@ import com.pessoal.agenda.wear.contract.WearProtocolStepState
 import java.security.MessageDigest
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -46,6 +51,10 @@ class OfflineRepository(
     val protocols: Flow<List<ProtocolTemplateEntity>> = dao.observeProtocols()
     val activeRunSteps: Flow<List<ActiveRunStepRow>> = dao.observeActiveRunSteps()
     val operations: Flow<List<PendingOperationEntity>> = dao.observeOperations()
+    val todayDate: String = LocalDate.now(clock.withZone(zoneId)).toString()
+    val todayPlan: Flow<DailyPlanEntity?> = dao.observeDailyPlan(todayDate)
+    val todayPlanTasks: Flow<List<DailyPlanTaskRow>> = dao.observeDailyPlanTasks(todayDate)
+    val focusSelection: Flow<FocusSelectionEntity?> = dao.observeFocusSelection()
 
     suspend fun alignDeviceIdentity() = database.withTransaction { deviceId(instant()) }
 
@@ -115,6 +124,63 @@ class OfflineRepository(
             )
         }
         return captureId
+    }
+
+    suspend fun saveTodayPlan(
+        capacity: String,
+        essentialTaskId: String,
+        supportTaskIds: List<String>,
+    ) = database.withTransaction {
+        require(capacity in setOf("NORMAL", "REDUCED")) { "Capacidade do dia inválida." }
+        val supports = supportTaskIds.distinct()
+        require(supports.size == supportTaskIds.size && supports.size <= 2) {
+            "Escolha no máximo duas tarefas de apoio, sem repetição."
+        }
+        require(capacity != "REDUCED" || supports.isEmpty()) {
+            "Capacidade reduzida aceita somente a tarefa essencial."
+        }
+        require(essentialTaskId !in supports) { "Cada tarefa pode aparecer apenas uma vez no plano." }
+        (listOf(essentialTaskId) + supports).forEach { taskId ->
+            val task = requireNotNull(dao.task(taskId)) { "Tarefa não encontrada." }
+            require(task.isOpen()) { "O plano aceita somente tarefas abertas." }
+        }
+        val existing = dao.dailyPlan(todayDate)
+        dao.upsertDailyPlan(
+            DailyPlanEntity(
+                planDate = todayDate,
+                capacity = capacity,
+                createdAt = existing?.createdAt ?: instant(),
+            ),
+        )
+        dao.deleteDailyPlanItems(todayDate)
+        dao.insertDailyPlanItems(
+            listOf(DailyPlanItemEntity(todayDate, essentialTaskId, "ESSENTIAL", 0)) +
+                supports.mapIndexed { index, id ->
+                    DailyPlanItemEntity(todayDate, id, "SUPPORT", index)
+                },
+        )
+    }
+
+    suspend fun selectFocus(taskId: String?) = database.withTransaction {
+        if (taskId == null) {
+            dao.clearFocusSelection()
+            return@withTransaction
+        }
+        val task = requireNotNull(dao.task(taskId)) { "Tarefa não encontrada." }
+        require(task.isOpen()) { "Escolha uma tarefa aberta para o foco." }
+        dao.upsertFocusSelection(FocusSelectionEntity(taskId = taskId, selectedAt = instant()))
+    }
+
+    suspend fun closeTodayPlan(rawNote: String) = database.withTransaction {
+        val plan = requireNotNull(dao.dailyPlan(todayDate)) { "Não há plano para encerrar." }
+        if (plan.closedAt != null) return@withTransaction
+        val note = rawNote.trim().takeIf(String::isNotEmpty)?.take(MAX_CLOSING_NOTE_LENGTH)
+        check(dao.closeDailyPlan(todayDate, instant(), note) == 1)
+    }
+
+    suspend fun reopenTodayPlan() = database.withTransaction {
+        requireNotNull(dao.dailyPlan(todayDate)) { "Não há plano para reabrir." }
+        dao.reopenDailyPlan(todayDate)
     }
 
     suspend fun startProtocol(protocolId: String): String {
@@ -304,6 +370,7 @@ class OfflineRepository(
     companion object {
         const val CONTRACT_VERSION = 1
         const val MAX_CAPTURE_LENGTH = 4000
+        const val MAX_CLOSING_NOTE_LENGTH = 500
         private const val DEVICE_ID_KEY = "device_id"
         private const val FIXTURE_TASK_ONE = "00000000-0000-4000-8000-000000000101"
         private const val FIXTURE_TASK_TWO = "00000000-0000-4000-8000-000000000102"
@@ -314,6 +381,8 @@ class OfflineRepository(
             .joinToString("") { "%02x".format(it) }
     }
 }
+
+private fun TaskReplicaEntity.isOpen(): Boolean = !tombstone && status !in setOf("COMPLETED", "CANCELLED")
 
 @Serializable
 private data class CaptureCreatedPayload(

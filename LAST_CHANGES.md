@@ -7,43 +7,41 @@
 
 | Campo | Valor |
 |---|---|
-| Mensagem | docs(p3): concluir baseline e contratos A3-00 |
-| Data | 2026-09-05 08:13:58 -0400 |
+| Mensagem | feat(android): adicionar plano diario e foco |
+| Data | 2026-09-05 10:12:08 -0400 |
 | Autor | mrmmx31 |
 
 ## Arquivos Alterados
 
 ```
-ANDROID_EXPANSION_SPEC.md
-MAINTENANCE_MAP.md
-android/P3_00_BASELINE.md
-android/P3_00_NAVIGATION.md
-android/app/src/test/java/com/pessoal/agenda/mobile/sync/SharedContractFixtureTest.kt
-android/contracts/EXPANSION_V1.md
-android/contracts/README.md
-android/contracts/fixtures/v1/expansion-domain-catalog.valid.json
-android/contracts/fixtures/v1/protocol-run-cancelled.valid.json
-android/contracts/v1/expansion-domain-catalog.schema.json
-android/contracts/v1/protocol-run-cancelled.schema.json
-src/test/java/com/pessoal/agenda/contracts/SharedContractFixtureTest.java
+android/app/schemas/com.pessoal.agenda.mobile.data.local.MobileDatabase/11.json
+android/app/src/androidTest/java/com/pessoal/agenda/mobile/data/local/MobileDatabaseMigrationTest.kt
+android/app/src/androidTest/java/com/pessoal/agenda/mobile/ui/AgendaMobileAppTest.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/OfflineRepository.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/local/MobileDatabase.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/local/OfflineDao.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/data/local/OfflineEntities.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileApp.kt
+android/app/src/main/java/com/pessoal/agenda/mobile/ui/AgendaMobileViewModel.kt
+android/app/src/test/java/com/pessoal/agenda/mobile/data/OfflineRepositoryTest.kt
+android/app/src/test/java/com/pessoal/agenda/mobile/ui/TodayFocusTest.kt
 ```
 
 ## Diff Resumido
 
 ```diff
- ANDROID_EXPANSION_SPEC.md                          |  22 +++--
- MAINTENANCE_MAP.md                                 |   2 +-
- android/P3_00_BASELINE.md                          |  36 +++++++
- android/P3_00_NAVIGATION.md                        |  37 ++++++++
- .../mobile/sync/SharedContractFixtureTest.kt       |  23 +++++
- android/contracts/EXPANSION_V1.md                  |  41 ++++++++
- android/contracts/README.md                        |   3 +
- .../v1/expansion-domain-catalog.valid.json         | 105 +++++++++++++++++++++
- .../fixtures/v1/protocol-run-cancelled.valid.json  |   4 +
- .../v1/expansion-domain-catalog.schema.json        |  34 +++++++
- .../v1/protocol-run-cancelled.schema.json          |  12 +++
- .../contracts/SharedContractFixtureTest.java       |  26 +++++
- 12 files changed, 337 insertions(+), 8 deletions(-)
+ .../11.json                                        | 2181 ++++++++++++++++++++
+ .../data/local/MobileDatabaseMigrationTest.kt      |   38 +-
+ .../agenda/mobile/ui/AgendaMobileAppTest.kt        |   97 +
+ .../agenda/mobile/data/OfflineRepository.kt        |   69 +
+ .../agenda/mobile/data/local/MobileDatabase.kt     |   45 +-
+ .../pessoal/agenda/mobile/data/local/OfflineDao.kt |   57 +
+ .../agenda/mobile/data/local/OfflineEntities.kt    |   51 +
+ .../pessoal/agenda/mobile/ui/AgendaMobileApp.kt    |  290 ++-
+ .../agenda/mobile/ui/AgendaMobileViewModel.kt      |   93 +-
+ .../agenda/mobile/data/OfflineRepositoryTest.kt    |   81 +
+ .../com/pessoal/agenda/mobile/ui/TodayFocusTest.kt |   45 +
+ 11 files changed, 3026 insertions(+), 21 deletions(-)
 ```
 
 ---

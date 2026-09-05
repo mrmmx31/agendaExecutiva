@@ -22,6 +22,57 @@ data class TaskReplicaEntity(
     val tombstone: Boolean = false,
 )
 
+@Entity(tableName = "daily_plans")
+data class DailyPlanEntity(
+    @PrimaryKey val planDate: String,
+    val capacity: String,
+    val createdAt: String,
+    val closedAt: String? = null,
+    val closingNote: String? = null,
+)
+
+@Entity(
+    tableName = "daily_plan_items",
+    primaryKeys = ["planDate", "taskId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = DailyPlanEntity::class,
+            parentColumns = ["planDate"],
+            childColumns = ["planDate"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = TaskReplicaEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["taskId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("taskId"), Index(value = ["planDate", "role", "position"], unique = true)],
+)
+data class DailyPlanItemEntity(
+    val planDate: String,
+    val taskId: String,
+    val role: String,
+    val position: Int,
+)
+
+@Entity(
+    tableName = "focus_selections",
+    foreignKeys = [ForeignKey(
+        entity = TaskReplicaEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["taskId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+    indices = [Index("taskId")],
+)
+data class FocusSelectionEntity(
+    @PrimaryKey val singletonId: Int = 1,
+    val taskId: String,
+    val selectedAt: String,
+)
+
 @Entity(tableName = "captures", indices = [Index("createdAt")])
 data class CaptureEntity(
     @PrimaryKey val id: String,

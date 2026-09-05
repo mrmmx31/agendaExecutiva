@@ -17,7 +17,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        pairingInvitation.value = intent.pairingInvitation()
+        if (savedInstanceState == null) {
+            pairingInvitation.value = intent.pairingInvitation()
+        }
         enableEdgeToEdge()
         setContent { AgendaMobileApp(pairingInvitation.value) }
         lifecycleScope.launch(Dispatchers.IO) {

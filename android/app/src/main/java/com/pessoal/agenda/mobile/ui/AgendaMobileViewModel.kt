@@ -299,6 +299,13 @@ class AgendaMobileViewModel(application: Application) : AndroidViewModel(applica
         AndroidWearProtocolPublisher(getApplication(), repository).publish(runId)
     }
 
+    fun cancelProtocol(runId: String) = execute(
+        successMessage = "Protocolo encerrado. Os passos confirmados foram preservados.",
+    ) {
+        repository.cancelProtocol(runId)
+        AndroidWearProtocolPublisher(getApplication(), repository).publish(runId)
+    }
+
     fun proposeProtocolStep(protocolId: String, label: String) = execute(
         successMessage = "Sugestão enviada para a fila de revisão.",
     ) { repository.proposeProtocolStep(protocolId, label) }

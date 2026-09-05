@@ -344,6 +344,9 @@ interface OfflineDao {
     @Query("UPDATE protocol_runs SET completedAt = :completedAt WHERE id = :runId AND completedAt IS NULL")
     suspend fun completeRun(runId: String, completedAt: String): Int
 
+    @Query("UPDATE protocol_runs SET completedAt = :cancelledAt, wearRevision=wearRevision+1 WHERE id = :runId AND completedAt IS NULL")
+    suspend fun cancelRun(runId: String, cancelledAt: String): Int
+
     @Query("SELECT COALESCE(MAX(sequence), 0) + 1 FROM pending_operations WHERE deviceId = :deviceId")
     suspend fun nextSequence(deviceId: String): Long
 

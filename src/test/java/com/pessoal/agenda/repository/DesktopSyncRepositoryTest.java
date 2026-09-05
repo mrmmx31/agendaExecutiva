@@ -74,6 +74,41 @@ class DesktopSyncRepositoryTest {
     }
 
     @Test
+    void migrationExpandsLegacyProtocolEventConstraintWithoutLosingEvents() {
+        approveDevice();
+        database.execute("DROP TABLE mobile_protocol_events");
+        database.execute("""
+                CREATE TABLE mobile_protocol_events (
+                    operation_id TEXT PRIMARY KEY,
+                    device_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL CHECK (event_type IN (
+                        'PROTOCOL_RUN_STARTED', 'PROTOCOL_STEP_COMPLETED'
+                    )),
+                    entity_id TEXT NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    occurred_at TEXT NOT NULL
+                )
+                """);
+        database.execute("""
+                INSERT INTO mobile_protocol_events(
+                    operation_id, device_id, event_type, entity_id, payload_json, occurred_at
+                ) VALUES(?,?,?,?,?,?)
+                """, "10000000-0000-4000-8000-000000000090", DEVICE_ID,
+                "PROTOCOL_RUN_STARTED", ENTITY_ID, "{}", "2026-09-01T12:00:00Z");
+
+        database.runMigrations();
+
+        assertEquals(1, count("SELECT COUNT(*) FROM mobile_protocol_events"));
+        database.execute("""
+                INSERT INTO mobile_protocol_events(
+                    operation_id, device_id, event_type, entity_id, payload_json, occurred_at
+                ) VALUES(?,?,?,?,?,?)
+                """, "10000000-0000-4000-8000-000000000091", DEVICE_ID,
+                "PROTOCOL_RUN_CANCELLED", ENTITY_ID, "{}", "2026-09-01T12:01:00Z");
+        assertEquals(2, count("SELECT COUNT(*) FROM mobile_protocol_events"));
+    }
+
+    @Test
     void approvalPersistsOnlyHashRolesAndRevocationState() {
         approveDevice();
 

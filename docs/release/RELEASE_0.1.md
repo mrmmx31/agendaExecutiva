@@ -1,6 +1,6 @@
 # Registro do candidato 0.1
 
-Regenerado em 05/09/2026 às 10:32:08 UTC para uso pessoal por `sideload`. Nenhum
+Regenerado em 05/09/2026 às 11:52:15 UTC para uso pessoal por `sideload`. Nenhum
 artefato foi publicado ou enviado a terceiro.
 
 ## Assinatura
@@ -16,9 +16,9 @@ artefato foi publicado ou enviado a terceiro.
 
 | Artefato | SHA-256 |
 |---|---|
-| `app-release.apk` | `9f13cf71cdfc394035364881f5836346d054519cf791728939824f338560e6ba` |
-| `wear-release.apk` | `ff701ab9d8a84670f8ca978ad73d0346ef30d52ed26fbe5a6c9748c0a72ef4d4` |
-| `app-release.aab` | `803759b32a8c877425c1e4e56998196e7bc28a16a5c3caaabd0fafd2c6e99226` |
+| `app-release.apk` | `9bae73f6b2fcad90fedb6f83f63971cc3454a9c7708f2e6912aa3c3b0444d6e3` |
+| `wear-release.apk` | `d5a427da51962d4f6908873cf48108311a9e0914ad3b5890936a3d44c8b6e891` |
+| `app-release.aab` | `fa3b9484c6b80c076c9c8ecd79348fce3206451c80f806c0e051723e17413369` |
 | `wear-release.aab` | `6033b0286afbacf03666598dc77aef92bf96997f1845903dfdbf2dce39f1d837` |
 
 `android/scripts/p2_10_release_candidate.sh` verificou as quatro assinaturas,

@@ -194,11 +194,27 @@ class OfflineRepository(
         return completed
     }
 
+    suspend fun cancelProtocol(runId: String): Boolean = database.withTransaction {
+        val run = requireNotNull(dao.protocolRun(runId)) { "Execucao de protocolo inexistente." }
+        if (run.completedAt != null) return@withTransaction false
+        val occurredAt = Instant.now(clock).toString()
+        if (dao.cancelRun(runId, occurredAt) != 1) return@withTransaction false
+        enqueue(
+            operationId = validId(),
+            entityType = "protocol_run",
+            entityId = runId,
+            commandType = "PROTOCOL_RUN_CANCELLED",
+            occurredAt = occurredAt,
+            payloadJson = Json.encodeToString(ProtocolRunCancelledPayload(runId, occurredAt)),
+        )
+        true
+    }
+
     suspend fun protocolWearState(runId: String): WearProtocolStepState? = database.withTransaction {
         val run = dao.protocolRun(runId) ?: return@withTransaction null
         val rows = dao.runSteps(runId)
         if (rows.size !in 1..100) return@withTransaction null
-        val current = rows.firstOrNull { it.completedAt == null }
+        val current = if (run.completedAt == null) rows.firstOrNull { it.completedAt == null } else null
         WearProtocolStepState(
             contractVersion = WearProtocolStepState.CONTRACT_VERSION,
             runId = run.id,
@@ -319,6 +335,12 @@ private data class ProtocolStepCompletedPayload(
     @SerialName("run_id") val runId: String,
     @SerialName("step_id") val stepId: String,
     @SerialName("completed_at") val completedAt: String,
+)
+
+@Serializable
+private data class ProtocolRunCancelledPayload(
+    @SerialName("run_id") val runId: String,
+    @SerialName("cancelled_at") val cancelledAt: String,
 )
 
 @Serializable

@@ -113,6 +113,25 @@ class OfflineRepositoryTest {
     }
 
     @Test
+    fun cancellingProtocolClearsActiveRunQueuesEventAndEndsWearState() = runBlocking {
+        repository.initializeFictitiousData()
+        val runId = repository.startProtocol(OfflineRepository.FIXTURE_PROTOCOL)
+        val firstStep = repository.activeRunSteps.first { it.isNotEmpty() }.first()
+        assertTrue(repository.completeProtocolStep(runId, firstStep.stepId))
+
+        assertTrue(repository.cancelProtocol(runId))
+        assertFalse(repository.cancelProtocol(runId))
+
+        assertTrue(repository.activeRunSteps.first().isEmpty())
+        assertEquals(WearProtocolStatus.COMPLETED, repository.protocolWearState(runId)?.status)
+        val cancellation = repository.operations.first().single {
+            it.commandType == "PROTOCOL_RUN_CANCELLED"
+        }
+        assertEquals(runId, cancellation.entityId)
+        assertTrue(cancellation.payloadJson.contains("cancelled_at"))
+    }
+
+    @Test
     fun protocolEventsDoNotContainRunStepOrTemplateIdentity() = runBlocking {
         RecommendationStore(database).saveSettings(
             RecommendationSettings(

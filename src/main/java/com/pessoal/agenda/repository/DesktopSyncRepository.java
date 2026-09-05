@@ -255,7 +255,7 @@ public final class DesktopSyncRepository {
     }
 
     public StoredOperation applyProtocolEvent(OperationInput input, String payloadJson) {
-        if (!Set.of("PROTOCOL_RUN_STARTED", "PROTOCOL_STEP_COMPLETED")
+        if (!Set.of("PROTOCOL_RUN_STARTED", "PROTOCOL_STEP_COMPLETED", "PROTOCOL_RUN_CANCELLED")
                 .contains(input.commandType())) invalid("protocol_event");
         return applyEffect(input, connection -> {
             try (PreparedStatement statement = connection.prepareStatement("""

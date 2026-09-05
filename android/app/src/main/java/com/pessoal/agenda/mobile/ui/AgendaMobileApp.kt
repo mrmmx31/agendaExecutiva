@@ -40,6 +40,7 @@ import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.StopCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -140,6 +141,7 @@ fun AgendaMobileApp(
             onSaveCapture = viewModel::saveCapture,
             onStartProtocol = viewModel::startProtocol,
             onCompleteStep = viewModel::completeStep,
+            onCancelProtocol = viewModel::cancelProtocol,
             onProposeProtocolStep = viewModel::proposeProtocolStep,
             onSync = viewModel::syncNow,
             onPair = viewModel::pairDesktop,
@@ -215,6 +217,7 @@ internal fun AgendaMobileScreen(
     onSaveCapture: (String, () -> Unit) -> Unit,
     onStartProtocol: (String) -> Unit,
     onCompleteStep: (String, String) -> Unit,
+    onCancelProtocol: (String) -> Unit = {},
     onSync: () -> Unit,
     onPair: (String, String) -> Unit,
     onCancelPairing: () -> Unit,
@@ -466,6 +469,7 @@ internal fun AgendaMobileScreen(
                         state.busy,
                         onStartProtocol,
                         onCompleteStep,
+                        onCancelProtocol,
                         onProposeProtocolStep,
                     )
                     MobileSection.QUEUE -> QueueScreen(state.operations, state.conflicts)
@@ -773,10 +777,31 @@ private fun ProtocolScreen(
     busy: Boolean,
     onStart: (String) -> Unit,
     onComplete: (String, String) -> Unit,
+    onCancel: (String) -> Unit,
     onProposeStep: (String, String) -> Unit,
 ) {
     var proposalProtocol by remember { mutableStateOf<ProtocolTemplateEntity?>(null) }
     var proposalLabel by remember { mutableStateOf("") }
+    var runPendingCancellation by remember { mutableStateOf<String?>(null) }
+    runPendingCancellation?.let { runId ->
+        AlertDialog(
+            onDismissRequest = { runPendingCancellation = null },
+            title = { Text("Encerrar protocolo?") },
+            text = { Text("Os passos já confirmados permanecerão registrados. Você poderá iniciar o protocolo novamente.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onCancel(runId)
+                        runPendingCancellation = null
+                    },
+                    enabled = !busy,
+                ) { Text("Encerrar") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { runPendingCancellation = null }) { Text("Continuar protocolo") }
+            },
+        )
+    }
     proposalProtocol?.let { protocol ->
         AlertDialog(
             onDismissRequest = { proposalProtocol = null },
@@ -809,6 +834,14 @@ private fun ProtocolScreen(
             item {
                 Text(activeSteps.first().protocolTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text("Execução local em andamento", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedButton(
+                    onClick = { runPendingCancellation = activeSteps.first().runId },
+                    enabled = !busy,
+                    modifier = Modifier.padding(top = 8.dp),
+                ) {
+                    Icon(Icons.Outlined.StopCircle, contentDescription = null)
+                    Text("Encerrar protocolo")
+                }
             }
             items(activeSteps, key = { it.stepId }) { step ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -957,6 +990,7 @@ private fun String.userCommandLabel(): String = when (this) {
     "CAPTURE_CREATED" -> "Captura criada"
     "PROTOCOL_RUN_STARTED" -> "Protocolo iniciado"
     "PROTOCOL_STEP_COMPLETED" -> "Passo confirmado"
+    "PROTOCOL_RUN_CANCELLED" -> "Protocolo encerrado"
     else -> "Operação local"
 }
 
@@ -970,6 +1004,16 @@ private fun String.userDateTime(): String = runCatching {
 @Composable
 private fun MobileHomePreview() {
     AgendaMobileTheme {
-        AgendaMobileScreen(MobileUiState(), { _, _ -> }, {}, { _, _ -> }, {}, { _, _ -> }, {}, {}, {})
+        AgendaMobileScreen(
+            state = MobileUiState(),
+            onSaveCapture = { _, _ -> },
+            onStartProtocol = {},
+            onCompleteStep = { _, _ -> },
+            onSync = {},
+            onPair = { _, _ -> },
+            onCancelPairing = {},
+            onPairingCompletionShown = {},
+            onFeedbackShown = {},
+        )
     }
 }

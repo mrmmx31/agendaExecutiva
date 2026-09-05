@@ -587,7 +587,8 @@ public class Database {
                             operation_id TEXT PRIMARY KEY,
                             device_id TEXT NOT NULL,
                             event_type TEXT NOT NULL CHECK (event_type IN (
-                                'PROTOCOL_RUN_STARTED', 'PROTOCOL_STEP_COMPLETED'
+                                'PROTOCOL_RUN_STARTED', 'PROTOCOL_STEP_COMPLETED',
+                                'PROTOCOL_RUN_CANCELLED'
                             )),
                             entity_id TEXT NOT NULL,
                             payload_json TEXT NOT NULL,
@@ -640,6 +641,7 @@ public class Database {
                             FOREIGN KEY (server_cursor) REFERENCES mobile_server_changes(cursor)
                         )
                         """);
+                ensureProtocolCancellationEvent(conn, stmt);
                 conn.commit();
             } catch (SQLException migrationError) {
                 conn.rollback();
@@ -663,6 +665,40 @@ public class Database {
             }
             update.executeBatch();
         }
+    }
+
+    private static void ensureProtocolCancellationEvent(Connection connection, Statement statement)
+            throws SQLException {
+        String tableSql = null;
+        try (PreparedStatement query = connection.prepareStatement(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='mobile_protocol_events'");
+             ResultSet rows = query.executeQuery()) {
+            if (rows.next()) tableSql = rows.getString(1);
+        }
+        if (tableSql == null || tableSql.contains("PROTOCOL_RUN_CANCELLED")) return;
+        statement.execute("ALTER TABLE mobile_protocol_events RENAME TO mobile_protocol_events_legacy");
+        statement.execute("""
+                CREATE TABLE mobile_protocol_events (
+                    operation_id TEXT PRIMARY KEY,
+                    device_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL CHECK (event_type IN (
+                        'PROTOCOL_RUN_STARTED', 'PROTOCOL_STEP_COMPLETED',
+                        'PROTOCOL_RUN_CANCELLED'
+                    )),
+                    entity_id TEXT NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    occurred_at TEXT NOT NULL,
+                    FOREIGN KEY (device_id) REFERENCES mobile_devices(device_id) ON DELETE RESTRICT
+                )
+                """);
+        statement.execute("""
+                INSERT INTO mobile_protocol_events(
+                    operation_id, device_id, event_type, entity_id, payload_json, occurred_at
+                )
+                SELECT operation_id, device_id, event_type, entity_id, payload_json, occurred_at
+                FROM mobile_protocol_events_legacy
+                """);
+        statement.execute("DROP TABLE mobile_protocol_events_legacy");
     }
 
     /** Executa CREATE TABLE IF NOT EXISTS — usa o mesmo mecanismo idempotente. */

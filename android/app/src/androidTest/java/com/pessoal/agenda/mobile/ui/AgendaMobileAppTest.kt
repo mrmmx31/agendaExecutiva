@@ -23,6 +23,7 @@ import com.pessoal.agenda.mobile.alert.AudioRoutePolicy
 import com.pessoal.agenda.mobile.alert.output.AudioOutputDevice
 import com.pessoal.agenda.mobile.data.local.TaskReplicaEntity
 import com.pessoal.agenda.mobile.data.local.ProtocolTemplateEntity
+import com.pessoal.agenda.mobile.data.local.ActiveRunStepRow
 import com.pessoal.agenda.mobile.ui.theme.AgendaMobileTheme
 import com.pessoal.agenda.mobile.data.local.HealthConsentEntity
 import com.pessoal.agenda.mobile.health.HealthCategory
@@ -275,6 +276,43 @@ class AgendaMobileAppTest {
         compose.onNodeWithText("Vou sair").assertIsDisplayed().performClick()
 
         assertEquals("protocol-id", started)
+    }
+
+    @Test
+    fun activeProtocolCanBeKeptOrExplicitlyEnded() {
+        var cancelledRun: String? = null
+        compose.setContent {
+            AgendaMobileTheme {
+                AgendaMobileScreen(
+                    state = MobileUiState(activeRunSteps = listOf(ActiveRunStepRow(
+                        runId = "run-id",
+                        protocolId = "protocol-id",
+                        protocolTitle = "Saída de casa",
+                        stepId = "step-id",
+                        position = 0,
+                        label = "Chaves",
+                        completedAt = null,
+                    ))),
+                    onSaveCapture = { _, _ -> },
+                    onStartProtocol = {},
+                    onCompleteStep = { _, _ -> },
+                    onCancelProtocol = { cancelledRun = it },
+                    onSync = {},
+                    onPair = { _, _ -> },
+                    onCancelPairing = {},
+                    onPairingCompletionShown = {},
+                    onFeedbackShown = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText("Protocolos").performClick()
+        compose.onNodeWithText("Encerrar protocolo").performClick()
+        compose.onNodeWithText("Continuar protocolo").performClick()
+        assertEquals(null, cancelledRun)
+        compose.onNodeWithText("Encerrar protocolo").performClick()
+        compose.onNodeWithText("Encerrar").performClick()
+        assertEquals("run-id", cancelledRun)
     }
 
     @Test

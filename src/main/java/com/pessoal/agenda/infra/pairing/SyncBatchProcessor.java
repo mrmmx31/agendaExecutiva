@@ -30,6 +30,7 @@ final class SyncBatchProcessor {
     private static final Set<String> RUN_FIELDS = Set.of(
             "run_id", "protocol_id", "protocol_revision", "started_at");
     private static final Set<String> STEP_FIELDS = Set.of("run_id", "step_id", "completed_at");
+    private static final Set<String> RUN_CANCEL_FIELDS = Set.of("run_id", "cancelled_at");
     private static final Set<String> PROTOCOL_PROPOSAL_FIELDS = Set.of(
             "protocol_id", "base_revision", "proposed_step_label", "proposed_at");
 
@@ -100,6 +101,8 @@ final class SyncBatchProcessor {
                         input(operation, "APPLIED", null, null, null), payload, baseRevision);
                 case "PROTOCOL_STEP_COMPLETED" -> processProtocolStep(
                         input(operation, "APPLIED", null, null, null), payload);
+                case "PROTOCOL_RUN_CANCELLED" -> processProtocolCancellation(
+                        input(operation, "APPLIED", null, null, null), payload);
                 case "PROTOCOL_STRUCTURE_PROPOSED" -> processProtocolProposal(
                         input(operation, "APPLIED", null, null, null), payload, baseRevision);
                 default -> storeRejected(operation, "BUSINESS_RULE");
@@ -162,6 +165,19 @@ final class SyncBatchProcessor {
         requiredUuid(payload, "run_id");
         require(requiredUuid(payload, "step_id").equals(input.entityId()));
         Instant.parse(requiredString(payload, "completed_at"));
+        DesktopSyncRepository.StoredOperation stored = repository.applyProtocolEvent(
+                input, gson.toJson(payload));
+        return storedResult(stored);
+    }
+
+    private JsonObject processProtocolCancellation(DesktopSyncRepository.OperationInput input,
+                                                     JsonObject payload) {
+        if (!repository.hasRole(input.deviceId(), "PROTOCOLS_EXECUTE")) {
+            return storeRejected(input, "ROLE_DENIED");
+        }
+        require(payload != null && payload.keySet().equals(RUN_CANCEL_FIELDS));
+        require(requiredUuid(payload, "run_id").equals(input.entityId()));
+        Instant.parse(requiredString(payload, "cancelled_at"));
         DesktopSyncRepository.StoredOperation stored = repository.applyProtocolEvent(
                 input, gson.toJson(payload));
         return storedResult(stored);

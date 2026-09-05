@@ -74,6 +74,55 @@ class SyncBatchProcessorTest {
         assertEquals(1, database.queryInt("SELECT COUNT(*) FROM mobile_conflicts WHERE status='OPEN'"));
     }
 
+    @Test
+    void protocolCancellationIsAcceptedAndStoredForAudit() throws Exception {
+        Database database = new Database(tempDir.resolve("cancellation.db"));
+        database.runMigrations();
+        DesktopSyncRepository repository = new DesktopSyncRepository(database);
+        repository.approveDevice(DEVICE_ID, "Android fictício", "a".repeat(64), 1, 1,
+                Set.of("PROTOCOLS_EXECUTE"));
+
+        JsonObject response = new SyncBatchProcessor(repository).process(
+                DEVICE_ID, cancellationBatch());
+
+        assertEquals("APPLIED", response.getAsJsonArray("results").get(0)
+                .getAsJsonObject().get("status").getAsString());
+        assertEquals(1, database.queryInt("""
+                SELECT COUNT(*) FROM mobile_protocol_events
+                WHERE event_type='PROTOCOL_RUN_CANCELLED'
+                """));
+    }
+
+    private byte[] cancellationBatch() throws Exception {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("run_id", RUN_ID);
+        payload.addProperty("cancelled_at", "2026-09-01T12:05:00Z");
+        String payloadJson = new Gson().toJson(payload);
+        String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(payloadJson.getBytes(StandardCharsets.UTF_8)));
+        JsonObject operation = new JsonObject();
+        operation.addProperty("operation_id", OPERATION_ID);
+        operation.addProperty("device_id", DEVICE_ID);
+        operation.addProperty("sequence", 1);
+        operation.addProperty("contract_version", 1);
+        operation.addProperty("entity_type", "protocol_run");
+        operation.addProperty("entity_id", RUN_ID);
+        operation.addProperty("command_type", "PROTOCOL_RUN_CANCELLED");
+        operation.addProperty("occurred_at", "2026-09-01T12:05:00Z");
+        operation.addProperty("time_zone", "America/Manaus");
+        operation.add("payload", payload);
+        operation.addProperty("payload_hash", hash);
+        operation.add("base_revision", JsonNull.INSTANCE);
+        JsonArray operations = new JsonArray();
+        operations.add(operation);
+        JsonObject batch = new JsonObject();
+        batch.addProperty("contract_version", 1);
+        batch.addProperty("device_id", DEVICE_ID);
+        batch.addProperty("last_server_cursor", 0);
+        batch.add("operations", operations);
+        return new Gson().toJson(batch).getBytes(StandardCharsets.UTF_8);
+    }
+
     private byte[] proposalBatch(String protocolId) throws Exception {
         JsonObject payload = new JsonObject();
         payload.addProperty("protocol_id", protocolId);
